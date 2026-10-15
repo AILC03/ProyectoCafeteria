@@ -32,6 +32,11 @@ Consultar la matriz AC-01–AC-22 en [cierre de planeación](planning-readiness.
 Usar datos ficticios y base aislada. Nunca ejecutar limpieza de pruebas contra
 producción. No exigir credenciales Stripe reales para pruebas unitarias.
 
+El entorno Docker prepara cafeteria_test y TEST_DATABASE_URL en .env.docker.
+Ver [arranque local](database-setup.md). Esto no conecta automáticamente Vitest a
+PostgreSQL: las pruebas actuales siguen sin base de negocio. La futura limpieza
+debe validar su destino explícitamente; jamás usar desarrollo ni shadow.
+
 ## Casos adicionales de ADR aceptadas
 
 - Acceso personal vence a 8 horas absolutas, no por inactividad ni renovación; caja permanece abierta.
