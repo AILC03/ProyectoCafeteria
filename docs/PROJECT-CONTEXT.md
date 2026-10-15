@@ -1,0 +1,164 @@
+# Contexto y continuidad del proyecto — Backend Cafetería
+
+Actualizado: 2026-10-14. Estado consolidado tras aprobar ADR 0001–0010.
+Este archivo resume acuerdos e implementación real; no sustituye reglas ni ADR.
+
+## 1. Ubicación y responsabilidades
+
+Sistema web de gestión de órdenes de cafetería con módulo móvil para clientes.
+Repositorios separados para frontend y backend. Carpeta actual:
+
+C:/Users/angel/OneDrive/Documentos/ProyectoCafeteria/CafeteriaProyecto-BACKEND
+
+Equipo ESMAOS: Enrique lleva frontend, Leonel base de datos y el solicitante
+backend. Los integrantes se apoyan y revisan cambios entre sí.
+No inferir el nombre del responsable del backend por el usuario de Windows.
+
+## 2. Qué existe realmente
+
+- Express/TypeScript con GET /api/v1/health y respuesta {"status":"ok"}.
+- Configuración de entorno validada con Zod; arranque y cierre SIGINT/SIGTERM.
+- Prisma configurado para PostgreSQL, sin modelos de negocio.
+- npm y lockfile, ESLint, Prettier, EditorConfig y TypeScript estricto.
+- Dos archivos con cuatro pruebas de health/configuración.
+- Script db:check no destructivo para desarrollo y shadow.
+- .env.example y exclusión de secretos mediante .gitignore.
+
+El código actual tiene express.json de 100kb. ADR 0009 exige 256 KiB:
+es una diferencia de implementación pendiente, no cambiar el acuerdo para
+describir como terminado lo que aún no está implementado.
+
+No hay autenticación, CRUD de negocio, modelos/migraciones, pagos, caja, workers,
+correo, integración Cloudinary ni endpoints de negocio. Directorios .gitkeep no
+implican funcionalidad. OpenAPI solo define health. No se ha confirmado Git
+independiente/remoto ni configuración CI; evitar operar sobre un repositorio padre.
+
+## 3. Decisiones aceptadas
+
+| ADR  | Decisión                                                                                                              |
+| ---- | --------------------------------------------------------------------------------------------------------------------- |
+| 0001 | PostgreSQL                                                                                                            |
+| 0002 | Node 22 mínimo 22.13, Express 5, TypeScript, npm, Prisma 7/adapter-pg, Zod, ESLint, Prettier, Vitest y Supertest      |
+| 0003 | Monolito modular: auth, catalog, orders, payments, cash, customers; rutas/validación/controlador/servicio/repositorio |
+| 0004 | BIGINT identity, centavos enteros, UTC/TIMESTAMPTZ, restricciones SQL, históricos y bajas lógicas                     |
+| 0005 | JWT en cookie, refresh PostgreSQL, revocación y Argon2id                                                              |
+| 0006 | /api/v1, respuestas/errores uniformes, cursor e idempotencia 48 h                                                     |
+| 0007 | Confirmación backend, reconciliación/expiración y reembolso excepcional                                               |
+| 0008 | Worker PostgreSQL, tareas durables, correo y tokens protegidos                                                        |
+| 0009 | HTTPS, CORS/CSRF, logs seguros, CI, entornos y respaldos                                                              |
+| 0010 | Cloudinary Free, una imagen JPEG/PNG/WebP por producto hasta 5 MiB, reemplazo seguro                                  |
+
+Todas están aceptadas. Parámetros concretos de bibliotecas, SQL y proveedor final
+son trabajo de diseño/implementación, no motivo para reabrir acuerdos aprobados.
+
+## 4. Reglas esenciales vigentes
+
+- CLIENTE, CAJERO, PREPARACION, ADMINISTRADOR; un rol por usuario.
+- Administrador hereda caja/cajero y administra catálogo/empleados/clientes.
+  Cajero en catálogo solo cambia disponibilidad; no crea/edita precios/da de baja.
+- Personal usa username y contraseña de 8–24 caracteres; cliente teléfono MX +52
+  o número visible C000105 y NIP de cuatro dígitos como texto.
+- JWT acceso 15 min, refresh rotativo PostgreSQL; personal máximo absoluto 8 h
+  sin cierre por inactividad; clientes 30 días. Refresh no prolonga límites.
+  Logout, baja y cambio/reset de credencial revocan sesiones.
+- Cinco fallos en 15 min bloquean 15 min; límite adicional por IP.
+- Correo opcional verificado; verificación/recuperación un uso, 30 min. Reset
+  excepcional presencial solo admin con identidad, NIP temporal, cambio obligatorio
+  y auditoría sin secretos. Cajero no recupera cuentas.
+- Recargos globales leche/sabor/extras; tamaños por producto. Selecciones min/max
+  por grupo; un extra como máximo una vez por unidad. Backend calcula precios.
+- Dinero en centavos; IDs e importes HTTP como strings decimales; fechas UTC.
+  Hasta 50 líneas, 1–99 unidades por línea, total máximo 9999900 centavos.
+- Catálogo/personal con baja lógica; no borrar categoría con productos asociados,
+  incluso dados de baja. Snapshots de nombre, precio y opciones inmutables.
+  Agotar producto impide nuevas órdenes y respeta las previas dentro de plazo.
+- orders común CASH/STRIPE, método fijo, sin pago parcial/mixto ni cancelación.
+  PENDIENTE_PAGO → EN_PREPARACION → LISTO; vencida definitivamente → EXPIRADA.
+  Solo efectivo tiene QR de cobro. Escanear no confirma pago.
+- LISTO sale de preparación y permanece en BD/historial. Preparación, cajero y
+  admin marcan LISTO con actor/fecha. Invitado no consulta estado desde celular;
+  se llama por folio y nombre opcional.
+- Pago aceptado, venta y preparación se coordinan transaccionalmente. Máximo
+  un pago exitoso y una venta por orden; no abrir otro Checkout ante resultado incierto.
+- Efectivo vence 30 min; Stripe objetivo 30 min sujeto a estado real del proveedor.
+  Aviso tardío no implica pago tardío; consultar antes de expirar. Incertidumbre
+  de red exige reintento/reconciliación. Cobro excepcional sobre expirada se
+  conserva y reembolsa sin venta/preparación automática.
+- Una caja/sesión abierta global. Solo responsable cobra/cierra; admin puede
+  cerrar ajena con motivo. Stripe sin caja/cajero. Sin retiros/depósitos adicionales
+  ni cambio de responsable. Expirar acceso no cierra caja.
+- Efectivo recibido menos cambio = venta; esperado = fondo + ventas efectivo;
+  diferencia = contado − esperado. Conservar cierre y actor.
+- Invitado pagado recibe QR de registro distinto al de cobro, un uso, 24 h tras
+  pago. Alta, asociación de esa compra y consumo token en una transacción.
+  Compra ya asociada no emite QR. Token en BD como hash.
+- Caja busca cliente por teléfono/número y confirma nombre con datos mínimos.
+  Asociación no cambia tras pago salvo alta por QR.
+- Ticket imprimible efectivo; digital Stripe con opción imprimir. Ticket digital
+  no concede estado/historial al invitado. Favoritos guardan producto; repetir
+  usa precios/disponibilidad actuales y advierte cambios.
+- Fuera inventario, promociones, descuentos, propinas, factura fiscal y
+  devoluciones generales. Se conserva reembolso excepcional de expirada.
+
+## 5. Configuración y comprobaciones
+
+No leer/copiar credenciales para documentarlas. .env local, plantilla sin secretos.
+Variables existentes: NODE_ENV, PORT (3000), FRONTEND_ORIGIN (5173),
+DATABASE_URL, SHADOW_DATABASE_URL, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET.
+Secrets de JWT, cifrado, correo y Cloudinary se definirán al implementar.
+
+Prisma 7 toma URL de prisma.config.ts; salida src/generated/prisma ignorada.
+No cliente de negocio generado. Versiones reales en package.json/lockfile.
+
+Últimos resultados reportados en la configuración inicial, no repetidos aquí:
+
+| Comprobación       | Resultado conocido                                              |
+| ------------------ | --------------------------------------------------------------- |
+| typecheck/lint     | Pasaron antes de añadir db:check                                |
+| npm test           | 2 archivos, 4 pruebas pasaron                                   |
+| build              | Pasó en la base inicial                                         |
+| db:validate        | Esquema sin modelos válido con URL ficticia; no prueba conexión |
+| db:check           | Falló 3D000; se detuvo antes de shadow                          |
+| Formato documental | Se comprueba en la revisión de congruencia                      |
+
+Después del fallo el usuario informó haber creado las bases. Falta repetir
+db:check; no afirmar conexión exitosa. La revisión documental no ejecuta migraciones,
+cobra ni envía correo. La auditoría npm previa reportó cuatro avisos high
+transitivos de Prisma CLI; dato histórico, no resultado actualizado. No aplicar
+audit fix --force sin revisar impacto.
+
+Comandos existentes desde raíz (npm.cmd si PowerShell bloquea npm.ps1):
+npm ci; npm run db:check; npm run typecheck; npm run lint;
+npm run format:check; npm test; npm run build; npm run dev.
+
+db:generate/db:validate/db:migrate existen; no ejecutar migrate hasta diseño y
+revisión de migración. No hay seed/db:deploy ni configuración de BD de pruebas.
+Nunca usar principal o shadow para limpieza de tests; separar desarrollo/shadow/test.
+
+## 6. Siguiente trabajo
+
+1. Coordinar con Leonel la consolidación del esquema físico y ER: entidades, longitudes,
+   enums técnicos, índices, FK/CHECK, snapshots, auditoría, sesiones, refresh,
+   idempotencia, jobs/outbox y referencias Cloudinary.
+2. Comprobar desarrollo/shadow sin cambios de datos y preparar BD test aislada.
+3. Completar OpenAPI del catálogo de lectura; coordinar con Enrique.
+4. Definir tareas con criterios AC y revisión del responsable.
+5. Implementar catálogo lectura, autenticación/administración, compra completa
+   efectivo con caja/ticket/expiración; después Stripe, recuperación y resto.
+6. Antes de producción elegir hosting/dominio/correo real, retención y política
+   de anonimización; configurar HTTPS, CI, secretos, respaldos y probar restauración.
+
+## 7. Mantenimiento
+
+Código técnico inglés, documentación/interfaz español, camelCase/PascalCase y
+snake_case SQL. No secretos en logs/docs. OpenAPI antes de endpoints. Migraciones
+versionadas, no reescribir compartidas. OneDrive no sustituye Git.
+El PDF/anteproyecto anterior puede mencionar MySQL o permisos viejos; no afirmar
+que se regeneró. No editar sources del proyecto sincronizado.
+
+Referencias: [ADR](adr/README.md), [reglas](business-rules.md),
+[diccionario](data-dictionary.md), [permisos](permissions.md),
+[arquitectura](architecture.md), [desarrollo](development-guide.md),
+[pruebas](testing.md), [PostgreSQL](database-setup.md),
+[planeación](planning-readiness.md), [acuerdos](questionnaire-decisions.md),
+[OpenAPI](api/openapi.yaml), [contrato pendiente](api/contract-plan.md).

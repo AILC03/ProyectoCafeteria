@@ -1,0 +1,37 @@
+openapi: 3.0.3
+info:
+  title: API de Cafetería — Backend
+  version: 0.0.0
+  description: >-
+    API inicial con endpoint de disponibilidad HTTP.
+    Los endpoints de negocio todavía no están implementados.
+paths:
+  /api/v1/health:
+    get:
+      summary: Comprobar disponibilidad HTTP
+      operationId: getHealth
+      responses:
+        '200':
+          description: API disponible; no verifica PostgreSQL.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+tags:
+  - name: Auth
+    description: Autenticación y recuperación.
+  - name: Catalog
+    description: Productos, categorías y personalizaciones.
+  - name: Orders
+    description: Creación y preparación de pedidos.
+  - name: Payments
+    description: Cobros y confirmación Stripe.
+  - name: Cash
+    description: Apertura y cierre de caja.
+  - name: Customers
+    description: Registro por ticket, historial y favoritos.
