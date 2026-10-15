@@ -35,7 +35,8 @@ administrador con permisos de cajero/cierre excepcional. Ver [reglas](business-r
   concretar expiración/rotación del token sin habilitar estado o historial.
 - Concretar biblioteca/algoritmo de firma JWT y protocolo de refresh concurrente;
   límites por IP y programación/reintentos del worker al implementar módulos.
-- Comprobar desarrollo/shadow sin cambios y preparar BD test aislada.
+- Desarrollo/shadow manuales verificados. Probar arranque Compose de las tres
+  bases y conectar futuras pruebas a cafeteria_test aislada.
 - Completar OpenAPI por módulo antes de código; coordinar frontend.
 - Preparar tareas con criterios AC. Aún no están implementadas las reglas.
 - Hosting/dominio/correo real, conservación/anonimización y retención de respaldos
@@ -74,7 +75,8 @@ administrador con permisos de cajero/cierre excepcional. Ver [reglas](business-r
 - [x] Reglas y permisos consolidados con cuestionario vigente.
 - [ ] Revisar diseño físico y ER con Leonel, sin migrar todavía.
 - [ ] Completar OpenAPI del primer módulo y revisar con frontend.
-- [ ] Repetir db:check y preparar pruebas de integración aisladas.
+- [x] Repetir db:check: desarrollo y shadow manuales conectan (0 tablas public).
+- [ ] Probar primer arranque Docker e integrar pruebas de negocio aisladas.
 - [ ] Definir tareas, criterios y orden de implementación.
 - [ ] Catálogo lectura → autenticación/administración → compra efectivo → Stripe/recuperación.
 

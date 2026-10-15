@@ -22,6 +22,9 @@ No inferir el nombre del responsable del backend por el usuario de Windows.
 - npm y lockfile, ESLint, Prettier, EditorConfig y TypeScript estricto.
 - Dos archivos con cuatro pruebas de health/configuración.
 - Script db:check no destructivo para desarrollo y shadow.
+- Docker Compose PostgreSQL 17 con bases desarrollo/shadow/test y volumen persistente.
+  db:up genera .env.docker sin sobrescribir .env; db:check:docker verifica las tres.
+  Configuración validada; arranque real pendiente porque el motor Docker está apagado.
 - .env.example y exclusión de secretos mediante .gitignore.
 
 El código actual tiene express.json de 100kb. ADR 0009 exige 256 KiB:
@@ -30,8 +33,9 @@ describir como terminado lo que aún no está implementado.
 
 No hay autenticación, CRUD de negocio, modelos/migraciones, pagos, caja, workers,
 correo, integración Cloudinary ni endpoints de negocio. Directorios .gitkeep no
-implican funcionalidad. OpenAPI solo define health. No se ha confirmado Git
-independiente/remoto ni configuración CI; evitar operar sobre un repositorio padre.
+implican funcionalidad. OpenAPI solo define health. Git independiente confirmado;
+dev es la rama de trabajo y la copia local sigue origin/dev.
+No se ha confirmado configuración CI.
 
 ## 3. Decisiones aceptadas
 
@@ -114,15 +118,16 @@ No cliente de negocio generado. Versiones reales en package.json/lockfile.
 
 | Comprobación       | Resultado conocido                                              |
 | ------------------ | --------------------------------------------------------------- |
-| typecheck/lint     | Pasaron antes de añadir db:check                                |
+| typecheck/lint     | Repetidos al preparar arranque local Docker                     |
 | npm test           | 2 archivos, 4 pruebas pasaron                                   |
 | build              | Pasó en la base inicial                                         |
 | db:validate        | Esquema sin modelos válido con URL ficticia; no prueba conexión |
-| db:check           | Falló 3D000; se detuvo antes de shadow                          |
+| db:check           | 14/10/2026: desarrollo y shadow conectan, 0 tablas public       |
 | Formato documental | Se comprueba en la revisión de congruencia                      |
 
-Después del fallo el usuario informó haber creado las bases. Falta repetir
-db:check; no afirmar conexión exitosa. La revisión documental no ejecuta migraciones,
+Después del fallo inicial el usuario creó las bases y db:check pasó en ambas.
+Esto verifica la instalación manual, no el contenedor ni la base test.
+La revisión documental no ejecuta migraciones,
 cobra ni envía correo. La auditoría npm previa reportó cuatro avisos high
 transitivos de Prisma CLI; dato histórico, no resultado actualizado. No aplicar
 audit fix --force sin revisar impacto.
@@ -132,7 +137,8 @@ npm ci; npm run db:check; npm run typecheck; npm run lint;
 npm run format:check; npm test; npm run build; npm run dev.
 
 db:generate/db:validate/db:migrate existen; no ejecutar migrate hasta diseño y
-revisión de migración. No hay seed/db:deploy ni configuración de BD de pruebas.
+revisión de migración. No hay seed/db:deploy. Compose prepara una BD test vacía,
+pero falta integrar pruebas de negocio con TEST_DATABASE_URL.
 Nunca usar principal o shadow para limpieza de tests; separar desarrollo/shadow/test.
 
 ## 6. Siguiente trabajo
@@ -140,7 +146,7 @@ Nunca usar principal o shadow para limpieza de tests; separar desarrollo/shadow/
 1. Coordinar con Leonel la consolidación del esquema físico y ER: entidades, longitudes,
    enums técnicos, índices, FK/CHECK, snapshots, auditoría, sesiones, refresh,
    idempotencia, jobs/outbox y referencias Cloudinary.
-2. Comprobar desarrollo/shadow sin cambios de datos y preparar BD test aislada.
+2. Probar primer arranque Docker y conexión de sus tres bases; integrar BD test aislada.
 3. Completar OpenAPI del catálogo de lectura; coordinar con Enrique.
 4. Definir tareas con criterios AC y revisión del responsable.
 5. Implementar catálogo lectura, autenticación/administración, compra completa

@@ -6,7 +6,9 @@ El frontend tendrá un repositorio separado.
 ## Estado
 
 Base Express/TypeScript ejecutable con endpoint HTTP de salud y pruebas.
-Prisma configurado, todavía sin modelos, migraciones ni conexión real verificada.
+Prisma configurado, todavía sin modelos ni migraciones de negocio. Conexión manual
+a desarrollo/shadow verificada. Arranque local Docker preparado; ver estado de
+validación en la guía de PostgreSQL.
 
 Tecnologías previstas: Node.js, Express, TypeScript, API REST y PostgreSQL.
 Prisma 7, npm, Zod, ESLint 10, Prettier, Vitest 5 y Supertest aprobados en ADR 0002.
@@ -15,8 +17,12 @@ Autenticación definida en ADR 0005, todavía sin implementar.
 ## Ejecutar localmente
 
 Node 22 (mínimo 22.13). Instalar dependencias con `npm ci`.
+Con Docker Desktop abierto, `npm run db:up` prepara PostgreSQL y tres bases locales;
+`npm run db:check:docker` verifica conexión y `npm run dev:docker` inicia la API
+con ese entorno. No modifica el `.env` existente ni aplica migraciones.
 Seguir [preparación de PostgreSQL](docs/database-setup.md) y crear `.env`
-localmente sin compartir credenciales. Ejecutar `npm run dev` y abrir
+localmente si se prefiere la instalación manual. Ejecutar `npm run dev` para
+esa alternativa y abrir
 `http://localhost:3000/api/v1/health`. Este endpoint no verifica PostgreSQL.
 
 Comprobaciones: `npm run typecheck`, `npm run lint`, `npm run format:check`,

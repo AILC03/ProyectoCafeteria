@@ -29,6 +29,8 @@ async function checkDatabase(label: string, value: string | undefined) {
       error && typeof error === 'object' && 'code' in error && typeof error.code === 'string'
         ? error.code
         : 'UNKNOWN';
+    // No adjuntar cause: puede contener URL, usuario o detalles privados del proveedor.
+    // eslint-disable-next-line preserve-caught-error
     throw new Error(`${label}: conexión fallida (${code}).`);
   } finally {
     await client.end();
@@ -36,21 +38,29 @@ async function checkDatabase(label: string, value: string | undefined) {
 }
 
 async function main() {
-  const mainUrl = process.env.DATABASE_URL;
-  const shadowUrl = process.env.SHADOW_DATABASE_URL;
-  if (mainUrl && shadowUrl) {
-    const main = new URL(mainUrl);
-    const shadow = new URL(shadowUrl);
-    if (
-      main.hostname === shadow.hostname &&
-      (main.port || '5432') === (shadow.port || '5432') &&
-      decodeURIComponent(main.pathname) === decodeURIComponent(shadow.pathname)
-    ) {
-      throw new Error('Desarrollo y shadow deben ser bases distintas.');
-    }
+  const databases: [string, string | undefined][] = [
+    ['Desarrollo', process.env.DATABASE_URL],
+    ['Shadow', process.env.SHADOW_DATABASE_URL],
+  ];
+  if (process.env.TEST_DATABASE_URL) {
+    databases.push(['Pruebas', process.env.TEST_DATABASE_URL]);
   }
-  await checkDatabase('Desarrollo', mainUrl);
-  await checkDatabase('Shadow', shadowUrl);
+  const destinations = new Set<string>();
+  for (const [, value] of databases) {
+    if (!value) continue;
+    const url = new URL(value);
+    const hostname = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)
+      ? 'loopback'
+      : url.hostname;
+    const destination = `${hostname}:${url.port || '5432'}/${decodeURIComponent(url.pathname)}`;
+    if (destinations.has(destination)) {
+      throw new Error('Desarrollo, shadow y pruebas deben ser bases distintas.');
+    }
+    destinations.add(destination);
+  }
+  for (const [label, value] of databases) {
+    await checkDatabase(label, value);
+  }
 }
 
 main().catch((error: unknown) => {
