@@ -1,5 +1,8 @@
 # Registro de decisiones arquitectónicas (ADR)
 
+ADR adicional: [0011 — Protocolos de integridad](0011-integrity-protocols.md),
+aceptada explícitamente el 2026-10-20. ADR 0001–0010 conservan su estado aceptado.
+
 Crear `NNNN-titulo-corto.md` usando [la plantilla](template.md).
 Estados: Propuesto, Aceptado, Rechazado, Reemplazado.
 Decisiones aceptadas no se reescriben silenciosamente: otra ADR las reemplaza.

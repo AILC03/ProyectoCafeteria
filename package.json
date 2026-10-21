@@ -7,6 +7,7 @@
     "node": ">=22.13.0 <23"
   },
   "scripts": {
+    "postinstall": "prisma generate",
     "dev": "tsx watch src/server.ts",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/server.js",
@@ -23,23 +24,40 @@
     "db:stop": "node scripts/local-database.mjs stop",
     "db:status": "node scripts/local-database.mjs status",
     "db:check:docker": "node scripts/local-database.mjs check",
+    "db:verify:docker": "node scripts/local-database.mjs verify",
     "dev:docker": "node --env-file=.env.docker --import tsx --watch src/server.ts",
-    "db:migrate": "prisma migrate dev"
+    "db:migrate": "prisma migrate dev",
+    "db:verify": "node scripts/verify-database.mjs",
+    "db:diagram": "node scripts/generate-er.mjs",
+    "api:validate": "node scripts/verify-contract.mjs",
+    "db:prepare": "node scripts/prepare-development.mjs",
+    "db:seed": "tsx scripts/seed-demo.ts",
+    "admin:create": "tsx scripts/create-admin.ts",
+    "test:integration": "node scripts/test-catalog-integration.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
+    "argon2": "^0.45.1",
+    "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.3.0",
+    "express-rate-limit": "^8.7.1",
+    "helmet": "^8.3.0",
     "pg": "^8.23.1",
+    "pino": "^10.4.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@apidevtools/swagger-parser": "^12.1.0",
     "@eslint/js": "^10.0.1",
+    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^22.20.5",
     "@types/pg": "^8.23.1",
     "@types/supertest": "^6.0.3",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
     "eslint": "^10.12.0",
     "prettier": "^3.9.10",
     "prisma": "^7.10.0",
@@ -47,6 +65,7 @@
     "tsx": "^4.23.15",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.71.2",
-    "vitest": "^5.0.4"
+    "vitest": "^5.0.4",
+    "yaml": "^2.9.1"
   }
 }

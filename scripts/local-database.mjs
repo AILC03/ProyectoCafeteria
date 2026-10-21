@@ -43,8 +43,8 @@ function run(command, args, environment) {
 }
 
 try {
-  if (!['env', 'up', 'stop', 'status', 'check'].includes(action)) {
-    throw new Error('Acción válida: env, up, stop, status o check.');
+  if (!['env', 'up', 'stop', 'status', 'check', 'verify'].includes(action)) {
+    throw new Error('Acción válida: env, up, stop, status, check o verify.');
   }
   if (action === 'env' || action === 'up') ensureEnvironment();
   if (action !== 'env') {
@@ -59,7 +59,9 @@ try {
       if (!local[name]) throw new Error(`Falta ${name} en .env.docker.`);
     }
     const environment = { ...process.env, ...local };
-    if (action === 'check') {
+    if (action === 'verify') {
+      run(process.execPath, ['scripts/verify-database.mjs'], environment);
+    } else if (action === 'check') {
       run(process.execPath, ['--import', 'tsx', 'scripts/check-database.ts'], environment);
     } else {
       const args = {

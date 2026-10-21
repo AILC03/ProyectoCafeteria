@@ -1,0 +1,321 @@
+erDiagram
+  roles {
+    bigint id PK
+    varchar name UK
+  }
+  users {
+    bigint id PK
+    AccountType account_type
+    bigint role_id FK
+    varchar name
+    varchar username UK "nullable"
+    varchar password_hash "nullable"
+    varchar customer_number UK "nullable"
+    varchar phone UK "nullable"
+    varchar pin_hash "nullable"
+    varchar recovery_email "nullable"
+    timestamptz recovery_email_verified_at "nullable"
+    boolean must_change_pin
+    boolean is_active
+    timestamptz created_at
+    timestamptz updated_at
+  }
+  pin_reset_audit {
+    bigint id PK
+    bigint customer_id FK
+    bigint admin_id FK
+    varchar reason
+    varchar verification_summary
+    timestamptz reset_at
+  }
+  pin_recovery_tokens {
+    bigint id PK
+    bigint customer_id FK
+    varchar token_hash UK
+    timestamptz expires_at
+    timestamptz used_at "nullable"
+    timestamptz created_at
+  }
+  categories {
+    bigint id PK
+    varchar name
+    boolean is_active
+    timestamptz deleted_at "nullable"
+    timestamptz created_at
+  }
+  products {
+    bigint id PK
+    bigint category_id FK
+    varchar name
+    varchar description "nullable"
+    bigint base_price_cents
+    varchar image_url "nullable"
+    varchar image_public_id "nullable"
+    varchar image_version "nullable"
+    boolean is_available
+    timestamptz deleted_at "nullable"
+    timestamptz created_at
+    timestamptz updated_at
+  }
+  option_groups {
+    bigint id PK
+    varchar name
+    PricingScope pricing_scope
+    timestamptz deleted_at "nullable"
+  }
+  option_values {
+    bigint id PK
+    bigint option_group_id FK
+    varchar name
+    bigint global_surcharge_cents "nullable"
+    boolean is_available
+    timestamptz deleted_at "nullable"
+  }
+  product_option_groups {
+    bigint id PK
+    bigint product_id FK
+    bigint option_group_id FK
+    integer min_selections
+    integer max_selections
+  }
+  product_option_values {
+    bigint id PK
+    bigint product_option_group_id FK
+    bigint option_value_id FK
+    bigint surcharge_override_cents "nullable"
+  }
+  orders {
+    bigint id PK
+    varchar folio UK
+    bigint customer_id FK "nullable"
+    bigint created_by_employee_id FK "nullable"
+    varchar guest_name "nullable"
+    OrderSource source
+    OrderStatus status
+    PaymentMethod payment_method
+    bigint total_cents
+    timestamptz payment_expires_at
+    varchar cash_qr_token_hash UK "nullable"
+    timestamptz paid_at "nullable"
+    timestamptz ready_at "nullable"
+    bigint ready_by_employee_id FK "nullable"
+    timestamptz expired_at "nullable"
+    timestamptz created_at
+    timestamptz updated_at
+  }
+  order_items {
+    bigint id PK
+    bigint order_id FK
+    bigint product_id FK
+    varchar product_name_snapshot
+    bigint base_price_cents_snapshot
+    bigint unit_price_cents
+    integer quantity
+    bigint line_total_cents
+  }
+  order_item_options {
+    bigint id PK
+    bigint order_item_id FK
+    bigint option_value_id FK
+    varchar group_name_snapshot
+    varchar option_name_snapshot
+    bigint surcharge_cents_snapshot
+  }
+  payments {
+    bigint id PK
+    bigint order_id FK
+    PaymentMethod method
+    PaymentStatus status
+    bigint amount_cents
+    varchar currency
+    bigint cashier_id FK "nullable"
+    bigint cash_session_id FK "nullable"
+    bigint cash_received_cents "nullable"
+    bigint change_cents "nullable"
+    varchar stripe_creation_key UK "nullable"
+    varchar stripe_checkout_session_id UK "nullable"
+    varchar stripe_payment_intent_id UK "nullable"
+    timestamptz confirmed_at "nullable"
+    timestamptz provider_paid_at "nullable"
+    timestamptz created_at
+    timestamptz updated_at
+  }
+  sales {
+    bigint id PK
+    varchar sale_number UK
+    bigint order_id FK, UK
+    bigint payment_id FK, UK
+    bigint total_cents
+    timestamptz sold_at
+  }
+  cash_sessions {
+    bigint id PK
+    bigint employee_id FK
+    timestamptz opened_at
+    timestamptz closed_at "nullable"
+    bigint closed_by_employee_id FK "nullable"
+    varchar exceptional_close_reason "nullable"
+    bigint opening_amount_cents
+    bigint expected_cash_cents "nullable"
+    bigint counted_cash_cents "nullable"
+    bigint difference_cents "nullable"
+  }
+  payment_events {
+    bigint id PK
+    bigint payment_id FK "nullable"
+    varchar provider_event_id UK
+    varchar event_type
+    EventStatus processing_status
+    timestamptz received_at
+    timestamptz processed_at "nullable"
+  }
+  refunds {
+    bigint id PK
+    bigint payment_id FK
+    bigint amount_cents
+    varchar reason
+    RefundStatus status
+    varchar stripe_refund_id UK "nullable"
+    timestamptz created_at
+    timestamptz updated_at
+  }
+  customer_registration_tokens {
+    bigint id PK
+    bigint sale_id FK, UK
+    varchar token_hash UK
+    timestamptz expires_at
+    timestamptz used_at "nullable"
+    bigint used_by_customer_id FK "nullable"
+    timestamptz created_at
+  }
+  favorites {
+    bigint customer_id PK, FK
+    bigint product_id PK, FK
+    timestamptz created_at
+  }
+  auth_sessions {
+    bigint id PK
+    bigint user_id FK
+    varchar family_id
+    varchar refresh_token_hash UK
+    bigint rotated_from_id FK "nullable"
+    timestamptz created_at
+    timestamptz last_seen_at
+    timestamptz absolute_expires_at
+    timestamptz rotated_at "nullable"
+    timestamptz revoked_at "nullable"
+  }
+  auth_attempt_limits {
+    bigint id PK
+    varchar key_hash UK
+    timestamptz window_started_at
+    integer attempt_count
+    timestamptz blocked_until "nullable"
+  }
+  email_verification_tokens {
+    bigint id PK
+    bigint customer_id FK
+    varchar candidate_email
+    varchar token_hash UK
+    timestamptz expires_at
+    timestamptz used_at "nullable"
+  }
+  idempotency_records {
+    bigint id PK
+    varchar scope
+    varchar actor_key
+    varchar key_hash
+    varchar request_hash
+    IdempotencyStatus status
+    varchar resource_type "nullable"
+    bigint resource_id "nullable"
+    jsonb response_json "nullable"
+    timestamptz expires_at
+    timestamptz created_at
+  }
+  jobs {
+    bigint id PK
+    varchar type
+    varchar reference
+    JobStatus status
+    timestamptz available_at
+    integer attempts
+    timestamptz locked_until "nullable"
+    varchar dedupe_key UK "nullable"
+    varchar last_error "nullable"
+  }
+  outbox_messages {
+    bigint id PK
+    varchar type
+    varchar reference
+    varchar encrypted_payload "nullable"
+    varchar key_version "nullable"
+    JobStatus status
+    integer attempts
+    timestamptz available_at
+    timestamptz locked_until "nullable"
+    timestamptz expires_at "nullable"
+  }
+  payment_incidents {
+    bigint id PK
+    bigint order_id FK
+    bigint payment_id FK "nullable"
+    varchar reason
+    IncidentStatus review_status
+    timestamptz created_at
+    timestamptz reviewed_at "nullable"
+  }
+  audit_events {
+    bigint id PK
+    bigint actor_id FK
+    bigint customer_id FK "nullable"
+    varchar action
+    varchar reason
+    timestamptz occurred_at
+  }
+  guest_ticket_tokens {
+    bigint id PK
+    bigint sale_id FK
+    varchar token_hash UK
+    timestamptz expires_at
+    timestamptz revoked_at "nullable"
+    timestamptz created_at
+  }
+  roles ||--o{ users : role_id
+  users ||--o{ pin_reset_audit : customer_id
+  users ||--o{ pin_reset_audit : admin_id
+  users ||--o{ pin_recovery_tokens : customer_id
+  categories ||--o{ products : category_id
+  option_groups ||--o{ option_values : option_group_id
+  products ||--o{ product_option_groups : product_id
+  option_groups ||--o{ product_option_groups : option_group_id
+  product_option_groups ||--o{ product_option_values : product_option_group_id
+  option_values ||--o{ product_option_values : option_value_id
+  users o|--o{ orders : customer_id
+  users o|--o{ orders : created_by_employee_id
+  users o|--o{ orders : ready_by_employee_id
+  orders ||--o{ order_items : order_id
+  products ||--o{ order_items : product_id
+  order_items ||--o{ order_item_options : order_item_id
+  option_values ||--o{ order_item_options : option_value_id
+  orders ||--o{ payments : order_id
+  users o|--o{ payments : cashier_id
+  cash_sessions o|--o{ payments : cash_session_id
+  orders ||--o| sales : order_id
+  payments ||--o| sales : payment_id
+  users ||--o{ cash_sessions : employee_id
+  users o|--o{ cash_sessions : closed_by_employee_id
+  payments o|--o{ payment_events : payment_id
+  payments ||--o{ refunds : payment_id
+  sales ||--o| customer_registration_tokens : sale_id
+  users o|--o{ customer_registration_tokens : used_by_customer_id
+  users ||--o{ favorites : customer_id
+  products ||--o{ favorites : product_id
+  users ||--o{ auth_sessions : user_id
+  auth_sessions o|--o{ auth_sessions : rotated_from_id
+  users ||--o{ email_verification_tokens : customer_id
+  orders ||--o{ payment_incidents : order_id
+  payments o|--o{ payment_incidents : payment_id
+  users ||--o{ audit_events : actor_id
+  users o|--o{ audit_events : customer_id
+  sales ||--o{ guest_ticket_tokens : sale_id

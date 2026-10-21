@@ -5,9 +5,17 @@ El frontend tendrá un repositorio separado.
 
 ## Estado
 
-Base Express/TypeScript ejecutable con endpoint HTTP de salud y pruebas.
-Prisma configurado, todavía sin modelos ni migraciones de negocio. Conexión manual
-a desarrollo/shadow verificada. Arranque local Docker preparado; ver estado de
+**Actualización 2026-10-20:** candidato y ADR 0011 aprobados, migración aplicada
+a desarrollo y menú demo cargado. Infraestructura común y cuatro GET de catálogo
+implementados. [Estado vigente y comandos](docs/backend-progress.md).
+Crear administrador en terminal local con `npm run admin:create`; todavía no
+existe endpoint de login.
+
+Base Express/TypeScript ejecutable con health y catálogo de lectura, 29 modelos,
+migración aprobada y contrato OpenAPI. Candidato probado en PostgreSQL 17.10;
+pendiente evidencia en equipo de Leonel, no la aprobación de Ángel ya otorgada.
+Ver [correcciones pendientes](docs/database/correcciones-pendientes.md).
+Migración aplicada a desarrollo local; shadow sin cambios. Arranque Docker preparado; ver estado de
 validación en la guía de PostgreSQL.
 
 Tecnologías previstas: Node.js, Express, TypeScript, API REST y PostgreSQL.
@@ -27,7 +35,11 @@ esa alternativa y abrir
 
 Comprobaciones: `npm run typecheck`, `npm run lint`, `npm run format:check`,
 `npm test`, `npm run build`. Formato automático: `npm run format`.
-No ejecutar migraciones todavía: faltan los modelos.
+La base local aprobada ya está migrada. En un entorno nuevo ejecutar db:prepare
+solo sobre una base local vacía o con historial de este proyecto, nunca reset.
+`npm run api:validate` comprueba contrato y ejemplos; `npm run db:diagram` regenera
+ER desde Prisma. `npm run db:verify:docker` crea bases desechables propias para
+regresión solo cuando Docker esté disponible. Ver guía de verificación.
 
 ## Equipo
 
@@ -49,6 +61,7 @@ Los archivos `.gitkeep` mantienen directorios vacíos al versionarlos.
 
 ## Documentación
 
+- [Avance vigente: persistencia, infraestructura y catálogo](docs/backend-progress.md)
 - [Contexto completo, estado y próximos pasos](docs/PROJECT-CONTEXT.md)
 - [Reglas de negocio](docs/business-rules.md)
 - [Diccionario de datos](docs/data-dictionary.md)
@@ -61,9 +74,9 @@ Los archivos `.gitkeep` mantienen directorios vacíos al versionarlos.
 
 ## Próximo trabajo
 
-1. Revisar [cierre de planeación](docs/planning-readiness.md); ADR 0001–0010 aceptadas. Preparar modelo físico, contratos por operación y tareas.
-2. Aplicar reglas y permisos ya aprobados al diseño de cada módulo.
-3. Comprobar conexión, diseñar modelos/migraciones y revisar con base de datos.
-4. Completar contrato de catálogo antes de su implementación.
+1. Crear AngelAdmin localmente con admin:create (sin contraseña predeterminada).
+2. Revisar contrato de catálogo implementado con Enrique.
+3. Implementar autenticación/permisos/CSRF antes de CRUD o cobros.
+4. Continuar administración, órdenes y compra en efectivo según backlog.
 
 Nunca subir `.env`, claves Stripe, credenciales reales ni datos personales.

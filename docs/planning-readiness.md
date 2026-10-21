@@ -1,13 +1,27 @@
 # Cierre de planeación antes de desarrollo
 
-Actualizado: 2026-10-14. ADR 0001–0010 aceptadas. Reglas, permisos y parámetros de
+Actualización vigente 2026-10-20: Ángel aprobó candidato corregido y ADR 0011.
+Migración aplicada a desarrollo, seed y catálogo lectura realizados. Ver
+[backend-progress.md](backend-progress.md). Las puertas de salida inferiores
+registran la etapa histórica de revisión; Docker/entorno Leonel sigue externo.
+
+Actualizado: 2026-10-18. ADR 0001–0010 aceptadas. Reglas, permisos y parámetros de
 imágenes cerrados; aprobación documental no equivale a funcionalidad implementada.
 
 ## Responsabilidades y estado
 
 Coordinar esquema y migraciones con Leonel y contrato con Enrique para frontend.
-Hoy solo existen health, configuración y base técnica; modelo Prisma sin entidades
-de negocio y OpenAPI solo health. No ejecutar migraciones en revisión documental.
+Health es el único endpoint implementado. La entrega de Leonel añade 29 modelos,
+SQL candidato y contrato de catálogo, sin migración aplicada a las bases del proyecto.
+No está aprobada: ver [correcciones pendientes](database/correcciones-pendientes.md).
+No ejecutar migraciones en revisión documental.
+
+Actualización de correcciones: C01-C05 y C09-C11 resueltos técnicamente. Suite
+aislada en PostgreSQL 17.10: 22 casos, mutantes C01-C04, deploy repetido, diff
+vacío y cliente Prisma. C06 tiene propuesta ADR 0011 por revisar. C08 sigue
+pendiente en equipo de Leonel/Docker. C12 requiere aprobación de Ángel. No se
+han migrado las bases del proyecto ni implementado módulos. Ver evidencia y
+matriz actual de correcciones, no confundir estado de entrega original con revisión.
 
 ## Decisiones vigentes
 

@@ -7,4 +7,535 @@ datasource db {
   provider = "postgresql"
 }
 
-// Los modelos aprobados se incorporarán en la siguiente etapa.
+enum AccountType {
+  CUSTOMER
+  STAFF
+}
+
+enum PricingScope {
+  GLOBAL
+  PER_PRODUCT
+}
+
+enum OrderSource {
+  MOBILE
+  CASHIER
+}
+
+enum OrderStatus {
+  PENDIENTE_PAGO
+  EN_PREPARACION
+  LISTO
+  EXPIRADA
+}
+
+enum PaymentMethod {
+  CASH
+  STRIPE
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  EXPIRED
+}
+
+enum EventStatus {
+  RECEIVED
+  PROCESSED
+  FAILED
+  IGNORED
+}
+
+enum RefundStatus {
+  REQUESTED
+  PENDING
+  SUCCEEDED
+  FAILED
+}
+
+enum IdempotencyStatus {
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+enum JobStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+}
+
+enum IncidentStatus {
+  OPEN
+  REVIEWING
+  RESOLVED
+}
+
+model Role {
+  id          BigInt @id @default(autoincrement())
+  name        String @unique @db.VarChar(32)
+  user_roleId User[]
+
+  @@map("roles")
+}
+
+model User {
+  id                                           BigInt                      @id @default(autoincrement())
+  accountType                                  AccountType                 @map("account_type")
+  roleId                                       BigInt                      @map("role_id")
+  name                                         String                      @db.VarChar(120)
+  username                                     String?                     @unique @db.VarChar(24)
+  passwordHash                                 String?                     @map("password_hash") @db.VarChar(255)
+  customerNumber                               String?                     @unique @map("customer_number") @db.VarChar(20)
+  phone                                        String?                     @unique @db.VarChar(20)
+  pinHash                                      String?                     @map("pin_hash") @db.VarChar(255)
+  recoveryEmail                                String?                     @map("recovery_email") @db.VarChar(254)
+  recoveryEmailVerifiedAt                      DateTime?                   @map("recovery_email_verified_at") @db.Timestamptz(6)
+  mustChangePin                                Boolean                     @default(false) @map("must_change_pin")
+  isActive                                     Boolean                     @default(true) @map("is_active")
+  createdAt                                    DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                                    DateTime                    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  role                                         Role                        @relation(fields: [roleId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  pin_reset_audit_customerId                   PinResetAudit[]             @relation("PinResetCustomer")
+  pin_reset_audit_adminId                      PinResetAudit[]             @relation("PinResetAdmin")
+  pin_recovery_token_customerId                PinRecoveryToken[]
+  order_customerId                             Order[]                     @relation("OrderCustomer")
+  order_createdByEmployeeId                    Order[]                     @relation("OrderCreator")
+  order_readyByEmployeeId                      Order[]                     @relation("OrderReadyBy")
+  payment_cashierId                            Payment[]
+  cash_session_employeeId                      CashSession[]               @relation("SessionOwner")
+  cash_session_closedByEmployeeId              CashSession[]               @relation("SessionCloser")
+  customer_registration_token_usedByCustomerId CustomerRegistrationToken[]
+  favorite_customerId                          Favorite[]
+  auth_session_userId                          AuthSession[]
+  email_verification_token_customerId          EmailVerificationToken[]
+  audit_event_actorId                          AuditEvent[]                @relation("AuditActor")
+  audit_event_customerId                       AuditEvent[]                @relation("AuditCustomer")
+
+  @@map("users")
+}
+
+model PinResetAudit {
+  id                  BigInt   @id @default(autoincrement())
+  customerId          BigInt   @map("customer_id")
+  adminId             BigInt   @map("admin_id")
+  reason              String   @db.VarChar(500)
+  verificationSummary String   @map("verification_summary") @db.VarChar(500)
+  resetAt             DateTime @default(now()) @map("reset_at") @db.Timestamptz(6)
+  customer            User     @relation("PinResetCustomer", fields: [customerId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  admin               User     @relation("PinResetAdmin", fields: [adminId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@map("pin_reset_audit")
+}
+
+model PinRecoveryToken {
+  id         BigInt    @id @default(autoincrement())
+  customerId BigInt    @map("customer_id")
+  tokenHash  String    @unique @map("token_hash") @db.Char(64)
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(6)
+  usedAt     DateTime? @map("used_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  customer   User      @relation(fields: [customerId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@map("pin_recovery_tokens")
+}
+
+model Category {
+  id                 BigInt    @id @default(autoincrement())
+  name               String    @db.VarChar(120)
+  isActive           Boolean   @default(true) @map("is_active")
+  deletedAt          DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  product_categoryId Product[]
+
+  @@index([createdAt, id], map: "categories_created_at_id_idx")
+  @@map("categories")
+}
+
+model Product {
+  id                             BigInt               @id @default(autoincrement())
+  categoryId                     BigInt               @map("category_id")
+  name                           String               @db.VarChar(160)
+  description                    String?              @db.VarChar(1500)
+  basePriceCents                 BigInt               @map("base_price_cents")
+  imageUrl                       String?              @map("image_url") @db.VarChar(2048)
+  imagePublicId                  String?              @map("image_public_id") @db.VarChar(255)
+  imageVersion                   String?              @map("image_version") @db.VarChar(40)
+  isAvailable                    Boolean              @default(true) @map("is_available")
+  deletedAt                      DateTime?            @map("deleted_at") @db.Timestamptz(6)
+  createdAt                      DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                      DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  category                       Category             @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  product_option_group_productId ProductOptionGroup[]
+  order_item_productId           OrderItem[]
+  favorite_productId             Favorite[]
+
+  @@index([categoryId], map: "products_category_id_idx")
+  @@index([createdAt, id], map: "products_created_at_id_idx")
+  @@map("products")
+}
+
+model OptionGroup {
+  id                                 BigInt               @id @default(autoincrement())
+  name                               String               @db.VarChar(120)
+  pricingScope                       PricingScope         @map("pricing_scope")
+  deletedAt                          DateTime?            @map("deleted_at") @db.Timestamptz(6)
+  option_value_optionGroupId         OptionValue[]
+  product_option_group_optionGroupId ProductOptionGroup[]
+
+  @@map("option_groups")
+}
+
+model OptionValue {
+  id                                 BigInt               @id @default(autoincrement())
+  optionGroupId                      BigInt               @map("option_group_id")
+  name                               String               @db.VarChar(120)
+  globalSurchargeCents               BigInt?              @map("global_surcharge_cents")
+  isAvailable                        Boolean              @default(true) @map("is_available")
+  deletedAt                          DateTime?            @map("deleted_at") @db.Timestamptz(6)
+  optionGroup                        OptionGroup          @relation(fields: [optionGroupId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  product_option_value_optionValueId ProductOptionValue[]
+  order_item_option_optionValueId    OrderItemOption[]
+
+  @@map("option_values")
+}
+
+model ProductOptionGroup {
+  id                                        BigInt               @id @default(autoincrement())
+  productId                                 BigInt               @map("product_id")
+  optionGroupId                             BigInt               @map("option_group_id")
+  minSelections                             Int                  @default(0) @map("min_selections")
+  maxSelections                             Int                  @map("max_selections")
+  product                                   Product              @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  optionGroup                               OptionGroup          @relation(fields: [optionGroupId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  product_option_value_productOptionGroupId ProductOptionValue[]
+
+  @@unique([productId, optionGroupId], map: "product_option_groups_composite_uq")
+  @@map("product_option_groups")
+}
+
+model ProductOptionValue {
+  id                     BigInt             @id @default(autoincrement())
+  productOptionGroupId   BigInt             @map("product_option_group_id")
+  optionValueId          BigInt             @map("option_value_id")
+  surchargeOverrideCents BigInt?            @map("surcharge_override_cents")
+  productOptionGroup     ProductOptionGroup @relation(fields: [productOptionGroupId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  optionValue            OptionValue        @relation(fields: [optionValueId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([productOptionGroupId, optionValueId], map: "product_option_values_composite_uq")
+  @@map("product_option_values")
+}
+
+model Order {
+  id                       BigInt            @id @default(autoincrement())
+  folio                    String            @unique @db.VarChar(32)
+  customerId               BigInt?           @map("customer_id")
+  createdByEmployeeId      BigInt?           @map("created_by_employee_id")
+  guestName                String?           @map("guest_name") @db.VarChar(120)
+  source                   OrderSource
+  status                   OrderStatus       @default(PENDIENTE_PAGO)
+  paymentMethod            PaymentMethod     @map("payment_method")
+  totalCents               BigInt            @map("total_cents")
+  paymentExpiresAt         DateTime          @map("payment_expires_at") @db.Timestamptz(6)
+  cashQrTokenHash          String?           @unique @map("cash_qr_token_hash") @db.Char(64)
+  paidAt                   DateTime?         @map("paid_at") @db.Timestamptz(6)
+  readyAt                  DateTime?         @map("ready_at") @db.Timestamptz(6)
+  readyByEmployeeId        BigInt?           @map("ready_by_employee_id")
+  expiredAt                DateTime?         @map("expired_at") @db.Timestamptz(6)
+  createdAt                DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  customer                 User?             @relation("OrderCustomer", fields: [customerId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  createdByEmployee        User?             @relation("OrderCreator", fields: [createdByEmployeeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  readyByEmployee          User?             @relation("OrderReadyBy", fields: [readyByEmployeeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  order_item_orderId       OrderItem[]
+  payment_orderId          Payment[]
+  sale                     Sale?
+  payment_incident_orderId PaymentIncident[]
+
+  @@index([customerId], map: "orders_customer_id_idx")
+  @@index([status], map: "orders_status_idx")
+  @@map("orders")
+}
+
+model OrderItem {
+  id                            BigInt            @id @default(autoincrement())
+  orderId                       BigInt            @map("order_id")
+  productId                     BigInt            @map("product_id")
+  productNameSnapshot           String            @map("product_name_snapshot") @db.VarChar(160)
+  basePriceCentsSnapshot        BigInt            @map("base_price_cents_snapshot")
+  unitPriceCents                BigInt            @map("unit_price_cents")
+  quantity                      Int
+  lineTotalCents                BigInt            @map("line_total_cents")
+  order                         Order             @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  product                       Product           @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  order_item_option_orderItemId OrderItemOption[]
+
+  @@index([orderId], map: "order_items_order_id_idx")
+  @@map("order_items")
+}
+
+model OrderItemOption {
+  id                     BigInt      @id @default(autoincrement())
+  orderItemId            BigInt      @map("order_item_id")
+  optionValueId          BigInt      @map("option_value_id")
+  groupNameSnapshot      String      @map("group_name_snapshot") @db.VarChar(120)
+  optionNameSnapshot     String      @map("option_name_snapshot") @db.VarChar(120)
+  surchargeCentsSnapshot BigInt      @map("surcharge_cents_snapshot")
+  orderItem              OrderItem   @relation(fields: [orderItemId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  optionValue            OptionValue @relation(fields: [optionValueId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([orderItemId, optionValueId], map: "order_item_options_composite_uq")
+  @@map("order_item_options")
+}
+
+model Payment {
+  id                         BigInt            @id @default(autoincrement())
+  orderId                    BigInt            @map("order_id")
+  method                     PaymentMethod
+  status                     PaymentStatus     @default(PENDING)
+  amountCents                BigInt            @map("amount_cents")
+  currency                   String            @default("MXN") @db.Char(3)
+  cashierId                  BigInt?           @map("cashier_id")
+  cashSessionId              BigInt?           @map("cash_session_id")
+  cashReceivedCents          BigInt?           @map("cash_received_cents")
+  changeCents                BigInt?           @map("change_cents")
+  stripeCreationKey          String?           @unique @map("stripe_creation_key") @db.VarChar(255)
+  stripeCheckoutSessionId    String?           @unique @map("stripe_checkout_session_id") @db.VarChar(255)
+  stripePaymentIntentId      String?           @unique @map("stripe_payment_intent_id") @db.VarChar(255)
+  confirmedAt                DateTime?         @map("confirmed_at") @db.Timestamptz(6)
+  providerPaidAt             DateTime?         @map("provider_paid_at") @db.Timestamptz(6)
+  createdAt                  DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                  DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  order                      Order             @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  cashier                    User?             @relation(fields: [cashierId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  cashSession                CashSession?      @relation(fields: [cashSessionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  sale                       Sale?
+  payment_event_paymentId    PaymentEvent[]
+  refund_paymentId           Refund[]
+  payment_incident_paymentId PaymentIncident[]
+
+  // Índice parcial único por SUCCEEDED en migration.sql; revisar al migrar.
+  @@index([orderId], map: "payments_order_id_idx")
+  @@map("payments")
+}
+
+model Sale {
+  id                        BigInt                     @id @default(autoincrement())
+  saleNumber                String                     @unique @map("sale_number") @db.VarChar(32)
+  orderId                   BigInt                     @unique @map("order_id")
+  paymentId                 BigInt                     @unique @map("payment_id")
+  totalCents                BigInt                     @map("total_cents")
+  soldAt                    DateTime                   @default(now()) @map("sold_at") @db.Timestamptz(6)
+  order                     Order                      @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  payment                   Payment                    @relation(fields: [paymentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  customerRegistrationToken CustomerRegistrationToken?
+  guest_ticket_token_saleId GuestTicketToken[]
+
+  @@index([soldAt], map: "sales_sold_at_idx")
+  @@map("sales")
+}
+
+model CashSession {
+  id                     BigInt    @id @default(autoincrement())
+  employeeId             BigInt    @map("employee_id")
+  openedAt               DateTime  @default(now()) @map("opened_at") @db.Timestamptz(6)
+  closedAt               DateTime? @map("closed_at") @db.Timestamptz(6)
+  closedByEmployeeId     BigInt?   @map("closed_by_employee_id")
+  exceptionalCloseReason String?   @map("exceptional_close_reason") @db.VarChar(500)
+  openingAmountCents     BigInt    @map("opening_amount_cents")
+  expectedCashCents      BigInt?   @map("expected_cash_cents")
+  countedCashCents       BigInt?   @map("counted_cash_cents")
+  differenceCents        BigInt?   @map("difference_cents")
+  employee               User      @relation("SessionOwner", fields: [employeeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  closedByEmployee       User?     @relation("SessionCloser", fields: [closedByEmployeeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  payment_cashSessionId  Payment[]
+
+  // Índice parcial de una sola caja abierta en migration.sql.
+  @@index([employeeId], map: "cash_sessions_employee_id_idx")
+  @@map("cash_sessions")
+}
+
+model PaymentEvent {
+  id               BigInt      @id @default(autoincrement())
+  paymentId        BigInt?     @map("payment_id")
+  providerEventId  String      @unique @map("provider_event_id") @db.VarChar(255)
+  eventType        String      @map("event_type") @db.VarChar(80)
+  processingStatus EventStatus @default(RECEIVED) @map("processing_status")
+  receivedAt       DateTime    @default(now()) @map("received_at") @db.Timestamptz(6)
+  processedAt      DateTime?   @map("processed_at") @db.Timestamptz(6)
+  payment          Payment?    @relation(fields: [paymentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([paymentId], map: "payment_events_payment_id_idx")
+  @@map("payment_events")
+}
+
+model Refund {
+  id             BigInt       @id @default(autoincrement())
+  paymentId      BigInt       @map("payment_id")
+  amountCents    BigInt       @map("amount_cents")
+  reason         String       @db.VarChar(500)
+  status         RefundStatus @default(REQUESTED)
+  stripeRefundId String?      @unique @map("stripe_refund_id") @db.VarChar(255)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  payment        Payment      @relation(fields: [paymentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([paymentId], map: "refunds_payment_id_idx")
+  @@map("refunds")
+}
+
+model CustomerRegistrationToken {
+  id               BigInt    @id @default(autoincrement())
+  saleId           BigInt    @unique @map("sale_id")
+  tokenHash        String    @unique @map("token_hash") @db.Char(64)
+  expiresAt        DateTime  @map("expires_at") @db.Timestamptz(6)
+  usedAt           DateTime? @map("used_at") @db.Timestamptz(6)
+  usedByCustomerId BigInt?   @map("used_by_customer_id")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  sale             Sale      @relation(fields: [saleId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  usedByCustomer   User?     @relation(fields: [usedByCustomerId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@map("customer_registration_tokens")
+}
+
+model Favorite {
+  customerId BigInt   @map("customer_id")
+  productId  BigInt   @map("product_id")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  customer   User     @relation(fields: [customerId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@id([customerId, productId])
+  @@map("favorites")
+}
+
+model AuthSession {
+  id                         BigInt        @id @default(autoincrement())
+  userId                     BigInt        @map("user_id")
+  familyId                   String        @map("family_id") @db.Uuid
+  refreshTokenHash           String        @unique @map("refresh_token_hash") @db.Char(64)
+  rotatedFromId              BigInt?       @map("rotated_from_id")
+  createdAt                  DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  lastSeenAt                 DateTime      @default(now()) @map("last_seen_at") @db.Timestamptz(6)
+  absoluteExpiresAt          DateTime      @map("absolute_expires_at") @db.Timestamptz(6)
+  rotatedAt                  DateTime?     @map("rotated_at") @db.Timestamptz(6)
+  revokedAt                  DateTime?     @map("revoked_at") @db.Timestamptz(6)
+  user                       User          @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rotatedFrom                AuthSession?  @relation("SessionRotation", fields: [rotatedFromId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  auth_session_rotatedFromId AuthSession[] @relation("SessionRotation")
+
+  @@index([userId], map: "auth_sessions_user_id_idx")
+  @@map("auth_sessions")
+}
+
+model AuthAttemptLimit {
+  id              BigInt    @id @default(autoincrement())
+  keyHash         String    @unique @map("key_hash") @db.Char(64)
+  windowStartedAt DateTime  @map("window_started_at") @db.Timestamptz(6)
+  attemptCount    Int       @default(0) @map("attempt_count")
+  blockedUntil    DateTime? @map("blocked_until") @db.Timestamptz(6)
+
+  @@map("auth_attempt_limits")
+}
+
+model EmailVerificationToken {
+  id             BigInt    @id @default(autoincrement())
+  customerId     BigInt    @map("customer_id")
+  candidateEmail String    @map("candidate_email") @db.VarChar(254)
+  tokenHash      String    @unique @map("token_hash") @db.Char(64)
+  expiresAt      DateTime  @map("expires_at") @db.Timestamptz(6)
+  usedAt         DateTime? @map("used_at") @db.Timestamptz(6)
+  customer       User      @relation(fields: [customerId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@map("email_verification_tokens")
+}
+
+model IdempotencyRecord {
+  id           BigInt            @id @default(autoincrement())
+  scope        String            @db.VarChar(100)
+  actorKey     String            @map("actor_key") @db.VarChar(150)
+  keyHash      String            @map("key_hash") @db.Char(64)
+  requestHash  String            @map("request_hash") @db.Char(64)
+  status       IdempotencyStatus @default(IN_PROGRESS)
+  resourceType String?           @map("resource_type") @db.VarChar(60)
+  resourceId   BigInt?           @map("resource_id")
+  responseJson Json?             @map("response_json")
+  expiresAt    DateTime          @map("expires_at") @db.Timestamptz(6)
+  createdAt    DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([scope, actorKey, keyHash], map: "idempotency_records_composite_uq")
+  @@map("idempotency_records")
+}
+
+model Job {
+  id          BigInt    @id @default(autoincrement())
+  type        String    @db.VarChar(80)
+  reference   String    @db.VarChar(255)
+  status      JobStatus @default(PENDING)
+  availableAt DateTime  @default(now()) @map("available_at") @db.Timestamptz(6)
+  attempts    Int       @default(0)
+  lockedUntil DateTime? @map("locked_until") @db.Timestamptz(6)
+  dedupeKey   String?   @unique @map("dedupe_key") @db.VarChar(255)
+  lastError   String?   @map("last_error") @db.VarChar(500)
+
+  @@index([status, availableAt], map: "jobs_status_available_at_idx")
+  @@map("jobs")
+}
+
+model OutboxMessage {
+  id               BigInt    @id @default(autoincrement())
+  type             String    @db.VarChar(80)
+  reference        String    @db.VarChar(255)
+  encryptedPayload String?   @map("encrypted_payload") @db.Text
+  keyVersion       String?   @map("key_version") @db.VarChar(40)
+  status           JobStatus @default(PENDING)
+  attempts         Int       @default(0)
+  availableAt      DateTime  @default(now()) @map("available_at") @db.Timestamptz(6)
+  lockedUntil      DateTime? @map("locked_until") @db.Timestamptz(6)
+  expiresAt        DateTime? @map("expires_at") @db.Timestamptz(6)
+
+  @@index([status, availableAt], map: "outbox_messages_status_available_at_idx")
+  @@map("outbox_messages")
+}
+
+model PaymentIncident {
+  id           BigInt         @id @default(autoincrement())
+  orderId      BigInt         @map("order_id")
+  paymentId    BigInt?        @map("payment_id")
+  reason       String         @db.VarChar(500)
+  reviewStatus IncidentStatus @default(OPEN) @map("review_status")
+  createdAt    DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  reviewedAt   DateTime?      @map("reviewed_at") @db.Timestamptz(6)
+  order        Order          @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  payment      Payment?       @relation(fields: [paymentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@map("payment_incidents")
+}
+
+model AuditEvent {
+  id         BigInt   @id @default(autoincrement())
+  actorId    BigInt   @map("actor_id")
+  customerId BigInt?  @map("customer_id")
+  action     String   @db.VarChar(80)
+  reason     String   @db.VarChar(500)
+  occurredAt DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  actor      User     @relation("AuditActor", fields: [actorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  customer   User?    @relation("AuditCustomer", fields: [customerId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@map("audit_events")
+}
+
+model GuestTicketToken {
+  id        BigInt    @id @default(autoincrement())
+  saleId    BigInt    @map("sale_id")
+  tokenHash String    @unique @map("token_hash") @db.Char(64)
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  sale      Sale      @relation(fields: [saleId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@map("guest_ticket_tokens")
+}
