@@ -1,6 +1,14 @@
 # Operaciones del contrato por completar
 
-Solo GET /api/v1/health está implementado y definido en openapi.yaml.
+Actualización 2026-10-21: health y las cuatro operaciones de catálogo de lectura
+ya están implementadas/probadas. OpenAPI 0.2.0 es el contrato vigente. Las
+operaciones de escritura, auth y demás módulos siguen pendientes. La descripción
+inferior de la entrega de Leonel se conserva como historial de revisión.
+
+Solo GET /api/v1/health está implementado. openapi.yaml incorpora además cuatro
+lecturas del catálogo recibidas de Leonel, todavía sin implementación. Contrato
+y ejemplos validados en revisión; ajustes pendientes en
+[lista de correcciones](../database/correcciones-pendientes.md).
 La tabla siguiente es planificación; no representa endpoints disponibles.
 Convenciones aceptadas en ADR 0006; el contrato de negocio aún no está completo. Validar esquemas y casos de error por operación.
 

@@ -1,0 +1,207 @@
+{
+  "checkedAt": "2026-10-18T22:01:42.685Z",
+  "version": "17.10",
+  "regression": [
+    {
+      "name": "C01: los 21 defaults de fecha existen en SQL",
+      "passed": true
+    },
+    {
+      "name": "C01: insertar categoría sin fecha asigna timestamp",
+      "passed": true
+    },
+    {
+      "name": "C02: efectivo rechaza cambio NULL",
+      "passed": true
+    },
+    {
+      "name": "C02: efectivo rechaza cambio incorrecto",
+      "passed": true
+    },
+    {
+      "name": "C02: efectivo acepta cambio 3500",
+      "passed": true
+    },
+    {
+      "name": "C02: Stripe acepta campos efectivo NULL",
+      "passed": true
+    },
+    {
+      "name": "C03: cierre rechaza diferencia NULL",
+      "passed": true
+    },
+    {
+      "name": "C03: cierre rechaza diferencia incorrecta",
+      "passed": true
+    },
+    {
+      "name": "C04: cierre rechaza importes negativos",
+      "passed": true
+    },
+    {
+      "name": "C03: cierre sin actor se rechaza",
+      "passed": true
+    },
+    {
+      "name": "C03: cierre completo admite diferencia negativa",
+      "passed": true
+    },
+    {
+      "name": "FK: producto de categoría inexistente se rechaza",
+      "passed": true
+    },
+    {
+      "name": "CHECK: precio negativo se rechaza",
+      "passed": true
+    },
+    {
+      "name": "CHECK: usuario híbrido se rechaza",
+      "passed": true
+    },
+    {
+      "name": "CHECK: cantidad cero se rechaza",
+      "passed": true
+    },
+    {
+      "name": "Historial: cambiar catálogo conserva snapshot",
+      "passed": true
+    },
+    {
+      "name": "FK: categoría con producto retirado no se borra",
+      "passed": true
+    },
+    {
+      "name": "Rollback: error intermedio revierte cambios previos",
+      "passed": true
+    },
+    {
+      "name": "Concurrencia: solo una apertura global",
+      "passed": true
+    },
+    {
+      "name": "Concurrencia: solo un pago exitoso por orden",
+      "passed": true
+    },
+    {
+      "name": "UNIQUE: venta duplicada se rechaza",
+      "passed": true
+    },
+    {
+      "name": "C01: omitir las fechas de las tablas de soporte funciona",
+      "passed": true
+    }
+  ],
+  "mutant": [
+    {
+      "name": "C01: los 21 defaults de fecha existen en SQL",
+      "passed": false,
+      "code": "ERR_ASSERTION",
+      "detail": "The input did not match the regular expression /CURRENT_TIMESTAMP|now\\(\\)/i. Input:\n\n''\n"
+    },
+    {
+      "name": "C01: insertar categoría sin fecha asigna timestamp",
+      "passed": false,
+      "code": "23502",
+      "detail": "null value in column \"created_at\" of relation \"categories\" violates not-null constraint"
+    },
+    {
+      "name": "C02: efectivo rechaza cambio NULL",
+      "passed": false,
+      "code": "ERR_ASSERTION",
+      "detail": "Missing expected rejection."
+    },
+    {
+      "name": "C02: efectivo rechaza cambio incorrecto",
+      "passed": true
+    },
+    {
+      "name": "C02: efectivo acepta cambio 3500",
+      "passed": true
+    },
+    {
+      "name": "C02: Stripe acepta campos efectivo NULL",
+      "passed": true
+    },
+    {
+      "name": "C03: cierre rechaza diferencia NULL",
+      "passed": false,
+      "code": "ERR_ASSERTION",
+      "detail": "Missing expected rejection."
+    },
+    {
+      "name": "C03: cierre rechaza diferencia incorrecta",
+      "passed": true
+    },
+    {
+      "name": "C04: cierre rechaza importes negativos",
+      "passed": false,
+      "code": "ERR_ASSERTION",
+      "detail": "Missing expected rejection."
+    },
+    {
+      "name": "C03: cierre sin actor se rechaza",
+      "passed": false,
+      "code": "ERR_ASSERTION",
+      "detail": "Missing expected rejection."
+    },
+    {
+      "name": "C03: cierre completo admite diferencia negativa",
+      "passed": true
+    },
+    {
+      "name": "FK: producto de categoría inexistente se rechaza",
+      "passed": true
+    },
+    {
+      "name": "CHECK: precio negativo se rechaza",
+      "passed": true
+    },
+    {
+      "name": "CHECK: usuario híbrido se rechaza",
+      "passed": true
+    },
+    {
+      "name": "CHECK: cantidad cero se rechaza",
+      "passed": true
+    },
+    {
+      "name": "Historial: cambiar catálogo conserva snapshot",
+      "passed": true
+    },
+    {
+      "name": "FK: categoría con producto retirado no se borra",
+      "passed": true
+    },
+    {
+      "name": "Rollback: error intermedio revierte cambios previos",
+      "passed": true
+    },
+    {
+      "name": "Concurrencia: solo una apertura global",
+      "passed": true
+    },
+    {
+      "name": "Concurrencia: solo un pago exitoso por orden",
+      "passed": true
+    },
+    {
+      "name": "UNIQUE: venta duplicada se rechaza",
+      "passed": true
+    },
+    {
+      "name": "C01: omitir las fechas de las tablas de soporte funciona",
+      "passed": false,
+      "code": "23502",
+      "detail": "null value in column \"occurred_at\" of relation \"audit_events\" violates not-null constraint"
+    }
+  ],
+  "migration": {
+    "deploy": true,
+    "repeatDeploy": true,
+    "schemaDiff": "-- This is an empty migration.",
+    "structuralAssertions": true,
+    "prismaClient": true
+  },
+  "cleanup": true,
+  "failure": null
+}

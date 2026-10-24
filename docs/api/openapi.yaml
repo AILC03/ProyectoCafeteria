@@ -1,10 +1,11 @@
 openapi: 3.0.3
 info:
   title: API de Cafetería — Backend
-  version: 0.0.0
-  description: >-
-    API inicial con endpoint de disponibilidad HTTP.
-    Los endpoints de negocio todavía no están implementados.
+  version: 0.2.0
+  description:
+    Health y cuatro operaciones de catálogo de lectura implementadas. API pública sin login,
+    IDs/importes como strings. Límite local por IP de lectura configurable (120/minuto por defecto),
+    CORS exacto y límite JSON de 256 KiB. Autenticación y mutaciones aún no implementadas.
 paths:
   /api/v1/health:
     get:
@@ -17,11 +18,417 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [status]
+                required:
+                  - status
                 properties:
                   status:
                     type: string
-                    enum: [ok]
+                    enum:
+                      - ok
+  /api/v1/categories:
+    get:
+      tags:
+        - Catalog
+      summary: listCategories
+      operationId: listCategories
+      description: 'Categorías activas y no eliminadas, ordenadas por
+        (createdAt,id). Cursor inválido: 400. Lista vacía: 200 con data=[]. IDs como cadenas decimales.'
+      security: []
+      parameters:
+        - &id001
+          name: limit
+          in: query
+          required: false
+          description: Por defecto 20, máximo 100
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - &id002
+          name: cursor
+          in: query
+          required: false
+          description:
+            Cursor opaco provisto por la página previa; inválido o incompatible con filtros devuelve
+            400
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 2048
+      responses:
+        '403':
+          $ref: '#/components/responses/ForbiddenOrigin'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '200':
+          description: Respuesta correcta
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - page
+                additionalProperties: false
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Category'
+                  page:
+                    $ref: '#/components/schemas/Page'
+              example:
+                data:
+                  - id: '1'
+                    name: Cafés
+                page:
+                  limit: 20
+                  nextCursor: null
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: about:blank
+                title: Solicitud inválida
+                status: 400
+                detail: No se pudo completar la operación.
+                instance: /api/v1/categories
+                code: VALIDATION_ERROR
+                requestId: req_abc123
+        '429':
+          description: RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: about:blank
+                title: Límite de solicitudes
+                status: 429
+                detail: No se pudo completar la operación.
+                instance: /api/v1/categories
+                code: RATE_LIMITED
+                requestId: req_abc123
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: about:blank
+                title: Servicio indisponible
+                status: 503
+                detail: No se pudo completar la operación.
+                instance: /api/v1/categories
+                code: DEPENDENCY_UNAVAILABLE
+                requestId: req_abc123
+  /api/v1/products:
+    get:
+      tags:
+        - Catalog
+      summary: listProducts
+      operationId: listProducts
+      description: 'Lectura pública de entidades activas y no eliminadas.
+        Los productos agotados se pueden listar con isAvailable=false. Orden estable (createdAt,id) para colecciones;
+        opciones vigentes con recargo efectivo calculado por backend. Cursor inválido o de filtros diferentes:
+        400. Listado vacío: 200 con data=[]; IDs e importes: cadenas decimales.'
+      security: []
+      parameters:
+        - *id001
+        - *id002
+        - name: categoryId
+          in: query
+          schema:
+            type: string
+            pattern: ^[0-9]+$
+        - name: isAvailable
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '403':
+          $ref: '#/components/responses/ForbiddenOrigin'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '200':
+          description: Respuesta correcta
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - page
+                additionalProperties: false
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+                  page:
+                    $ref: '#/components/schemas/Page'
+              example:
+                data:
+                  - &id003
+                    id: '10'
+                    categoryId: '1'
+                    name: Latte
+                    description: null
+                    basePriceCents: '6500'
+                    imageUrl: null
+                    isAvailable: true
+                page:
+                  limit: 20
+                  nextCursor: null
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: about:blank
+                title: Solicitud inválida
+                status: 400
+                detail: No se pudo completar la operación.
+                instance: /api/v1/products
+                code: VALIDATION_ERROR
+                requestId: req_abc123
+        '429':
+          description: RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: about:blank
+                title: Límite de solicitudes
+                status: 429
+                detail: No se pudo completar la operación.
+                instance: /api/v1/products
+                code: RATE_LIMITED
+                requestId: req_abc123
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: about:blank
+                title: Servicio indisponible
+                status: 503
+                detail: No se pudo completar la operación.
+                instance: /api/v1/products
+                code: DEPENDENCY_UNAVAILABLE
+                requestId: req_abc123
+  /api/v1/products/{productId}:
+    get:
+      tags:
+        - Catalog
+      summary: getProduct
+      operationId: getProduct
+      description: 'Detalle de producto no eliminado y de categoría activa
+        y no eliminada. Agotado sigue visible con isAvailable=false. ID inválido: 400;
+        ausente/no visible: 404. Sin cursor ni paginación. IDs e importes como cadenas decimales.'
+      security: []
+      parameters:
+        - &id004
+          name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[0-9]+$
+          example: '10'
+      responses:
+        '403':
+          $ref: '#/components/responses/ForbiddenOrigin'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '200':
+          description: Respuesta correcta
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                additionalProperties: false
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Product'
+              example:
+                data: *id003
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: about:blank
+                title: Solicitud inválida
+                status: 400
+                detail: No se pudo completar la operación.
+                instance: /api/v1/products/10
+                code: VALIDATION_ERROR
+                requestId: req_abc123
+        '429':
+          description: RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: about:blank
+                title: Límite de solicitudes
+                status: 429
+                detail: No se pudo completar la operación.
+                instance: /api/v1/products/10
+                code: RATE_LIMITED
+                requestId: req_abc123
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: about:blank
+                title: Servicio indisponible
+                status: 503
+                detail: No se pudo completar la operación.
+                instance: /api/v1/products/10
+                code: DEPENDENCY_UNAVAILABLE
+                requestId: req_abc123
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: about:blank
+                title: Recurso no encontrado
+                status: 404
+                detail: No se pudo completar la operación.
+                instance: /api/v1/products/10
+                code: NOT_FOUND
+                requestId: req_abc123
+  /api/v1/products/{productId}/options:
+    get:
+      tags:
+        - Catalog
+      summary: listProductOptions
+      operationId: listProductOptions
+      description: 'Grupos y valores no eliminados habilitados para el producto,
+        con recargo efectivo GLOBAL o PER_PRODUCT resuelto por backend. Opciones agotadas se indican
+        con isAvailable=false. Producto ausente/no visible: 404; sin grupos: 200 con data=[].
+        Sin cursor ni paginación. IDs e importes como cadenas decimales.'
+      security: []
+      parameters:
+        - *id004
+      responses:
+        '403':
+          $ref: '#/components/responses/ForbiddenOrigin'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '200':
+          description: Respuesta correcta
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                additionalProperties: false
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/OptionGroup'
+              example:
+                data:
+                  - id: '4'
+                    name: Leche
+                    pricingScope: GLOBAL
+                    minSelections: 0
+                    maxSelections: 1
+                    values:
+                      - id: '9'
+                        name: Almendra
+                        surchargeCents: '1000'
+                        isAvailable: true
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: about:blank
+                title: Solicitud inválida
+                status: 400
+                detail: No se pudo completar la operación.
+                instance: /api/v1/products/10/options
+                code: VALIDATION_ERROR
+                requestId: req_abc123
+        '429':
+          description: RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: about:blank
+                title: Límite de solicitudes
+                status: 429
+                detail: No se pudo completar la operación.
+                instance: /api/v1/products/10/options
+                code: RATE_LIMITED
+                requestId: req_abc123
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: about:blank
+                title: Servicio indisponible
+                status: 503
+                detail: No se pudo completar la operación.
+                instance: /api/v1/products/10/options
+                code: DEPENDENCY_UNAVAILABLE
+                requestId: req_abc123
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: about:blank
+                title: Recurso no encontrado
+                status: 404
+                detail: No se pudo completar la operación.
+                instance: /api/v1/products/10/options
+                code: NOT_FOUND
+                requestId: req_abc123
 tags:
   - name: Auth
     description: Autenticación y recuperación.
@@ -35,3 +442,180 @@ tags:
     description: Apertura y cierre de caja.
   - name: Customers
     description: Registro por ticket, historial y favoritos.
+components:
+  responses:
+    ForbiddenOrigin:
+      description: ORIGIN_NOT_ALLOWED. El origen no coincide con FRONTEND_ORIGIN.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    PayloadTooLarge:
+      description: PAYLOAD_TOO_LARGE. Cuerpo JSON superior a 256 KiB.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    InternalError:
+      description: INTERNAL_ERROR. Respuesta saneada sin SQL, stack ni secretos.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+  schemas:
+    Category:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - name
+      properties:
+        id: &id005
+          type: string
+          pattern: ^[0-9]+$
+          example: '10'
+        name:
+          type: string
+          example: Cafés
+    Product:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - categoryId
+        - name
+        - description
+        - basePriceCents
+        - imageUrl
+        - isAvailable
+      properties:
+        id: *id005
+        categoryId:
+          type: string
+          pattern: ^[0-9]+$
+          example: '1'
+        name:
+          type: string
+          example: Latte
+        description:
+          type: string
+          nullable: true
+          example: null
+        basePriceCents:
+          type: string
+          pattern: ^[0-9]+$
+          example: '6500'
+        imageUrl:
+          type: string
+          format: uri
+          nullable: true
+          example: null
+        isAvailable:
+          type: boolean
+          example: true
+    OptionValue:
+      type: object
+      required:
+        - id
+        - name
+        - surchargeCents
+        - isAvailable
+      additionalProperties: false
+      properties:
+        id: *id005
+        name:
+          type: string
+          example: Leche de almendra
+        surchargeCents:
+          type: string
+          pattern: ^[0-9]+$
+          example: '1000'
+        isAvailable:
+          type: boolean
+          example: true
+    OptionGroup:
+      type: object
+      required:
+        - id
+        - name
+        - pricingScope
+        - minSelections
+        - maxSelections
+        - values
+      additionalProperties: false
+      properties:
+        id: *id005
+        name:
+          type: string
+          example: Leche
+        pricingScope:
+          type: string
+          enum:
+            - GLOBAL
+            - PER_PRODUCT
+        minSelections:
+          type: integer
+          minimum: 0
+        maxSelections:
+          type: integer
+          minimum: 0
+        values:
+          type: array
+          items:
+            $ref: '#/components/schemas/OptionValue'
+    Page:
+      type: object
+      required:
+        - limit
+        - nextCursor
+      additionalProperties: false
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          example: 20
+        nextCursor:
+          type: string
+          nullable: true
+          description:
+            Cursor opaco base64url emitido por servidor; usarlo sin interpretar. Corresponde a los
+            filtros de la solicitud original.
+          example: null
+    Problem:
+      type: object
+      required:
+        - type
+        - title
+        - status
+        - detail
+        - instance
+        - code
+        - requestId
+      properties:
+        type:
+          type: string
+          format: uri-reference
+          example: about:blank
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+        code:
+          type: string
+          example: VALIDATION_ERROR
+        requestId:
+          type: string
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string

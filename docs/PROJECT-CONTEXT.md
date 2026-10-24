@@ -1,6 +1,34 @@
 # Contexto y continuidad del proyecto — Backend Cafetería
 
-Actualizado: 2026-10-14. Estado consolidado tras aprobar ADR 0001–0010.
+## Estado vigente — 2026-10-20
+
+Ángel aprobó candidato y ADR 0011, datos demo y desarrollo de pasos 2/3.
+Migración aplicada sin reset a ProyectoCafeteria local (vacía antes de aplicar),
+shadow sin cambios. Seed ficticio aditivo y cuatro GET catálogo implementados.
+Infraestructura HTTP común y pruebas de integración agregadas. AngelAdmin
+requiere contraseña interactiva mediante npm run admin:create; no se creó con
+contraseña predeterminada. [Detalle vigente](backend-progress.md).
+Las secciones de revisión previas son historial, no el estado actual de módulos.
+
+## Actualización de correcciones — 2026-10-18
+
+- Candidato SQL corregido: 21 defaults, cambio efectivo no nulo, cierre completo
+  e importes no negativos. Índices/relaciones únicas alineados con Prisma.
+- ER regenerable desde Prisma y SVG Mermaid renderizado. OpenAPI: 18 ejemplos
+  formalmente verificados; backlog sin dependencia circular del worker.
+- `npm run db:verify` requiere cafeteria_test local aislada y crea/elimina solo
+  bases aleatorias propias; no limpia tablas de test ni migra desarrollo/shadow.
+- Revisión en PostgreSQL 17.10 temporal: 22 comprobaciones, mutantes C01-C04,
+  Prisma deploy/repetición/diff vacío/cliente comprobados. Evidencia en
+  `docs/database/review-evidence/corrections-results.json`.
+- Nuevos comandos api:validate, db:diagram, db:verify y db:verify:docker.
+- Herramientas dev de validación: Swagger Parser, AJV, ajv-formats y YAML;
+  añadidas para validación reproducible del contrato, no al runtime.
+- ADR 0011 es propuesta, no aceptada: números únicos, ticket y refresh concurrente.
+- Pendientes: C08 en entorno Leonel/Docker, aprobación ADR 0011 y cierre C12.
+- No hay módulos de negocio implementados ni migración a las bases del proyecto.
+
+Actualizado: 2026-10-18. ADR 0001–0010 aprobadas; entrega candidata de Leonel integrada.
 Este archivo resume acuerdos e implementación real; no sustituye reglas ni ADR.
 
 ## 1. Ubicación y responsabilidades
@@ -18,7 +46,11 @@ No inferir el nombre del responsable del backend por el usuario de Windows.
 
 - Express/TypeScript con GET /api/v1/health y respuesta {"status":"ok"}.
 - Configuración de entorno validada con Zod; arranque y cierre SIGINT/SIGTERM.
-- Prisma configurado para PostgreSQL, sin modelos de negocio.
+- Prisma PostgreSQL con 29 modelos y SQL de migración candidatos recibidos de Leonel.
+  Integrados localmente, sin corregir ni aplicar a las bases del proyecto.
+- OpenAPI incorpora cuatro consultas del catálogo como contrato futuro; no endpoints.
+- ER, diccionario físico, backlog e informes en docs/database y docs/development-tasks.md.
+  Revisar [correcciones pendientes](database/correcciones-pendientes.md) antes de aprobar.
 - npm y lockfile, ESLint, Prettier, EditorConfig y TypeScript estricto.
 - Dos archivos con cuatro pruebas de health/configuración.
 - Script db:check no destructivo para desarrollo y shadow.
@@ -31,9 +63,9 @@ El código actual tiene express.json de 100kb. ADR 0009 exige 256 KiB:
 es una diferencia de implementación pendiente, no cambiar el acuerdo para
 describir como terminado lo que aún no está implementado.
 
-No hay autenticación, CRUD de negocio, modelos/migraciones, pagos, caja, workers,
+No hay autenticación, CRUD de negocio, persistencia de negocio aplicada, pagos, caja, workers,
 correo, integración Cloudinary ni endpoints de negocio. Directorios .gitkeep no
-implican funcionalidad. OpenAPI solo define health. Git independiente confirmado;
+implican funcionalidad. Solo health está implementado. Git independiente confirmado;
 dev es la rama de trabajo y la copia local sigue origin/dev.
 No se ha confirmado configuración CI.
 
@@ -116,14 +148,14 @@ No cliente de negocio generado. Versiones reales en package.json/lockfile.
 
 Últimos resultados reportados en la configuración inicial, no repetidos aquí:
 
-| Comprobación       | Resultado conocido                                              |
-| ------------------ | --------------------------------------------------------------- |
-| typecheck/lint     | Repetidos al preparar arranque local Docker                     |
-| npm test           | 2 archivos, 4 pruebas pasaron                                   |
-| build              | Pasó en la base inicial                                         |
-| db:validate        | Esquema sin modelos válido con URL ficticia; no prueba conexión |
-| db:check           | 14/10/2026: desarrollo y shadow conectan, 0 tablas public       |
-| Formato documental | Se comprueba en la revisión de congruencia                      |
+| Comprobación       | Resultado conocido                                                     |
+| ------------------ | ---------------------------------------------------------------------- |
+| typecheck/lint     | Repetidos al preparar arranque local Docker                            |
+| npm test           | 2 archivos, 4 pruebas pasaron                                          |
+| build              | Pasó en la base inicial                                                |
+| db:validate        | Esquema recibido con 29 modelos válido en revisión; no prueba conexión |
+| db:check           | 14/10/2026: desarrollo y shadow conectan, 0 tablas public              |
+| Formato documental | Se comprueba en la revisión de congruencia                             |
 
 Después del fallo inicial el usuario creó las bases y db:check pasó en ambas.
 Esto verifica la instalación manual, no el contenedor ni la base test.
@@ -143,9 +175,9 @@ Nunca usar principal o shadow para limpieza de tests; separar desarrollo/shadow/
 
 ## 6. Siguiente trabajo
 
-1. Coordinar con Leonel la consolidación del esquema físico y ER: entidades, longitudes,
-   enums técnicos, índices, FK/CHECK, snapshots, auditoría, sesiones, refresh,
-   idempotencia, jobs/outbox y referencias Cloudinary.
+1. Corregir y completar la entrega candidata de Leonel según docs/database/correcciones-pendientes.md:
+   defaults SQL/Prisma, CHECK de efectivo/cierre, ER, pruebas y decisiones pendientes.
+   Angel revisará el conjunto terminado para aprobarlo o solicitar ajustes.
 2. Probar primer arranque Docker y conexión de sus tres bases; integrar BD test aislada.
 3. Completar OpenAPI del catálogo de lectura; coordinar con Enrique.
 4. Definir tareas con criterios AC y revisión del responsable.
