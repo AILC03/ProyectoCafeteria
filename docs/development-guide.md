@@ -1,5 +1,8 @@
 # Guía de desarrollo
 
+Punto de entrada para IA: [AGENTS.md](../AGENTS.md).
+Proceso obligatorio: [flujo y plantillas](workflow/README.md).
+
 ## Convenciones iniciales
 
 - Código y nombres técnicos en inglés; documentación e interfaz en español.
@@ -36,6 +39,9 @@ Convenciones aceptadas en ADR 0006; completar cada operación conforme a
 
 Coordinar esquema/migraciones con Leonel, revisando ADR y criterios de aceptación;
 coordinar contrato con Enrique.
-ADR 0001–0010 aceptadas; APIs de negocio y modelo físico aún pendientes.
+ADR 0001–0011 aceptadas; ADR 0012 propuesto para revisión técnica, aunque sus
+precisiones ya están implementadas localmente. Modelo físico, catálogo y
+auth/admin implementados; consultar [estado vigente y límites](auth-admin-implementation.md).
+No asumir que órdenes, pagos o cualquier otro módulo estén terminados.
 No mezclar aprobaciones documentales con pruebas ejecutadas o infraestructura
 configurada. Implementar únicamente después de definir contrato del módulo.

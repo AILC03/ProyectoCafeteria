@@ -19,16 +19,30 @@ export type PageEntry<T> = { data: T; position: Position };
 const cursorSchema = z
   .object({
     version: z.literal(1),
-    scope: z.enum(['categories', 'products']),
+    scope: z.enum([
+      'categories',
+      'products',
+      'admin-categories',
+      'admin-products',
+      'admin-option-groups',
+      'admin-option-values',
+    ]),
     filters: z.string(),
     id: idSchema,
     createdAt: z.string().datetime({ precision: 6 }),
   })
   .strict();
 
+export type CursorScope =
+  | 'categories'
+  | 'products'
+  | 'admin-categories'
+  | 'admin-products'
+  | 'admin-option-groups'
+  | 'admin-option-values';
 export function decodeCursor(
   token: string | undefined,
-  scope: 'categories' | 'products',
+  scope: CursorScope,
   filters: string,
 ): Position | undefined {
   if (!token) return undefined;
@@ -47,7 +61,7 @@ export function decodeCursor(
 export function paginate<T>(
   entries: PageEntry<T>[],
   limit: number,
-  scope: 'categories' | 'products',
+  scope: CursorScope,
   filters: string,
 ) {
   const page = entries.slice(0, limit);

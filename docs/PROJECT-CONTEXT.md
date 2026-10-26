@@ -1,5 +1,17 @@
 # Contexto y continuidad del proyecto — Backend Cafetería
 
+## Estado vigente — 2026-10-25
+
+Corregido PR bca186b: se quitaron registro abierto, bcrypt, Bearer y fallbackJWT.
+Auth cookie/Argon2id, sesiones, refresh concurrente, revocación, límites y CSRF
+implementados; administración y opciones atómicas disponibles. Nueva migración
+aditiva image_upload_intents aplicada a desarrollo, no reescrita la inicial;
+claves locales de auth generadas sin mostrar ni cambiar contraseñas.
+Cloudinary real pendiente de credenciales y verificación: proveedor simulado en
+pruebas, intents y dispatcher durable implementados. No hay recuperación/registro
+por ticket, CRUD empleados ni módulos de compras. Ver auth-admin-implementation.md.
+Las secciones inferiores son historial y no sustituyen este estado.
+
 ## Estado vigente — 2026-10-20
 
 Ángel aprobó candidato y ADR 0011, datos demo y desarrollo de pasos 2/3.
