@@ -19,25 +19,31 @@ export const unavailable = () =>
 export const problemHandler: ErrorRequestHandler = (error: unknown, request, response, next) => {
   if (response.headersSent) return next(error);
   const record = error && typeof error === 'object' ? (error as Record<string, unknown>) : {};
+  const providerCode = record.code ?? record.errorCode;
   let problem: HttpProblem;
   if (error instanceof HttpProblem) problem = error;
   else if (error instanceof ZodError || error instanceof URIError) problem = invalidInput();
   else if (record.type === 'entity.too.large')
     problem = new HttpProblem(413, 'PAYLOAD_TOO_LARGE', 'Solicitud demasiado grande');
   else if (record.type === 'entity.parse.failed') problem = invalidInput();
+  else if (typeof providerCode === 'string' && ['P2002', 'P2003', 'P2014'].includes(providerCode))
+    problem = new HttpProblem(409, 'DATA_CONFLICT', 'Conflicto de datos');
+  else if (providerCode === 'P2025') problem = notFound();
   else if (
-    typeof record.code === 'string' &&
+    typeof providerCode === 'string' &&
     [
       'P1001',
       'P1002',
       'P1008',
       'P1017',
       'P2024',
+      'P2021',
+      'P2022',
       'P2010',
       'ECONNREFUSED',
       'ETIMEDOUT',
       '57P01',
-    ].includes(record.code)
+    ].includes(providerCode)
   )
     problem = unavailable();
   else problem = new HttpProblem(500, 'INTERNAL_ERROR', 'Error interno');

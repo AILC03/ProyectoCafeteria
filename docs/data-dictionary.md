@@ -1,5 +1,13 @@
 # Diccionario de datos
 
+Actualización 2026-10-25: añadido `image_upload_intents` mediante migración nueva
+20261024_image_upload_intents, sin modificar la inicial. Campos: id PK,
+product_id FK, actor_id FK, public_id único, expected_version nullable,
+expected_public_id nullable, expires_at, consumed_at nullable y created_at con
+default UTC. Índice de expiración/consumo. El intent pertenece al administrador
+creador y a un producto; vence en 10 min y se consume una vez. CAS compara
+public_id y versión. No almacena archivos ni secretos Cloudinary.
+
 Modelo lógico consolidado con ADR 0001–0010 y cuestionario. No es todavía
 DDL ni esquema Prisma implementado. Longitudes y restricciones concretas se
 detallarán antes de generar migraciones. PK: clave primaria; FK: referencia;

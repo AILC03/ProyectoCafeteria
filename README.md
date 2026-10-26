@@ -3,7 +3,21 @@
 API del Sistema Web de Gestión de Órdenes para Cafetería, equipo ESMAOS.
 El frontend tendrá un repositorio separado.
 
+## Desarrollo con IA y contribuciones
+
+Antes de modificar este repositorio, leer [AGENTS.md](AGENTS.md) y seguir
+[el flujo de desarrollo](docs/workflow/README.md): tarea verificable, contrato,
+implementación, pruebas y revisión humana. Incluye plantillas de tarea/PR y CI.
+Las protecciones de GitHub requieren activación manual; no basta con estos archivos.
+
 ## Estado
+
+**Estado vigente 2026-10-25:** autenticación corregida (Argon2id, cookies,
+sesiones/refresh/CSRF/roles) y administración de catálogo implementadas.
+[Guía de uso, rutas y límites](docs/auth-admin-implementation.md).
+Cloudinary requiere credenciales y prueba real; hay mock e infraestructura de
+intents/limpieza. No hay registro abierto. La contraseña de AngelAdmin se conserva.
+Las notas inferiores de etapas 1–3 se conservan como historial.
 
 **Actualización 2026-10-20:** candidato y ADR 0011 aprobados, migración aplicada
 a desarrollo y menú demo cargado. Infraestructura común y cuatro GET de catálogo
@@ -61,6 +75,7 @@ Los archivos `.gitkeep` mantienen directorios vacíos al versionarlos.
 
 ## Documentación
 
+- [Auth y administración: estado vigente](docs/auth-admin-implementation.md)
 - [Avance vigente: persistencia, infraestructura y catálogo](docs/backend-progress.md)
 - [Contexto completo, estado y próximos pasos](docs/PROJECT-CONTEXT.md)
 - [Reglas de negocio](docs/business-rules.md)

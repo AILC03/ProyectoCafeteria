@@ -1,5 +1,8 @@
 # Registro de decisiones arquitectónicas (ADR)
 
+[0012 — Precisiones de implementación auth/admin](0012-auth-admin-implementation.md):
+propuesto para revisión técnica; implementación local y pruebas disponibles.
+
 ADR adicional: [0011 — Protocolos de integridad](0011-integrity-protocols.md),
 aceptada explícitamente el 2026-10-20. ADR 0001–0010 conservan su estado aceptado.
 

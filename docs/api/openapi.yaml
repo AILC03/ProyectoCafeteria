@@ -1,11 +1,9 @@
 openapi: 3.0.3
 info:
   title: API de Cafetería — Backend
-  version: 0.2.0
-  description:
-    Health y cuatro operaciones de catálogo de lectura implementadas. API pública sin login,
-    IDs/importes como strings. Límite local por IP de lectura configurable (120/minuto por defecto),
-    CORS exacto y límite JSON de 256 KiB. Autenticación y mutaciones aún no implementadas.
+  version: 0.3.0
+  description: API de catálogo, autenticación cookie/CSRF y administración. No hay registro abierto.
+    Cloudinary es opcional y requiere credenciales; ninguna clave real forma parte del contrato.
 paths:
   /api/v1/health:
     get:
@@ -31,11 +29,12 @@ paths:
         - Catalog
       summary: listCategories
       operationId: listCategories
-      description: 'Categorías activas y no eliminadas, ordenadas por
-        (createdAt,id). Cursor inválido: 400. Lista vacía: 200 con data=[]. IDs como cadenas decimales.'
+      description:
+        'Categorías activas y no eliminadas, ordenadas por (createdAt,id). Cursor inválido:
+        400. Lista vacía: 200 con data=[]. IDs como cadenas decimales.'
       security: []
       parameters:
-        - &id001
+        - &a1
           name: limit
           in: query
           required: false
@@ -45,24 +44,18 @@ paths:
             minimum: 1
             maximum: 100
             default: 20
-        - &id002
+        - &a2
           name: cursor
           in: query
           required: false
           description:
-            Cursor opaco provisto por la página previa; inválido o incompatible con filtros devuelve
-            400
+            Cursor opaco provisto por la página previa; inválido o incompatible con filtros
+            devuelve 400
           schema:
             type: string
             minLength: 1
             maxLength: 2048
       responses:
-        '403':
-          $ref: '#/components/responses/ForbiddenOrigin'
-        '413':
-          $ref: '#/components/responses/PayloadTooLarge'
-        '500':
-          $ref: '#/components/responses/InternalError'
         '200':
           description: Respuesta correcta
           content:
@@ -101,6 +94,10 @@ paths:
                 instance: /api/v1/categories
                 code: VALIDATION_ERROR
                 requestId: req_abc123
+        '403':
+          $ref: '#/components/responses/ForbiddenOrigin'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '429':
           description: RATE_LIMITED
           content:
@@ -115,6 +112,8 @@ paths:
                 instance: /api/v1/categories
                 code: RATE_LIMITED
                 requestId: req_abc123
+        '500':
+          $ref: '#/components/responses/InternalError'
         '503':
           description: DEPENDENCY_UNAVAILABLE
           content:
@@ -135,14 +134,15 @@ paths:
         - Catalog
       summary: listProducts
       operationId: listProducts
-      description: 'Lectura pública de entidades activas y no eliminadas.
-        Los productos agotados se pueden listar con isAvailable=false. Orden estable (createdAt,id) para colecciones;
-        opciones vigentes con recargo efectivo calculado por backend. Cursor inválido o de filtros diferentes:
-        400. Listado vacío: 200 con data=[]; IDs e importes: cadenas decimales.'
+      description:
+        'Lectura pública de entidades activas y no eliminadas. Los productos agotados se pueden
+        listar con isAvailable=false. Orden estable (createdAt,id) para colecciones; opciones
+        vigentes con recargo efectivo calculado por backend. Cursor inválido o de filtros
+        diferentes: 400. Listado vacío: 200 con data=[]; IDs e importes: cadenas decimales.'
       security: []
       parameters:
-        - *id001
-        - *id002
+        - *a1
+        - *a2
         - name: categoryId
           in: query
           schema:
@@ -153,12 +153,6 @@ paths:
           schema:
             type: boolean
       responses:
-        '403':
-          $ref: '#/components/responses/ForbiddenOrigin'
-        '413':
-          $ref: '#/components/responses/PayloadTooLarge'
-        '500':
-          $ref: '#/components/responses/InternalError'
         '200':
           description: Respuesta correcta
           content:
@@ -178,7 +172,7 @@ paths:
                     $ref: '#/components/schemas/Page'
               example:
                 data:
-                  - &id003
+                  - &a3
                     id: '10'
                     categoryId: '1'
                     name: Latte
@@ -203,6 +197,10 @@ paths:
                 instance: /api/v1/products
                 code: VALIDATION_ERROR
                 requestId: req_abc123
+        '403':
+          $ref: '#/components/responses/ForbiddenOrigin'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '429':
           description: RATE_LIMITED
           content:
@@ -217,6 +215,8 @@ paths:
                 instance: /api/v1/products
                 code: RATE_LIMITED
                 requestId: req_abc123
+        '500':
+          $ref: '#/components/responses/InternalError'
         '503':
           description: DEPENDENCY_UNAVAILABLE
           content:
@@ -237,12 +237,13 @@ paths:
         - Catalog
       summary: getProduct
       operationId: getProduct
-      description: 'Detalle de producto no eliminado y de categoría activa
-        y no eliminada. Agotado sigue visible con isAvailable=false. ID inválido: 400;
-        ausente/no visible: 404. Sin cursor ni paginación. IDs e importes como cadenas decimales.'
+      description:
+        'Detalle de producto no eliminado y de categoría activa y no eliminada. Agotado sigue
+        visible con isAvailable=false. ID inválido: 400; ausente/no visible: 404. Sin cursor ni
+        paginación. IDs e importes como cadenas decimales.'
       security: []
       parameters:
-        - &id004
+        - &a4
           name: productId
           in: path
           required: true
@@ -251,12 +252,6 @@ paths:
             pattern: ^[0-9]+$
           example: '10'
       responses:
-        '403':
-          $ref: '#/components/responses/ForbiddenOrigin'
-        '413':
-          $ref: '#/components/responses/PayloadTooLarge'
-        '500':
-          $ref: '#/components/responses/InternalError'
         '200':
           description: Respuesta correcta
           content:
@@ -270,7 +265,7 @@ paths:
                   data:
                     $ref: '#/components/schemas/Product'
               example:
-                data: *id003
+                data: *a3
         '400':
           description: VALIDATION_ERROR
           content:
@@ -285,34 +280,8 @@ paths:
                 instance: /api/v1/products/10
                 code: VALIDATION_ERROR
                 requestId: req_abc123
-        '429':
-          description: RATE_LIMITED
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/Problem'
-              example:
-                type: about:blank
-                title: Límite de solicitudes
-                status: 429
-                detail: No se pudo completar la operación.
-                instance: /api/v1/products/10
-                code: RATE_LIMITED
-                requestId: req_abc123
-        '503':
-          description: DEPENDENCY_UNAVAILABLE
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/Problem'
-              example:
-                type: about:blank
-                title: Servicio indisponible
-                status: 503
-                detail: No se pudo completar la operación.
-                instance: /api/v1/products/10
-                code: DEPENDENCY_UNAVAILABLE
-                requestId: req_abc123
+        '403':
+          $ref: '#/components/responses/ForbiddenOrigin'
         '404':
           description: NOT_FOUND
           content:
@@ -327,26 +296,53 @@ paths:
                 instance: /api/v1/products/10
                 code: NOT_FOUND
                 requestId: req_abc123
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '429':
+          description: RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: about:blank
+                title: Límite de solicitudes
+                status: 429
+                detail: No se pudo completar la operación.
+                instance: /api/v1/products/10
+                code: RATE_LIMITED
+                requestId: req_abc123
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: about:blank
+                title: Servicio indisponible
+                status: 503
+                detail: No se pudo completar la operación.
+                instance: /api/v1/products/10
+                code: DEPENDENCY_UNAVAILABLE
+                requestId: req_abc123
   /api/v1/products/{productId}/options:
     get:
       tags:
         - Catalog
       summary: listProductOptions
       operationId: listProductOptions
-      description: 'Grupos y valores no eliminados habilitados para el producto,
-        con recargo efectivo GLOBAL o PER_PRODUCT resuelto por backend. Opciones agotadas se indican
-        con isAvailable=false. Producto ausente/no visible: 404; sin grupos: 200 con data=[].
-        Sin cursor ni paginación. IDs e importes como cadenas decimales.'
+      description:
+        'Grupos y valores no eliminados habilitados para el producto, con recargo efectivo
+        GLOBAL o PER_PRODUCT resuelto por backend. Opciones agotadas se indican con
+        isAvailable=false. Producto ausente/no visible: 404; sin grupos: 200 con data=[]. Sin cursor
+        ni paginación. IDs e importes como cadenas decimales.'
       security: []
       parameters:
-        - *id004
+        - *a4
       responses:
-        '403':
-          $ref: '#/components/responses/ForbiddenOrigin'
-        '413':
-          $ref: '#/components/responses/PayloadTooLarge'
-        '500':
-          $ref: '#/components/responses/InternalError'
         '200':
           description: Respuesta correcta
           content:
@@ -387,34 +383,8 @@ paths:
                 instance: /api/v1/products/10/options
                 code: VALIDATION_ERROR
                 requestId: req_abc123
-        '429':
-          description: RATE_LIMITED
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/Problem'
-              example:
-                type: about:blank
-                title: Límite de solicitudes
-                status: 429
-                detail: No se pudo completar la operación.
-                instance: /api/v1/products/10/options
-                code: RATE_LIMITED
-                requestId: req_abc123
-        '503':
-          description: DEPENDENCY_UNAVAILABLE
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/Problem'
-              example:
-                type: about:blank
-                title: Servicio indisponible
-                status: 503
-                detail: No se pudo completar la operación.
-                instance: /api/v1/products/10/options
-                code: DEPENDENCY_UNAVAILABLE
-                requestId: req_abc123
+        '403':
+          $ref: '#/components/responses/ForbiddenOrigin'
         '404':
           description: NOT_FOUND
           content:
@@ -429,6 +399,3114 @@ paths:
                 instance: /api/v1/products/10/options
                 code: NOT_FOUND
                 requestId: req_abc123
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '429':
+          description: RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: about:blank
+                title: Límite de solicitudes
+                status: 429
+                detail: No se pudo completar la operación.
+                instance: /api/v1/products/10/options
+                code: RATE_LIMITED
+                requestId: req_abc123
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: about:blank
+                title: Servicio indisponible
+                status: 503
+                detail: No se pudo completar la operación.
+                instance: /api/v1/products/10/options
+                code: DEPENDENCY_UNAVAILABLE
+                requestId: req_abc123
+  /api/v1/auth/csrf:
+    get:
+      tags:
+        - Auth
+      operationId: bootstrapCsrf
+      summary: Bootstrap prelogin o contexto de familia; token firmado con TTL de 1 hora. No concede acceso.
+      description: Bootstrap prelogin o contexto de familia; token firmado con TTL de 1 hora. No concede acceso.
+      security: []
+      parameters: []
+      responses:
+        '200':
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: false
+                    properties:
+                      csrfToken:
+                        type: string
+                        minLength: 1
+                        maxLength: 1024
+                    required:
+                      - csrfToken
+                required:
+                  - data
+              example:
+                data:
+                  csrfToken: example-only-not-a-real-token
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store para auth y administración.
+            Set-Cookie:
+              schema:
+                type: string
+              description:
+                Cookies HttpOnly, SameSite=Lax; Secure y prefijo __Host- en producción. Access <=15min;
+                refresh sujeto al vencimiento absoluto; tokens no en JSON.
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: CONFLICT / REFRESH_ALREADY_ROTATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED / AUTH_RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/v1/auth/login/staff:
+    post:
+      tags:
+        - Auth
+      operationId: loginStaff
+      summary: Usuario y contraseña Argon2id; 5 fallos/15min, bloqueo 15min y límite IP persistente.
+        Sesión absoluta 8h.
+      description:
+        Usuario y contraseña Argon2id; 5 fallos/15min, bloqueo 15min y límite IP persistente.
+        Sesión absoluta 8h.
+      security: &a5
+        - csrfHeader: []
+      parameters: []
+      responses:
+        '200':
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSessionResponse'
+              example:
+                data:
+                  user: &a6
+                    id: '1'
+                    name: Usuario de ejemplo
+                    role: ADMINISTRADOR
+                    accountType: STAFF
+                    mustChangePin: false
+                  csrfToken: example-only-not-a-real-token
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store para auth y administración.
+            Set-Cookie:
+              schema:
+                type: string
+              description:
+                Cookies HttpOnly, SameSite=Lax; Secure y prefijo __Host- en producción. Access <=15min;
+                refresh sujeto al vencimiento absoluto; tokens no en JSON.
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: CONFLICT / REFRESH_ALREADY_ROTATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED / AUTH_RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StaffLogin'
+            example:
+              username: AngelAdmin
+              password: ExampleOnly42
+  /api/v1/auth/login/customer:
+    post:
+      tags:
+        - Auth
+      operationId: loginCustomer
+      summary:
+        Teléfono MX (+52 o diez dígitos) o número C, NIP string. No correo ni registro abierto;
+        sesión absoluta 30 días.
+      description:
+        Teléfono MX (+52 o diez dígitos) o número C, NIP string. No correo ni registro abierto;
+        sesión absoluta 30 días.
+      security: *a5
+      parameters: []
+      responses:
+        '200':
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSessionResponse'
+              example:
+                data:
+                  user:
+                    id: '2'
+                    name: Usuario de ejemplo
+                    role: CLIENTE
+                    accountType: CUSTOMER
+                    mustChangePin: false
+                  csrfToken: example-only-not-a-real-token
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store para auth y administración.
+            Set-Cookie:
+              schema:
+                type: string
+              description:
+                Cookies HttpOnly, SameSite=Lax; Secure y prefijo __Host- en producción. Access <=15min;
+                refresh sujeto al vencimiento absoluto; tokens no en JSON.
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: CONFLICT / REFRESH_ALREADY_ROTATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED / AUTH_RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerLogin'
+            example:
+              identifier: C000099
+              pin: '0007'
+  /api/v1/auth/refresh:
+    post:
+      tags:
+        - Auth
+      operationId: refreshSession
+      summary:
+        Cookie refresh obligatoria. Rotación atómica; carrera <=5s produce 409 sin Set-Cookie;
+        reuso posterior revoca familia. No extiende límite absoluto.
+      description:
+        Cookie refresh obligatoria. Rotación atómica; carrera <=5s produce 409 sin Set-Cookie;
+        reuso posterior revoca familia. No extiende límite absoluto.
+      security: *a5
+      parameters: []
+      responses:
+        '200':
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSessionResponse'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store para auth y administración.
+            Set-Cookie:
+              schema:
+                type: string
+              description:
+                Cookies HttpOnly, SameSite=Lax; Secure y prefijo __Host- en producción. Access <=15min;
+                refresh sujeto al vencimiento absoluto; tokens no en JSON.
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: CONFLICT / REFRESH_ALREADY_ROTATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED / AUTH_RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties: {}
+  /api/v1/auth/logout:
+    post:
+      tags:
+        - Auth
+      operationId: logoutSession
+      summary:
+        Idempotente con CSRF válido; revoca familia actual si existe y limpia cookies. No revoca
+        otros dispositivos.
+      description: Idempotente con CSRF válido; revoca familia actual si existe y limpia cookies. No
+        revoca otros dispositivos.
+      security: *a5
+      parameters: []
+      responses:
+        '204':
+          description: Operación completada sin cuerpo.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store para auth y administración.
+            Set-Cookie:
+              schema:
+                type: string
+              description:
+                Cookies HttpOnly, SameSite=Lax; Secure y prefijo __Host- en producción. Access <=15min;
+                refresh sujeto al vencimiento absoluto; tokens no en JSON.
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: CONFLICT / REFRESH_ALREADY_ROTATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED / AUTH_RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties: {}
+  /api/v1/auth/me:
+    get:
+      tags:
+        - Auth
+      operationId: currentUser
+      summary: JWT y estado actual en PostgreSQL. must_change_pin bloquea esta consulta.
+      description: JWT y estado actual en PostgreSQL. must_change_pin bloquea esta consulta.
+      security: &a10
+        - accessCookie: &a7 []
+        - productionAccessCookie: &a8 []
+      parameters: []
+      responses:
+        '200':
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuthUser'
+                required:
+                  - data
+              example:
+                data: *a6
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store para auth y administración.
+            Set-Cookie:
+              schema:
+                type: string
+              description:
+                Cookies HttpOnly, SameSite=Lax; Secure y prefijo __Host- en producción. Access <=15min;
+                refresh sujeto al vencimiento absoluto; tokens no en JSON.
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: CONFLICT / REFRESH_ALREADY_ROTATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED / AUTH_RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/v1/auth/pin:
+    patch:
+      tags:
+        - Auth
+      operationId: changePin
+      summary:
+        'Cliente: NIP actual y nuevo de cuatro dígitos. Permite cambio obligatorio; revoca todas
+        las sesiones y exige nuevo login.'
+      description:
+        'Cliente: NIP actual y nuevo de cuatro dígitos. Permite cambio obligatorio; revoca
+        todas las sesiones y exige nuevo login.'
+      security: &a9
+        - accessCookie: *a7
+          csrfHeader: []
+        - productionAccessCookie: *a8
+          csrfHeader: []
+      parameters: []
+      responses:
+        '204':
+          description: Operación completada sin cuerpo.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store para auth y administración.
+            Set-Cookie:
+              schema:
+                type: string
+              description:
+                Cookies HttpOnly, SameSite=Lax; Secure y prefijo __Host- en producción. Access <=15min;
+                refresh sujeto al vencimiento absoluto; tokens no en JSON.
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: CONFLICT / REFRESH_ALREADY_ROTATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED / AUTH_RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PinChange'
+  /api/v1/auth/password:
+    patch:
+      tags:
+        - Auth
+      operationId: changePassword
+      summary:
+        'Personal: contraseña actual y nueva, 8–24 caracteres. Revoca todas las sesiones y limpia
+        cookies.'
+      description:
+        'Personal: contraseña actual y nueva, 8–24 caracteres. Revoca todas las sesiones y
+        limpia cookies.'
+      security: *a9
+      parameters: []
+      responses:
+        '204':
+          description: Operación completada sin cuerpo.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store para auth y administración.
+            Set-Cookie:
+              schema:
+                type: string
+              description:
+                Cookies HttpOnly, SameSite=Lax; Secure y prefijo __Host- en producción. Access <=15min;
+                refresh sujeto al vencimiento absoluto; tokens no en JSON.
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: CONFLICT / REFRESH_ALREADY_ROTATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED / AUTH_RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordChange'
+  /api/v1/admin/categories:
+    get:
+      tags:
+        - Admin
+      operationId: listAdmin_categories
+      summary:
+        'Solo ADMINISTRADOR: lista paginada de categories; categorías/productos por (createdAt,id),
+        grupos/valores por id.'
+      description: 'Solo ADMINISTRADOR: lista paginada de categories; categorías/productos por
+        (createdAt,id), grupos/valores por id.'
+      security: *a10
+      parameters:
+        - &a12
+          name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - &a13
+          name: cursor
+          in: query
+          schema:
+            type: string
+            maxLength: 2048
+        - &a14
+          name: includeDeleted
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AdminCategory'
+                  page:
+                    $ref: '#/components/schemas/Page'
+                required:
+                  - data
+                  - page
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store para auth y administración.
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: CONFLICT / REFRESH_ALREADY_ROTATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED / AUTH_RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    post:
+      tags:
+        - Admin
+      operationId: createAdmin_categories
+      summary: 'Solo ADMINISTRADOR: crear categories.'
+      description: 'Solo ADMINISTRADOR: crear categories.'
+      security: *a9
+      parameters: []
+      responses:
+        '201':
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AdminCategory'
+                required:
+                  - data
+              example:
+                data:
+                  id: '10'
+                  name: Café
+                  isActive: true
+                  deletedAt: null
+                  createdAt: 2026-10-24T12:00:00.000Z
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store para auth y administración.
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: CONFLICT / REFRESH_ALREADY_ROTATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED / AUTH_RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryCreate'
+            example:
+              name: Café
+  /api/v1/admin/categories/{id}:
+    get:
+      tags:
+        - Admin
+      operationId: getAdmin_categories
+      summary: 'Solo ADMINISTRADOR: detalle, incluso retirado.'
+      description: 'Solo ADMINISTRADOR: detalle, incluso retirado.'
+      security: *a10
+      parameters:
+        - &a11
+          name: id
+          in: path
+          required: true
+          schema: &a15
+            type: string
+            pattern: ^[1-9][0-9]{0,18}$
+            description: ID positivo dentro de BIGINT PostgreSQL, sin pérdida de precisión.
+          example: '1'
+      responses:
+        '200':
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AdminCategory'
+                required:
+                  - data
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store para auth y administración.
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: CONFLICT / REFRESH_ALREADY_ROTATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED / AUTH_RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    patch:
+      tags:
+        - Admin
+      operationId: updateAdmin_categories
+      summary: 'Solo ADMINISTRADOR: editar; body estricto, sin campos de imagen arbitrarios.'
+      description: 'Solo ADMINISTRADOR: editar; body estricto, sin campos de imagen arbitrarios.'
+      security: *a9
+      parameters:
+        - *a11
+      responses:
+        '200':
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AdminCategory'
+                required:
+                  - data
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store para auth y administración.
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: CONFLICT / REFRESH_ALREADY_ROTATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED / AUTH_RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryPatch'
+    delete:
+      tags:
+        - Admin
+      operationId: retireAdmin_categories
+      summary:
+        'Solo ADMINISTRADOR: baja lógica, conserva histórico. Categoría con cualquier producto:
+        409; opciones/grupos no pueden romper mínimos.'
+      description:
+        'Solo ADMINISTRADOR: baja lógica, conserva histórico. Categoría con cualquier producto:
+        409; opciones/grupos no pueden romper mínimos.'
+      security: *a9
+      parameters:
+        - *a11
+      responses:
+        '200':
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AdminCategory'
+                required:
+                  - data
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store para auth y administración.
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: CONFLICT / REFRESH_ALREADY_ROTATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED / AUTH_RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/v1/admin/products:
+    get:
+      tags:
+        - Admin
+      operationId: listAdmin_products
+      summary:
+        'Solo ADMINISTRADOR: lista paginada de products; categorías/productos por (createdAt,id),
+        grupos/valores por id.'
+      description: 'Solo ADMINISTRADOR: lista paginada de products; categorías/productos por
+        (createdAt,id), grupos/valores por id.'
+      security: *a10
+      parameters:
+        - *a12
+        - *a13
+        - *a14
+      responses:
+        '200':
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AdminProduct'
+                  page:
+                    $ref: '#/components/schemas/Page'
+                required:
+                  - data
+                  - page
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store para auth y administración.
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: CONFLICT / REFRESH_ALREADY_ROTATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED / AUTH_RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    post:
+      tags:
+        - Admin
+      operationId: createAdmin_products
+      summary: 'Solo ADMINISTRADOR: crear products.'
+      description: 'Solo ADMINISTRADOR: crear products.'
+      security: *a9
+      parameters: []
+      responses:
+        '201':
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AdminProduct'
+                required:
+                  - data
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store para auth y administración.
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: CONFLICT / REFRESH_ALREADY_ROTATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED / AUTH_RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductCreate'
+  /api/v1/admin/products/{id}:
+    get:
+      tags:
+        - Admin
+      operationId: getAdmin_products
+      summary: 'Solo ADMINISTRADOR: detalle, incluso retirado.'
+      description: 'Solo ADMINISTRADOR: detalle, incluso retirado.'
+      security: *a10
+      parameters:
+        - *a11
+      responses:
+        '200':
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AdminProduct'
+                required:
+                  - data
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store para auth y administración.
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: CONFLICT / REFRESH_ALREADY_ROTATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED / AUTH_RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    patch:
+      tags:
+        - Admin
+      operationId: updateAdmin_products
+      summary: 'Solo ADMINISTRADOR: editar; body estricto, sin campos de imagen arbitrarios.'
+      description: 'Solo ADMINISTRADOR: editar; body estricto, sin campos de imagen arbitrarios.'
+      security: *a9
+      parameters:
+        - *a11
+      responses:
+        '200':
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AdminProduct'
+                required:
+                  - data
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store para auth y administración.
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: CONFLICT / REFRESH_ALREADY_ROTATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED / AUTH_RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductPatch'
+    delete:
+      tags:
+        - Admin
+      operationId: retireAdmin_products
+      summary:
+        'Solo ADMINISTRADOR: baja lógica, conserva histórico. Categoría con cualquier producto:
+        409; opciones/grupos no pueden romper mínimos.'
+      description:
+        'Solo ADMINISTRADOR: baja lógica, conserva histórico. Categoría con cualquier producto:
+        409; opciones/grupos no pueden romper mínimos.'
+      security: *a9
+      parameters:
+        - *a11
+      responses:
+        '200':
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AdminProduct'
+                required:
+                  - data
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store para auth y administración.
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: CONFLICT / REFRESH_ALREADY_ROTATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED / AUTH_RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/v1/admin/option-groups:
+    get:
+      tags:
+        - Admin
+      operationId: listAdmin_option-groups
+      summary: 'Solo ADMINISTRADOR: lista paginada de option-groups; categorías/productos por
+        (createdAt,id), grupos/valores por id.'
+      description: 'Solo ADMINISTRADOR: lista paginada de option-groups; categorías/productos por
+        (createdAt,id), grupos/valores por id.'
+      security: *a10
+      parameters:
+        - *a12
+        - *a13
+        - *a14
+      responses:
+        '200':
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AdminGroup'
+                  page:
+                    $ref: '#/components/schemas/Page'
+                required:
+                  - data
+                  - page
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store para auth y administración.
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: CONFLICT / REFRESH_ALREADY_ROTATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED / AUTH_RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    post:
+      tags:
+        - Admin
+      operationId: createAdmin_option-groups
+      summary: 'Solo ADMINISTRADOR: crear option-groups.'
+      description: 'Solo ADMINISTRADOR: crear option-groups.'
+      security: *a9
+      parameters: []
+      responses:
+        '201':
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AdminGroup'
+                required:
+                  - data
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store para auth y administración.
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: CONFLICT / REFRESH_ALREADY_ROTATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED / AUTH_RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GroupCreate'
+  /api/v1/admin/option-groups/{id}:
+    get:
+      tags:
+        - Admin
+      operationId: getAdmin_option-groups
+      summary: 'Solo ADMINISTRADOR: detalle, incluso retirado.'
+      description: 'Solo ADMINISTRADOR: detalle, incluso retirado.'
+      security: *a10
+      parameters:
+        - *a11
+      responses:
+        '200':
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AdminGroup'
+                required:
+                  - data
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store para auth y administración.
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: CONFLICT / REFRESH_ALREADY_ROTATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED / AUTH_RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    patch:
+      tags:
+        - Admin
+      operationId: updateAdmin_option-groups
+      summary: 'Solo ADMINISTRADOR: editar; body estricto, sin campos de imagen arbitrarios.'
+      description: 'Solo ADMINISTRADOR: editar; body estricto, sin campos de imagen arbitrarios.'
+      security: *a9
+      parameters:
+        - *a11
+      responses:
+        '200':
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AdminGroup'
+                required:
+                  - data
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store para auth y administración.
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: CONFLICT / REFRESH_ALREADY_ROTATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED / AUTH_RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GroupPatch'
+    delete:
+      tags:
+        - Admin
+      operationId: retireAdmin_option-groups
+      summary:
+        'Solo ADMINISTRADOR: baja lógica, conserva histórico. Categoría con cualquier producto:
+        409; opciones/grupos no pueden romper mínimos.'
+      description:
+        'Solo ADMINISTRADOR: baja lógica, conserva histórico. Categoría con cualquier producto:
+        409; opciones/grupos no pueden romper mínimos.'
+      security: *a9
+      parameters:
+        - *a11
+      responses:
+        '200':
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AdminGroup'
+                required:
+                  - data
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store para auth y administración.
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: CONFLICT / REFRESH_ALREADY_ROTATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED / AUTH_RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/v1/admin/option-values:
+    get:
+      tags:
+        - Admin
+      operationId: listAdmin_option-values
+      summary: 'Solo ADMINISTRADOR: lista paginada de option-values; categorías/productos por
+        (createdAt,id), grupos/valores por id.'
+      description: 'Solo ADMINISTRADOR: lista paginada de option-values; categorías/productos por
+        (createdAt,id), grupos/valores por id.'
+      security: *a10
+      parameters:
+        - *a12
+        - *a13
+        - *a14
+        - name: groupId
+          in: query
+          schema: *a15
+      responses:
+        '200':
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AdminValue'
+                  page:
+                    $ref: '#/components/schemas/Page'
+                required:
+                  - data
+                  - page
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store para auth y administración.
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: CONFLICT / REFRESH_ALREADY_ROTATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED / AUTH_RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/v1/admin/option-values/{id}:
+    get:
+      tags:
+        - Admin
+      operationId: getAdmin_option-values
+      summary: 'Solo ADMINISTRADOR: detalle, incluso retirado.'
+      description: 'Solo ADMINISTRADOR: detalle, incluso retirado.'
+      security: *a10
+      parameters:
+        - *a11
+      responses:
+        '200':
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AdminValue'
+                required:
+                  - data
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store para auth y administración.
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: CONFLICT / REFRESH_ALREADY_ROTATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED / AUTH_RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    patch:
+      tags:
+        - Admin
+      operationId: updateAdmin_option-values
+      summary: 'Solo ADMINISTRADOR: editar; body estricto, sin campos de imagen arbitrarios.'
+      description: 'Solo ADMINISTRADOR: editar; body estricto, sin campos de imagen arbitrarios.'
+      security: *a9
+      parameters:
+        - *a11
+      responses:
+        '200':
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AdminValue'
+                required:
+                  - data
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store para auth y administración.
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: CONFLICT / REFRESH_ALREADY_ROTATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED / AUTH_RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValuePatch'
+    delete:
+      tags:
+        - Admin
+      operationId: retireAdmin_option-values
+      summary:
+        'Solo ADMINISTRADOR: baja lógica, conserva histórico. Categoría con cualquier producto:
+        409; opciones/grupos no pueden romper mínimos.'
+      description:
+        'Solo ADMINISTRADOR: baja lógica, conserva histórico. Categoría con cualquier producto:
+        409; opciones/grupos no pueden romper mínimos.'
+      security: *a9
+      parameters:
+        - *a11
+      responses:
+        '200':
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AdminValue'
+                required:
+                  - data
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store para auth y administración.
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: CONFLICT / REFRESH_ALREADY_ROTATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED / AUTH_RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/v1/admin/option-groups/{id}/values:
+    post:
+      tags:
+        - Admin
+      operationId: createGroupValue
+      summary: Solo ADMINISTRADOR. GLOBAL exige precio global; PER_PRODUCT exige NULL.
+      description: Solo ADMINISTRADOR. GLOBAL exige precio global; PER_PRODUCT exige NULL.
+      security: *a9
+      parameters:
+        - *a11
+      responses:
+        '201':
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AdminValue'
+                required:
+                  - data
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store para auth y administración.
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: CONFLICT / REFRESH_ALREADY_ROTATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED / AUTH_RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValueCreate'
+    get:
+      tags:
+        - Admin
+      operationId: listGroupValues
+      summary: Valores paginados del grupo; solo ADMINISTRADOR.
+      description: Valores paginados del grupo; solo ADMINISTRADOR.
+      security: *a10
+      parameters:
+        - *a11
+        - *a12
+        - *a13
+        - *a14
+      responses:
+        '200':
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AdminValue'
+                  page:
+                    $ref: '#/components/schemas/Page'
+                required:
+                  - data
+                  - page
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store para auth y administración.
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: CONFLICT / REFRESH_ALREADY_ROTATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED / AUTH_RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/v1/products/{id}/availability:
+    patch:
+      tags:
+        - Admin
+      operationId: setProductAvailability
+      summary: CAJERO o ADMINISTRADOR. Exclusivamente isAvailable; cualquier otro campo produce 400.
+      description: CAJERO o ADMINISTRADOR. Exclusivamente isAvailable; cualquier otro campo produce 400.
+      security: *a9
+      parameters:
+        - *a11
+      responses:
+        '200':
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AdminProduct'
+                required:
+                  - data
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store para auth y administración.
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: CONFLICT / REFRESH_ALREADY_ROTATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED / AUTH_RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Availability'
+  /api/v1/admin/products/{id}/configuration:
+    get:
+      tags:
+        - Admin
+      operationId: getProductConfiguration
+      summary: Configuración completa administrativa. Sin alterar GET público de opciones.
+      description: Configuración completa administrativa. Sin alterar GET público de opciones.
+      security: *a10
+      parameters:
+        - *a11
+      responses:
+        '200':
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ProductConfiguration'
+                required:
+                  - data
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store para auth y administración.
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: CONFLICT / REFRESH_ALREADY_ROTATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED / AUTH_RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    put:
+      tags:
+        - Admin
+      operationId: setProductConfiguration
+      summary: Reemplazo atómico de asignaciones bajo lock (2026,1). No borra productos/valores ni
+        snapshots; valida grupos, alcance, duplicados y mínimos.
+      description:
+        Reemplazo atómico de asignaciones bajo lock (2026,1). No borra productos/valores ni
+        snapshots; valida grupos, alcance, duplicados y mínimos.
+      security: *a9
+      parameters:
+        - *a11
+      responses:
+        '200':
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ProductConfiguration'
+                required:
+                  - data
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store para auth y administración.
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: CONFLICT / REFRESH_ALREADY_ROTATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED / AUTH_RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductConfiguration'
+            example:
+              groups:
+                - groupId: '1'
+                  minSelections: 1
+                  maxSelections: 1
+                  values:
+                    - valueId: '1'
+                      surchargeOverrideCents: '0'
+                    - valueId: '2'
+                      surchargeOverrideCents: '1000'
+  /api/v1/admin/products/{id}/image-upload:
+    post:
+      tags:
+        - Admin
+      operationId: authorizeProductImage
+      summary: Solo ADMINISTRADOR. Intent de un uso, 10min, firma Cloudinary; sin credenciales del
+        proveedor devuelve 503. Imagen <=5MiB, JPEG/PNG/WebP, <=8192px por dimensión y <=40MP.
+      description:
+        Solo ADMINISTRADOR. Intent de un uso, 10min, firma Cloudinary; sin credenciales del
+        proveedor devuelve 503. Imagen <=5MiB, JPEG/PNG/WebP, <=8192px por dimensión y <=40MP.
+      security: *a9
+      parameters:
+        - *a11
+      responses:
+        '201':
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ImageAuthorization'
+                required:
+                  - data
+              example:
+                data:
+                  intentId: '1'
+                  expiresAt: 2026-10-24T12:10:00.000Z
+                  maxBytes: 5242880
+                  maxDimension: 8192
+                  parameters:
+                    public_id: cafeteria/products/1/example
+                    timestamp: 1792843200
+                    signature: example-only-not-a-real-signature
+                    api_key: example-public-key
+                    cloud_name: example-cloud
+                    uploadUrl: https://api.cloudinary.com/v1_1/example-cloud/image/upload
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store para auth y administración.
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: CONFLICT / REFRESH_ALREADY_ROTATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED / AUTH_RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties: {}
+  /api/v1/admin/products/{id}/image:
+    put:
+      tags:
+        - Admin
+      operationId: associateProductImage
+      summary:
+        Verifica asset en proveedor; solo intent propio. CAS por public_id y versión; limpieza
+        durable diferida dos horas y dispatcher images:cleanup.
+      description:
+        Verifica asset en proveedor; solo intent propio. CAS por public_id y versión; limpieza
+        durable diferida dos horas y dispatcher images:cleanup.
+      security: *a9
+      parameters:
+        - *a11
+      responses:
+        '200':
+          description: Operación completada.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AdminProduct'
+                required:
+                  - data
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: no-store para auth y administración.
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: CONFLICT / REFRESH_ALREADY_ROTATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED / AUTH_RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImageAssociation'
 tags:
   - name: Auth
     description: Autenticación y recuperación.
@@ -442,6 +3520,8 @@ tags:
     description: Apertura y cierre de caja.
   - name: Customers
     description: Registro por ticket, historial y favoritos.
+  - name: Admin
+    description: Administración protegida, solo disponibilidad admite CAJERO.
 components:
   responses:
     ForbiddenOrigin:
@@ -470,7 +3550,7 @@ components:
         - id
         - name
       properties:
-        id: &id005
+        id: &a16
           type: string
           pattern: ^[0-9]+$
           example: '10'
@@ -489,7 +3569,7 @@ components:
         - imageUrl
         - isAvailable
       properties:
-        id: *id005
+        id: *a16
         categoryId:
           type: string
           pattern: ^[0-9]+$
@@ -522,7 +3602,7 @@ components:
         - isAvailable
       additionalProperties: false
       properties:
-        id: *id005
+        id: *a16
         name:
           type: string
           example: Leche de almendra
@@ -544,7 +3624,7 @@ components:
         - values
       additionalProperties: false
       properties:
-        id: *id005
+        id: *a16
         name:
           type: string
           example: Leche
@@ -619,3 +3699,420 @@ components:
                 type: string
               message:
                 type: string
+    AuthUser:
+      type: object
+      additionalProperties: false
+      properties:
+        id: *a15
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        role:
+          type: string
+          enum:
+            - CLIENTE
+            - CAJERO
+            - PREPARACION
+            - ADMINISTRADOR
+        accountType:
+          type: string
+          enum:
+            - STAFF
+            - CUSTOMER
+        mustChangePin: &a17
+          type: boolean
+      required:
+        - id
+        - name
+        - role
+        - accountType
+        - mustChangePin
+    AuthSessionResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          properties:
+            user:
+              $ref: '#/components/schemas/AuthUser'
+            csrfToken:
+              type: string
+              minLength: 1
+              maxLength: 1024
+          required:
+            - user
+            - csrfToken
+      required:
+        - data
+    StaffLogin:
+      type: object
+      additionalProperties: false
+      properties:
+        username:
+          type: string
+          minLength: 1
+          maxLength: 24
+        password:
+          type: string
+          minLength: 8
+          maxLength: 24
+          writeOnly: true
+      required:
+        - username
+        - password
+    CustomerLogin:
+      type: object
+      additionalProperties: false
+      properties:
+        identifier:
+          type: string
+          minLength: 1
+          maxLength: 32
+        pin:
+          type: string
+          pattern: ^[0-9]{4}$
+          writeOnly: true
+      required:
+        - identifier
+        - pin
+    PinChange:
+      type: object
+      additionalProperties: false
+      properties:
+        currentPin:
+          type: string
+          pattern: ^[0-9]{4}$
+          writeOnly: true
+        newPin:
+          type: string
+          pattern: ^[0-9]{4}$
+          writeOnly: true
+      required:
+        - currentPin
+        - newPin
+    PasswordChange:
+      type: object
+      additionalProperties: false
+      properties:
+        currentPassword:
+          type: string
+          minLength: 8
+          maxLength: 24
+          writeOnly: true
+        newPassword:
+          type: string
+          minLength: 8
+          maxLength: 24
+          writeOnly: true
+      required:
+        - currentPassword
+        - newPassword
+    CategoryCreate:
+      type: object
+      additionalProperties: false
+      properties: &a18
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        isActive: *a17
+      required:
+        - name
+    CategoryPatch:
+      type: object
+      additionalProperties: false
+      properties: *a18
+      minProperties: 1
+    ProductCreate:
+      type: object
+      additionalProperties: false
+      properties: &a19
+        name:
+          type: string
+          minLength: 1
+          maxLength: 160
+        categoryId: *a15
+        description:
+          type: string
+          maxLength: 1500
+          nullable: true
+        basePriceCents: &a22
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,6})$
+          description: Centavos enteros, máximo 9999900.
+        isAvailable: *a17
+      required:
+        - name
+        - categoryId
+        - basePriceCents
+    ProductPatch:
+      type: object
+      additionalProperties: false
+      properties: *a19
+      minProperties: 1
+    GroupCreate:
+      type: object
+      additionalProperties: false
+      properties: &a20
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        pricingScope:
+          type: string
+          enum:
+            - GLOBAL
+            - PER_PRODUCT
+      required:
+        - name
+        - pricingScope
+    GroupPatch:
+      type: object
+      additionalProperties: false
+      properties: *a20
+      minProperties: 1
+    ValueCreate:
+      type: object
+      additionalProperties: false
+      properties: &a21
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        globalSurchargeCents:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,6})$
+          description: Centavos enteros, máximo 9999900.
+          nullable: true
+        isAvailable: *a17
+      required:
+        - name
+    ValuePatch:
+      type: object
+      additionalProperties: false
+      properties: *a21
+      minProperties: 1
+    Availability:
+      type: object
+      additionalProperties: false
+      properties:
+        isAvailable: *a17
+      required:
+        - isAvailable
+    ProductConfiguration:
+      type: object
+      additionalProperties: false
+      properties:
+        groups:
+          type: array
+          maxItems: 50
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              groupId: *a15
+              minSelections:
+                type: integer
+                minimum: 0
+                maximum: 100
+              maxSelections:
+                type: integer
+                minimum: 0
+                maximum: 100
+              values:
+                type: array
+                maxItems: 100
+                items:
+                  type: object
+                  additionalProperties: false
+                  properties:
+                    valueId: *a15
+                    surchargeOverrideCents:
+                      type: string
+                      pattern: ^(0|[1-9][0-9]{0,6})$
+                      description: Centavos enteros, máximo 9999900.
+                      nullable: true
+                  required:
+                    - valueId
+            required:
+              - groupId
+              - minSelections
+              - maxSelections
+              - values
+      required:
+        - groups
+    AdminCategory:
+      type: object
+      additionalProperties: false
+      properties:
+        id: *a15
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        isActive: *a17
+        deletedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt: &a23
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - isActive
+        - deletedAt
+        - createdAt
+    AdminProduct:
+      type: object
+      additionalProperties: false
+      properties:
+        id: *a15
+        categoryId: *a15
+        name:
+          type: string
+          minLength: 1
+          maxLength: 160
+        description:
+          type: string
+          maxLength: 1500
+          nullable: true
+        basePriceCents: *a22
+        imageUrl:
+          type: string
+          format: uri
+          nullable: true
+        imagePublicId:
+          type: string
+          minLength: 1
+          maxLength: 255
+          nullable: true
+        imageVersion:
+          type: string
+          minLength: 1
+          maxLength: 40
+          nullable: true
+        isAvailable: *a17
+        deletedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt: *a23
+        updatedAt: *a23
+      required:
+        - id
+        - categoryId
+        - name
+        - description
+        - basePriceCents
+        - imageUrl
+        - imagePublicId
+        - imageVersion
+        - isAvailable
+        - deletedAt
+        - createdAt
+        - updatedAt
+    AdminGroup:
+      type: object
+      additionalProperties: false
+      properties:
+        id: *a15
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        pricingScope:
+          type: string
+          enum:
+            - GLOBAL
+            - PER_PRODUCT
+        deletedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - id
+        - name
+        - pricingScope
+        - deletedAt
+    AdminValue:
+      type: object
+      additionalProperties: false
+      properties:
+        id: *a15
+        optionGroupId: *a15
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        globalSurchargeCents:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,6})$
+          description: Centavos enteros, máximo 9999900.
+          nullable: true
+        isAvailable: *a17
+        deletedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - id
+        - optionGroupId
+        - name
+        - globalSurchargeCents
+        - isAvailable
+        - deletedAt
+    ImageAuthorization:
+      type: object
+      additionalProperties: false
+      properties:
+        intentId: *a15
+        expiresAt: *a23
+        maxBytes:
+          type: integer
+        maxDimension:
+          type: integer
+        parameters:
+          type: object
+          description:
+            Parámetros controlados y firmados; contiene uploadUrl público y api_key, nunca
+            api_secret.
+          additionalProperties:
+            oneOf:
+              - type: string
+              - type: number
+              - type: boolean
+      required:
+        - intentId
+        - expiresAt
+        - maxBytes
+        - maxDimension
+        - parameters
+    ImageAssociation:
+      type: object
+      additionalProperties: false
+      properties:
+        intentId: *a15
+      required:
+        - intentId
+  securitySchemes:
+    accessCookie:
+      type: apiKey
+      in: cookie
+      name: caf_access
+      description: 'Desarrollo: JWT HttpOnly, máximo 15 min. No Bearer.'
+    productionAccessCookie:
+      type: apiKey
+      in: cookie
+      name: __Host-caf_access
+      description: 'Producción: Secure, HttpOnly, Path=/, host-only.'
+    csrfHeader:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+      description: Token de GET /auth/csrf o login/refresh; coincide con cookie HttpOnly firmada y
+        requiere Origin exacto.

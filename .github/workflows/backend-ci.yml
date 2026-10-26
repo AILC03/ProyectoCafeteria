@@ -1,0 +1,55 @@
+name: Backend CI
+
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [dev, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Backend checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: cafeteria_ci
+          POSTGRES_PASSWORD: ephemeral_ci_only
+          POSTGRES_DB: cafeteria_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U cafeteria_ci -d cafeteria_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      # Credenciales exclusivas del contenedor desechable, nunca de desarrollo.
+      DATABASE_URL: postgresql://cafeteria_ci:ephemeral_ci_only@127.0.0.1:5432/cafeteria_test
+      TEST_DATABASE_URL: postgresql://cafeteria_ci:ephemeral_ci_only@127.0.0.1:5432/cafeteria_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run db:validate
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run api:validate
+      - run: npm test
+      - run: npm run test:integration
+      - run: npm run db:verify
+      - run: npm run build

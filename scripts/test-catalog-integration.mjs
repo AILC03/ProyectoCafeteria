@@ -5,6 +5,7 @@ import { randomBytes } from 'node:crypto';
 import { URL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import pg from 'pg';
+import { readdirSync } from 'node:fs';
 
 let url;
 try {
@@ -18,34 +19,38 @@ if (
   !['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)
 )
   throw new Error('Requiere cafeteria_test local aislada.');
-const name = `cafeteria_catalog_${randomBytes(6).toString('hex')}`;
 const admin = new pg.Client({ connectionString: url.href, connectionTimeoutMillis: 5000 });
-let created = false;
+const owned = [];
 try {
   await admin.connect();
-  await admin.query(`CREATE DATABASE "${name}"`);
-  created = true;
-  const target = new URL(url);
-  target.pathname = `/${name}`;
-  const env = {
-    ...process.env,
-    DATABASE_URL: target.href,
-    SHADOW_DATABASE_URL: '',
-    CATALOG_TEST_DATABASE_URL: target.href,
-  };
-  const migrate = spawnSync(
-    process.execPath,
-    ['node_modules/prisma/build/index.js', 'migrate', 'deploy'],
-    { env, encoding: 'utf8', timeout: 120000 },
-  );
-  if (migrate.status !== 0)
-    throw new Error('Falló migración aislada; no se muestran credenciales.');
-  const tests = spawnSync(
-    process.execPath,
-    ['node_modules/vitest/vitest.mjs', 'run', 'tests/integration/catalog.integration.test.ts'],
-    { env, stdio: 'inherit', timeout: 120000 },
-  );
-  if (tests.status !== 0) process.exitCode = 1;
+  for (const file of readdirSync('tests/integration')
+    .filter((file) => file.endsWith('.test.ts'))
+    .sort()) {
+    const name = `cafeteria_catalog_${randomBytes(6).toString('hex')}`;
+    await admin.query(`CREATE DATABASE "${name}"`);
+    owned.push(name);
+    const target = new URL(url);
+    target.pathname = `/${name}`;
+    const env = {
+      ...process.env,
+      DATABASE_URL: target.href,
+      SHADOW_DATABASE_URL: '',
+      CATALOG_TEST_DATABASE_URL: target.href,
+    };
+    const migrate = spawnSync(
+      process.execPath,
+      ['node_modules/prisma/build/index.js', 'migrate', 'deploy'],
+      { env, encoding: 'utf8', timeout: 120000 },
+    );
+    if (migrate.status !== 0)
+      throw new Error('Falló migración aislada; no se muestran credenciales.');
+    const tests = spawnSync(
+      process.execPath,
+      ['node_modules/vitest/vitest.mjs', 'run', `tests/integration/${file}`],
+      { env, stdio: 'inherit', timeout: 120000 },
+    );
+    if (tests.status !== 0) process.exitCode = 1;
+  }
 } catch (error) {
   console.error(
     error.code
@@ -54,6 +59,6 @@ try {
   );
   process.exitCode = 1;
 } finally {
-  if (created) await admin.query(`DROP DATABASE "${name}" WITH (FORCE)`);
+  for (const name of owned) await admin.query(`DROP DATABASE "${name}" WITH (FORCE)`);
   await admin.end();
 }

@@ -11,16 +11,24 @@ const ajv = new Ajv({ strict: false, allErrors: true });
 addFormats(ajv);
 let checked = 0;
 for (const [route, item] of Object.entries(api.paths)) {
-  const operation = item.get;
-  if (!operation) continue;
-  for (const response of Object.values(operation.responses)) {
-    for (const media of Object.values(response.content ?? {})) {
-      if (!('example' in media)) continue;
-      const validate = ajv.compile(media.schema);
-      assert.ok(validate(media.example), `${route}: ejemplo no conforme a esquema`);
-      if (media.example.instance)
-        assert.equal(media.example.instance, route.replace('{productId}', '10'));
+  for (const method of ['get', 'post', 'patch', 'put', 'delete']) {
+    const operation = item[method];
+    if (!operation) continue;
+    const requestMedia = operation.requestBody?.content?.['application/json'];
+    if (requestMedia && 'example' in requestMedia) {
+      const validate = ajv.compile(requestMedia.schema);
+      assert.ok(validate(requestMedia.example), `${method} ${route}: entrada ejemplo no conforme`);
       checked++;
+    }
+    for (const response of Object.values(operation.responses)) {
+      for (const media of Object.values(response.content ?? {})) {
+        if (!('example' in media)) continue;
+        const validate = ajv.compile(media.schema);
+        assert.ok(validate(media.example), `${route}: ejemplo no conforme a esquema`);
+        if (media.example.instance)
+          assert.equal(media.example.instance, route.replace('{productId}', '10'));
+        checked++;
+      }
     }
   }
 }

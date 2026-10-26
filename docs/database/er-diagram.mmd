@@ -281,6 +281,17 @@ erDiagram
     timestamptz revoked_at "nullable"
     timestamptz created_at
   }
+  image_upload_intents {
+    bigint id PK
+    bigint product_id FK
+    bigint actor_id FK
+    varchar public_id UK
+    varchar expected_version "nullable"
+    varchar expected_public_id "nullable"
+    timestamptz expires_at
+    timestamptz consumed_at "nullable"
+    timestamptz created_at
+  }
   roles ||--o{ users : role_id
   users ||--o{ pin_reset_audit : customer_id
   users ||--o{ pin_reset_audit : admin_id
@@ -319,3 +330,5 @@ erDiagram
   users ||--o{ audit_events : actor_id
   users o|--o{ audit_events : customer_id
   sales ||--o{ guest_ticket_tokens : sale_id
+  products ||--o{ image_upload_intents : product_id
+  users ||--o{ image_upload_intents : actor_id
