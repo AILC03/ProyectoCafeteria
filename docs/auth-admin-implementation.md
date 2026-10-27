@@ -1,6 +1,12 @@
 # Autenticación y administración — estado vigente
 
 Actualizado: 2026-10-25. Corrección del PR de Leonel y ampliación del encargo.
+Decisión del 2026-10-26: Ángel acepta ADR 0012. Cloudinary continúa simulado,
+también en CI; no se configurarán credenciales ni se harán llamadas reales sin
+credenciales del equipo y autorización explícita para una prueba pequeña.
+Se conservan las pruebas de autenticación, CSRF, revocación, límites, roles y administración.
+Entrega posterior ORD-01: [órdenes pendientes y operación mínima](orders-implementation.md).
+Las exclusiones inferiores describen esta corrección de auth/admin, no esa entrega posterior.
 No hay registro abierto, bcrypt, Bearer de 8 h ni clave JWT de respaldo.
 No se modificó la contraseña existente de AngelAdmin.
 

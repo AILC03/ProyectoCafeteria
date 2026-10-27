@@ -25,7 +25,8 @@ Distinguir fuentes:
 - Código y pruebas muestran lo implementado/verificado, no aprueban decisiones.
 - Estado actual: [auth/admin](../auth-admin-implementation.md) y encabezado de
   [contexto](../PROJECT-CONTEXT.md). Las secciones históricas no son pendientes actuales.
-- ADR 0012 contiene precisiones implementadas, pero sigue **propuesto** para revisión.
+- ADR 0012 fue **aceptado por Ángel el 2026-10-26**. Cloudinary continúa simulado,
+  también en CI; configurar credenciales o probar el proveedor real requiere autorización posterior.
 
 Si las fuentes se contradicen, señalar archivos/secciones, impacto y alternativas;
 resolver con Ángel (backend) y coordinar contrato con Enrique. No escoger por

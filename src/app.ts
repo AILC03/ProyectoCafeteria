@@ -13,6 +13,8 @@ import type { AuthService } from './modules/auth/auth.service.js';
 import { adminRoutes, availabilityRoutes } from './modules/catalog/admin.routes.js';
 import type { AdminService } from './modules/catalog/admin.service.js';
 import type { ImageService } from './modules/catalog/image.service.js';
+import { ordersRoutes } from './modules/orders/orders.routes.js';
+import type { OrdersService } from './modules/orders/orders.service.js';
 
 type AppOptions = {
   catalogRepository?: CatalogRepository;
@@ -22,6 +24,7 @@ type AppOptions = {
   authService?: AuthService;
   adminService?: AdminService;
   imageService?: ImageService;
+  ordersService?: OrdersService;
 };
 
 export function createApp(options: AppOptions = {}) {
@@ -87,6 +90,9 @@ export function createApp(options: AppOptions = {}) {
     );
     app.use('/api/v1', availabilityRoutes(options.authService, options.adminService));
   }
+
+  if (options.authService && options.ordersService)
+    app.use('/api/v1', ordersRoutes(options.authService, options.ordersService));
 
   const repository = options.catalogRepository ?? {
     async listCategories() {

@@ -1,5 +1,11 @@
 # Operaciones del contrato por completar
 
+Actualización ORD-01 — 2026-10-26: contrato vigente OpenAPI 0.4.0 con auth/admin,
+catálogo y primera entrega orders implementados localmente. Incluye creación
+pendiente móvil/caja, consulta protegida, preparación/LISTO y búsqueda/asociación
+mínima de cliente; no pagos ni worker. [Detalle](../orders-implementation.md).
+Las notas inferiores describen etapas históricas, no pendientes vigentes.
+
 Actualización 2026-10-21: health y las cuatro operaciones de catálogo de lectura
 ya están implementadas/probadas. OpenAPI 0.2.0 es el contrato vigente. Las
 operaciones de escritura, auth y demás módulos siguen pendientes. La descripción

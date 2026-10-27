@@ -1,5 +1,15 @@
 # Avance backend — pasos 1, 2 y 3
 
+## Actualización ORD-01 — 2026-10-26
+
+Auth/admin ya implementados y ADR 0012 aceptado por Ángel; Cloudinary continúa
+simulado. Ahora existe la primera entrega local de orders: creación pendiente
+móvil/caja, precios y snapshots de backend, idempotencia, consultas protegidas,
+asociación mínima de cliente y preparación/LISTO. No se implementaron cobros,
+caja, Stripe, tickets, worker ni expiración automática. Detalle y evidencia:
+[órdenes](orders-implementation.md), [tarea ORD-01](tasks/ORD-01-pending-orders.md).
+Lo que sigue describe la etapa histórica de catálogo, no el estado vigente.
+
 Actualizado: 2026-10-21. Autorización explícita de Ángel el 2026-10-20: candidato corregido, ADR 0011,
 datos ficticios y continuar infraestructura común/catálogo. No equivale a permitir
 otras funcionalidades ni despliegue de producción.

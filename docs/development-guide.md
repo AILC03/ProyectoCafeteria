@@ -39,8 +39,9 @@ Convenciones aceptadas en ADR 0006; completar cada operación conforme a
 
 Coordinar esquema/migraciones con Leonel, revisando ADR y criterios de aceptación;
 coordinar contrato con Enrique.
-ADR 0001–0011 aceptadas; ADR 0012 propuesto para revisión técnica, aunque sus
-precisiones ya están implementadas localmente. Modelo físico, catálogo y
+ADR 0001–0012 aceptadas; Ángel aceptó explícitamente ADR 0012 el 2026-10-26.
+Cloudinary continúa simulado, también en CI; no se autoriza configurar el proveedor real.
+Modelo físico, catálogo y
 auth/admin implementados; consultar [estado vigente y límites](auth-admin-implementation.md).
 No asumir que órdenes, pagos o cualquier otro módulo estén terminados.
 No mezclar aprobaciones documentales con pruebas ejecutadas o infraestructura

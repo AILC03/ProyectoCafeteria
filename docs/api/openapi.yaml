@@ -1,9 +1,12 @@
 openapi: 3.0.3
 info:
   title: API de Cafetería — Backend
-  version: 0.3.0
-  description: API de catálogo, autenticación cookie/CSRF y administración. No hay registro abierto.
+  version: 0.4.0
+  description:
+    'API de catálogo, autenticación cookie/CSRF y administración. No hay registro abierto.
     Cloudinary es opcional y requiere credenciales; ninguna clave real forma parte del contrato.
+    ORD-01: creación pendiente, consultas protegidas, asociación mínima y preparación/LISTO; sin
+    pagos ni expiración automática.'
 paths:
   /api/v1/health:
     get:
@@ -3507,6 +3510,785 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ImageAssociation'
+  /api/v1/orders:
+    post:
+      tags:
+        - Orders
+      operationId: createMobileOrder
+      summary: createMobileOrder
+      description:
+        Invitado o CLIENTE, nunca personal. Requiere Origin exacto y bootstrap CSRF incluso
+        invitado. Si hay cookie de acceso se valida; no se permite omitir sesión inválida como
+        invitado. Cliente se asocia desde sesión, no desde body; guestName solo invitado. CASH o
+        STRIPE fijo. Backend calcula catálogo bajo lock (2026,1), valida disponibilidad y selección;
+        snapshots inmutables. 1–50 líneas, 1–99 unidades; total <=9999900. Folio A+identity
+        (ADR0011), no permiso. PENDIENTE_PAGO con plazo 30 min; no hay Checkout, cobro, QR ni
+        expiración automática.
+      security:
+        - csrfHeader: []
+      parameters:
+        - &a16
+          name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+            pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89aAbB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$
+          description:
+            UUID v4 aleatorio por operación. Alcance por ruta y actor (usuario o invitado). Hash de
+            entrada canónica validada; repetir devuelve mismo 201 y cuerpo original por 48h, incluso
+            si catálogo/estado cambia; otra entrada 409. Después de 48h es una operación nueva. No
+            concede consultas. No registrar en logs.
+      responses:
+        '201':
+          description: 'Resultado correcto; sin efectos de pago. Cache-Control: no-store.'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Order'
+                required:
+                  - data
+              example: &a20
+                data:
+                  id: '1'
+                  folio: A000001
+                  source: MOBILE
+                  status: PENDIENTE_PAGO
+                  paymentMethod: CASH
+                  totalCents: '2000'
+                  customerId: null
+                  guestName: null
+                  paymentExpiresAt: 2026-10-26T12:30:00.000Z
+                  paidAt: null
+                  readyAt: null
+                  readyByEmployeeId: null
+                  createdAt: 2026-10-26T12:00:00.000Z
+                  items: &a17
+                    - id: '1'
+                      productId: '1'
+                      productName: Café
+                      basePriceCents: '2000'
+                      unitPriceCents: '2000'
+                      quantity: 1
+                      lineTotalCents: '2000'
+                      options: []
+        '400':
+          description: 'VALIDATION_ERROR: entrada, query, ID o clave inválidos; campos extra rechazados.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: 'UNAUTHENTICATED: requiere sesión válida; nunca degradar sesión inválida a invitado.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / PIN_CHANGE_REQUIRED / CSRF_INVALID / ORIGIN_NOT_ALLOWED.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: 'NOT_FOUND: ausente, ajena/no visible o cliente no encontrado.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description:
+            'ORDER_CONFLICT / IDEMPOTENCY_CONFLICT: catálogo/configuración/estado o nombre de
+            confirmación incompatibles.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MobileOrderCreate'
+            example:
+              paymentMethod: CASH
+              items:
+                - productId: '1'
+                  quantity: 1
+                  optionValueIds: []
+  /api/v1/cashier/orders:
+    post:
+      tags:
+        - Orders
+      operationId: createCashierOrder
+      summary: createCashierOrder
+      description:
+        CAJERO/ADMINISTRADOR. Crea CASH pendiente, sin abrir/cobrar caja ni exigir sesión de
+        caja en esta entrega. Cliente opcional por identifier exacto y confirmedName; confirmar
+        nombre vigente. customer y guestName son excluyentes. No acepta precios, customerId, source
+        ni estado.
+      security: &a22
+        - accessCookie: &a18 []
+          csrfHeader: []
+        - productionAccessCookie: &a19 []
+          csrfHeader: []
+      parameters:
+        - *a16
+      responses:
+        '201':
+          description: 'Resultado correcto; sin efectos de pago. Cache-Control: no-store.'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Order'
+                required:
+                  - data
+              example:
+                data:
+                  id: '1'
+                  folio: A000001
+                  source: CASHIER
+                  status: PENDIENTE_PAGO
+                  paymentMethod: CASH
+                  totalCents: '2000'
+                  customerId: null
+                  guestName: null
+                  paymentExpiresAt: 2026-10-26T12:30:00.000Z
+                  paidAt: null
+                  readyAt: null
+                  readyByEmployeeId: null
+                  createdAt: 2026-10-26T12:00:00.000Z
+                  items: *a17
+        '400':
+          description: 'VALIDATION_ERROR: entrada, query, ID o clave inválidos; campos extra rechazados.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: 'UNAUTHENTICATED: requiere sesión válida; nunca degradar sesión inválida a invitado.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / PIN_CHANGE_REQUIRED / CSRF_INVALID / ORIGIN_NOT_ALLOWED.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: 'NOT_FOUND: ausente, ajena/no visible o cliente no encontrado.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description:
+            'ORDER_CONFLICT / IDEMPOTENCY_CONFLICT: catálogo/configuración/estado o nombre de
+            confirmación incompatibles.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CashierOrderCreate'
+            example:
+              paymentMethod: CASH
+              items:
+                - productId: '1'
+                  quantity: 1
+  /api/v1/orders/{id}:
+    get:
+      tags:
+        - Orders
+      operationId: getOrder
+      summary: getOrder
+      description: CLIENTE solo propia (ajena 404); CAJERO/ADMINISTRADOR consulta operativa por ID;
+        PREPARACION solo EN_PREPARACION. Invitado 401, aunque conozca folio o clave. Sin perfil,
+        correo, teléfono, credenciales ni historial personal del cliente. Query estricta vacía.
+      security: &a21
+        - accessCookie: *a18
+        - productionAccessCookie: *a19
+      parameters:
+        - &a23
+          name: id
+          in: path
+          required: true
+          schema: &a32
+            type: string
+            pattern: ^[1-9][0-9]{0,18}$
+            description: BIGINT positivo <=9223372036854775807; nunca Number.
+      responses:
+        '200':
+          description: 'Resultado correcto; sin efectos de pago. Cache-Control: no-store.'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Order'
+                required:
+                  - data
+              example: *a20
+        '400':
+          description: 'VALIDATION_ERROR: entrada, query, ID o clave inválidos; campos extra rechazados.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: 'UNAUTHENTICATED: requiere sesión válida; nunca degradar sesión inválida a invitado.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / PIN_CHANGE_REQUIRED / CSRF_INVALID / ORIGIN_NOT_ALLOWED.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: 'NOT_FOUND: ausente, ajena/no visible o cliente no encontrado.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description:
+            'ORDER_CONFLICT / IDEMPOTENCY_CONFLICT: catálogo/configuración/estado o nombre de
+            confirmación incompatibles.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/v1/preparation/orders:
+    get:
+      tags:
+        - Orders
+      operationId: listPreparationOrders
+      summary: listPreparationOrders
+      description: PREPARACION/CAJERO/ADMINISTRADOR. Solo EN_PREPARACION; LISTO sale de esta vista.
+        Resumen sin datos de cuenta, detalle autorizado vía /orders/{id}. Cursor ligado a
+        preparación, estable por (createdAt,id), conserva microsegundos.
+      security: *a21
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: cursor
+          in: query
+          schema:
+            type: string
+            maxLength: 2048
+      responses:
+        '200':
+          description: 'Resultado correcto; sin efectos de pago. Cache-Control: no-store.'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/OrderSummary'
+                  page:
+                    $ref: '#/components/schemas/Page'
+                required:
+                  - data
+                  - page
+              example:
+                data: []
+                page:
+                  limit: 20
+                  nextCursor: null
+        '400':
+          description: 'VALIDATION_ERROR: entrada, query, ID o clave inválidos; campos extra rechazados.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: 'UNAUTHENTICATED: requiere sesión válida; nunca degradar sesión inválida a invitado.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / PIN_CHANGE_REQUIRED / CSRF_INVALID / ORIGIN_NOT_ALLOWED.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: 'NOT_FOUND: ausente, ajena/no visible o cliente no encontrado.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description:
+            'ORDER_CONFLICT / IDEMPOTENCY_CONFLICT: catálogo/configuración/estado o nombre de
+            confirmación incompatibles.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/v1/orders/{id}/ready:
+    post:
+      tags:
+        - Orders
+      operationId: markOrderReady
+      summary: markOrderReady
+      description:
+        'PREPARACION/CAJERO/ADMINISTRADOR. Body {}. Bajo lock de orden revalida EN_PREPARACION
+        y paidAt no nulo; guarda LISTO, readyAt y readyByEmployeeId con auditoría. Estado diferente
+        o repetición: 409 sin modificar actor/fecha. No existe endpoint para forzar pago/preparación
+        ni CANCELADO.'
+      security: *a22
+      parameters:
+        - *a23
+      responses:
+        '200':
+          description: 'Resultado correcto; sin efectos de pago. Cache-Control: no-store.'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Order'
+                required:
+                  - data
+              example:
+                data:
+                  id: '1'
+                  folio: A000001
+                  source: MOBILE
+                  status: LISTO
+                  paymentMethod: CASH
+                  totalCents: '2000'
+                  customerId: null
+                  guestName: null
+                  paymentExpiresAt: 2026-10-26T12:30:00.000Z
+                  paidAt: 2026-10-26T12:05:00.000Z
+                  readyAt: 2026-10-26T12:10:00.000Z
+                  readyByEmployeeId: '2'
+                  createdAt: 2026-10-26T12:00:00.000Z
+                  items: *a17
+        '400':
+          description: 'VALIDATION_ERROR: entrada, query, ID o clave inválidos; campos extra rechazados.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: 'UNAUTHENTICATED: requiere sesión válida; nunca degradar sesión inválida a invitado.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / PIN_CHANGE_REQUIRED / CSRF_INVALID / ORIGIN_NOT_ALLOWED.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: 'NOT_FOUND: ausente, ajena/no visible o cliente no encontrado.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description:
+            'ORDER_CONFLICT / IDEMPOTENCY_CONFLICT: catálogo/configuración/estado o nombre de
+            confirmación incompatibles.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties: {}
+            example: {}
+  /api/v1/cashier/customers/search:
+    post:
+      tags:
+        - Orders
+      operationId: searchOrderCustomer
+      summary: searchOrderCustomer
+      description:
+        CAJERO/ADMINISTRADOR con CSRF. Búsqueda exacta de cliente activo por teléfono MX o
+        customer_number; sin búsqueda parcial/listado general. POST evita PII en URL. Devuelve solo
+        id, name, customerNumber; nunca correo, NIP, teléfono ni historial. Sin coincidencia 404.
+      security: *a22
+      parameters: []
+      responses:
+        '200':
+          description: 'Resultado correcto; sin efectos de pago. Cache-Control: no-store.'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    $ref: '#/components/schemas/OrderCustomerMinimum'
+                required:
+                  - data
+              example:
+                data:
+                  id: '10'
+                  name: Cliente ficticio
+                  customerNumber: C000010
+        '400':
+          description: 'VALIDATION_ERROR: entrada, query, ID o clave inválidos; campos extra rechazados.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: 'UNAUTHENTICATED: requiere sesión válida; nunca degradar sesión inválida a invitado.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / PIN_CHANGE_REQUIRED / CSRF_INVALID / ORIGIN_NOT_ALLOWED.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: 'NOT_FOUND: ausente, ajena/no visible o cliente no encontrado.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description:
+            'ORDER_CONFLICT / IDEMPOTENCY_CONFLICT: catálogo/configuración/estado o nombre de
+            confirmación incompatibles.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderCustomerSearch'
+            example:
+              identifier: C000010
+  /api/v1/cashier/orders/{id}/customer:
+    patch:
+      tags:
+        - Orders
+      operationId: associateOrderCustomer
+      summary: associateOrderCustomer
+      description: CAJERO/ADMINISTRADOR. Asocia cliente activo por identifier y confirmedName. Solo
+        PENDIENTE_PAGO, paidAt nulo y antes de paymentExpiresAt, bajo lock; borra guestName al
+        asociar. No cambia cliente después de pago ni orden expirada. También permite asociar una
+        orden móvil antes del pago; no expone historial del cliente.
+      security: *a22
+      parameters:
+        - *a23
+      responses:
+        '200':
+          description: 'Resultado correcto; sin efectos de pago. Cache-Control: no-store.'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Order'
+                required:
+                  - data
+              example:
+                data:
+                  id: '1'
+                  folio: A000001
+                  source: MOBILE
+                  status: PENDIENTE_PAGO
+                  paymentMethod: CASH
+                  totalCents: '2000'
+                  customerId: '10'
+                  guestName: null
+                  paymentExpiresAt: 2026-10-26T12:30:00.000Z
+                  paidAt: null
+                  readyAt: null
+                  readyByEmployeeId: null
+                  createdAt: 2026-10-26T12:00:00.000Z
+                  items: *a17
+        '400':
+          description: 'VALIDATION_ERROR: entrada, query, ID o clave inválidos; campos extra rechazados.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: 'UNAUTHENTICATED: requiere sesión válida; nunca degradar sesión inválida a invitado.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / PIN_CHANGE_REQUIRED / CSRF_INVALID / ORIGIN_NOT_ALLOWED.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: 'NOT_FOUND: ausente, ajena/no visible o cliente no encontrado.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description:
+            'ORDER_CONFLICT / IDEMPOTENCY_CONFLICT: catálogo/configuración/estado o nombre de
+            confirmación incompatibles.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderCustomerSelection'
+            example:
+              identifier: C000010
+              confirmedName: Cliente ficticio
 tags:
   - name: Auth
     description: Autenticación y recuperación.
@@ -3550,7 +4332,7 @@ components:
         - id
         - name
       properties:
-        id: &a16
+        id: &a24
           type: string
           pattern: ^[0-9]+$
           example: '10'
@@ -3569,7 +4351,7 @@ components:
         - imageUrl
         - isAvailable
       properties:
-        id: *a16
+        id: *a24
         categoryId:
           type: string
           pattern: ^[0-9]+$
@@ -3602,7 +4384,7 @@ components:
         - isAvailable
       additionalProperties: false
       properties:
-        id: *a16
+        id: *a24
         name:
           type: string
           example: Leche de almendra
@@ -3624,7 +4406,7 @@ components:
         - values
       additionalProperties: false
       properties:
-        id: *a16
+        id: *a24
         name:
           type: string
           example: Leche
@@ -3720,7 +4502,7 @@ components:
           enum:
             - STAFF
             - CUSTOMER
-        mustChangePin: &a17
+        mustChangePin: &a25
           type: boolean
       required:
         - id
@@ -3813,23 +4595,23 @@ components:
     CategoryCreate:
       type: object
       additionalProperties: false
-      properties: &a18
+      properties: &a26
         name:
           type: string
           minLength: 1
           maxLength: 120
-        isActive: *a17
+        isActive: *a25
       required:
         - name
     CategoryPatch:
       type: object
       additionalProperties: false
-      properties: *a18
+      properties: *a26
       minProperties: 1
     ProductCreate:
       type: object
       additionalProperties: false
-      properties: &a19
+      properties: &a27
         name:
           type: string
           minLength: 1
@@ -3839,11 +4621,11 @@ components:
           type: string
           maxLength: 1500
           nullable: true
-        basePriceCents: &a22
+        basePriceCents: &a30
           type: string
           pattern: ^(0|[1-9][0-9]{0,6})$
           description: Centavos enteros, máximo 9999900.
-        isAvailable: *a17
+        isAvailable: *a25
       required:
         - name
         - categoryId
@@ -3851,12 +4633,12 @@ components:
     ProductPatch:
       type: object
       additionalProperties: false
-      properties: *a19
+      properties: *a27
       minProperties: 1
     GroupCreate:
       type: object
       additionalProperties: false
-      properties: &a20
+      properties: &a28
         name:
           type: string
           minLength: 1
@@ -3872,12 +4654,12 @@ components:
     GroupPatch:
       type: object
       additionalProperties: false
-      properties: *a20
+      properties: *a28
       minProperties: 1
     ValueCreate:
       type: object
       additionalProperties: false
-      properties: &a21
+      properties: &a29
         name:
           type: string
           minLength: 1
@@ -3887,19 +4669,19 @@ components:
           pattern: ^(0|[1-9][0-9]{0,6})$
           description: Centavos enteros, máximo 9999900.
           nullable: true
-        isAvailable: *a17
+        isAvailable: *a25
       required:
         - name
     ValuePatch:
       type: object
       additionalProperties: false
-      properties: *a21
+      properties: *a29
       minProperties: 1
     Availability:
       type: object
       additionalProperties: false
       properties:
-        isAvailable: *a17
+        isAvailable: *a25
       required:
         - isAvailable
     ProductConfiguration:
@@ -3953,12 +4735,12 @@ components:
           type: string
           minLength: 1
           maxLength: 120
-        isActive: *a17
+        isActive: *a25
         deletedAt:
           type: string
           format: date-time
           nullable: true
-        createdAt: &a23
+        createdAt: &a31
           type: string
           format: date-time
       required:
@@ -3981,7 +4763,7 @@ components:
           type: string
           maxLength: 1500
           nullable: true
-        basePriceCents: *a22
+        basePriceCents: *a30
         imageUrl:
           type: string
           format: uri
@@ -3996,13 +4778,13 @@ components:
           minLength: 1
           maxLength: 40
           nullable: true
-        isAvailable: *a17
+        isAvailable: *a25
         deletedAt:
           type: string
           format: date-time
           nullable: true
-        createdAt: *a23
-        updatedAt: *a23
+        createdAt: *a31
+        updatedAt: *a31
       required:
         - id
         - categoryId
@@ -4054,7 +4836,7 @@ components:
           pattern: ^(0|[1-9][0-9]{0,6})$
           description: Centavos enteros, máximo 9999900.
           nullable: true
-        isAvailable: *a17
+        isAvailable: *a25
         deletedAt:
           type: string
           format: date-time
@@ -4071,7 +4853,7 @@ components:
       additionalProperties: false
       properties:
         intentId: *a15
-        expiresAt: *a23
+        expiresAt: *a31
         maxBytes:
           type: integer
         maxDimension:
@@ -4099,6 +4881,255 @@ components:
         intentId: *a15
       required:
         - intentId
+    OrderCustomerSelection:
+      type: object
+      additionalProperties: false
+      properties:
+        identifier: &a36
+          type: string
+          pattern: ^(C[0-9]{1,19}|\+52[0-9]{10}|[0-9]{10})$
+          description: Búsqueda exacta por customer_number o teléfono MX; se normaliza trim/mayúsculas/+52.
+        confirmedName:
+          type: string
+          minLength: 1
+          maxLength: 120
+      required:
+        - identifier
+        - confirmedName
+    OrderCustomerMinimum:
+      type: object
+      additionalProperties: false
+      properties:
+        id: *a32
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        customerNumber:
+          type: string
+          minLength: 1
+          maxLength: 20
+      required:
+        - id
+        - name
+        - customerNumber
+    OrderLineInput:
+      type: object
+      additionalProperties: false
+      properties:
+        productId: *a32
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 99
+        optionValueIds:
+          type: array
+          maxItems: 5000
+          uniqueItems: true
+          items: *a32
+          description:
+            IDs únicos de opciones asignadas al producto. Omisión equivale a []; se validan todos
+            los mínimos/máximos.
+      required:
+        - productId
+        - quantity
+    MobileOrderCreate:
+      type: object
+      additionalProperties: false
+      properties:
+        paymentMethod:
+          type: string
+          enum:
+            - CASH
+            - STRIPE
+        guestName:
+          type: string
+          minLength: 1
+          maxLength: 120
+        items: &a33
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/OrderLineInput'
+      required:
+        - paymentMethod
+        - items
+    CashierOrderCreate:
+      type: object
+      additionalProperties: false
+      properties:
+        paymentMethod:
+          type: string
+          enum:
+            - CASH
+        guestName:
+          type: string
+          minLength: 1
+          maxLength: 120
+        customer:
+          $ref: '#/components/schemas/OrderCustomerSelection'
+        items: *a33
+      required:
+        - paymentMethod
+        - items
+    OrderOptionSnapshot:
+      type: object
+      additionalProperties: false
+      properties:
+        optionValueId: *a32
+        groupName:
+          type: string
+          minLength: 1
+          maxLength: 120
+        optionName:
+          type: string
+          minLength: 1
+          maxLength: 120
+        surchargeCents: &a34
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,6})$
+          description: Centavos enteros <=9999900.
+      required:
+        - optionValueId
+        - groupName
+        - optionName
+        - surchargeCents
+    OrderItemSnapshot:
+      type: object
+      additionalProperties: false
+      properties:
+        id: *a32
+        productId: *a32
+        productName:
+          type: string
+          minLength: 1
+          maxLength: 160
+        basePriceCents: *a34
+        unitPriceCents: *a34
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 99
+        lineTotalCents: *a34
+        options:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderOptionSnapshot'
+      required:
+        - id
+        - productId
+        - productName
+        - basePriceCents
+        - unitPriceCents
+        - quantity
+        - lineTotalCents
+        - options
+    Order:
+      type: object
+      additionalProperties: false
+      properties:
+        id: *a32
+        folio:
+          type: string
+          pattern: ^A[0-9]{6,}$
+        source:
+          type: string
+          enum:
+            - MOBILE
+            - CASHIER
+        status:
+          type: string
+          enum:
+            - PENDIENTE_PAGO
+            - EN_PREPARACION
+            - LISTO
+            - EXPIRADA
+        paymentMethod:
+          type: string
+          enum:
+            - CASH
+            - STRIPE
+        totalCents: *a34
+        customerId:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}$
+          description: BIGINT positivo <=9223372036854775807; nunca Number.
+          nullable: true
+        guestName:
+          type: string
+          minLength: 1
+          maxLength: 120
+          nullable: true
+        paymentExpiresAt: &a35
+          type: string
+          format: date-time
+        paidAt:
+          type: string
+          format: date-time
+          nullable: true
+        readyAt:
+          type: string
+          format: date-time
+          nullable: true
+        readyByEmployeeId:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}$
+          description: BIGINT positivo <=9223372036854775807; nunca Number.
+          nullable: true
+        createdAt: *a35
+        items:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/OrderItemSnapshot'
+      required:
+        - id
+        - folio
+        - source
+        - status
+        - paymentMethod
+        - totalCents
+        - customerId
+        - guestName
+        - paymentExpiresAt
+        - paidAt
+        - readyAt
+        - readyByEmployeeId
+        - createdAt
+        - items
+    OrderSummary:
+      type: object
+      additionalProperties: false
+      properties:
+        id: *a32
+        folio:
+          type: string
+          pattern: ^A[0-9]{6,}$
+        guestName:
+          type: string
+          minLength: 1
+          maxLength: 120
+          nullable: true
+        status:
+          type: string
+          enum:
+            - EN_PREPARACION
+        createdAt: *a35
+      required:
+        - id
+        - folio
+        - guestName
+        - status
+        - createdAt
+    OrderCustomerSearch:
+      type: object
+      additionalProperties: false
+      properties:
+        identifier: *a36
+      required:
+        - identifier
   securitySchemes:
     accessCookie:
       type: apiKey

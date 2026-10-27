@@ -33,6 +33,9 @@ Usar datos ficticios y base aislada. Nunca ejecutar limpieza de pruebas contra
 producción. No exigir credenciales Stripe reales para pruebas unitarias.
 
 El entorno Docker prepara cafeteria_test y TEST_DATABASE_URL en .env.docker.
+`npm run test:integration` carga ese archivo automáticamente cuando existe;
+ejecutar antes `npm run db:up` para iniciar PostgreSQL. Si se usa otra instalación
+local, definir `TEST_DATABASE_URL` en el entorno sin imprimir credenciales.
 Ver [arranque local](database-setup.md). Esto no conecta automáticamente Vitest a
 PostgreSQL: las pruebas actuales siguen sin base de negocio. La futura limpieza
 debe validar su destino explícitamente; jamás usar desarrollo ni shadow.

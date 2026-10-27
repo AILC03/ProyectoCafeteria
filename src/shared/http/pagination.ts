@@ -26,6 +26,7 @@ const cursorSchema = z
       'admin-products',
       'admin-option-groups',
       'admin-option-values',
+      'preparation-orders',
     ]),
     filters: z.string(),
     id: idSchema,
@@ -39,7 +40,8 @@ export type CursorScope =
   | 'admin-categories'
   | 'admin-products'
   | 'admin-option-groups'
-  | 'admin-option-values';
+  | 'admin-option-values'
+  | 'preparation-orders';
 export function decodeCursor(
   token: string | undefined,
   scope: CursorScope,

@@ -1,6 +1,24 @@
 # Contexto y continuidad del proyecto — Backend Cafetería
 
+## Estado vigente — ORD-01, 2026-10-26
+
+Primera entrega de orders implementada localmente: creación móvil/caja pendiente,
+precios/snapshots backend, idempotencia 48 h, consulta propia/operativa por ID,
+búsqueda/asociación mínima de cliente y preparación/LISTO con actor/fecha.
+OpenAPI 0.4.0; sin migración nueva ni aplicación a desarrollo/shadow/producción.
+No hay cobros, Stripe, caja, tickets/QR, worker ni expiración automática.
+Se conservan auth/admin y Cloudinary simulado. Ver [guía](orders-implementation.md)
+y [tarea con criterios/evidencia](tasks/ORD-01-pending-orders.md).
+Pendiente revisión humana y coordinación con Enrique antes de integrar.
+Los estados inferiores se conservan como historial.
+
 ## Estado vigente — 2026-10-25
+
+Decisión posterior — 2026-10-26: Ángel aceptó explícitamente ADR 0012.
+Cloudinary continúa simulado, también en CI. La prueba real queda aplazada hasta
+tener credenciales del equipo y autorización explícita para una prueba pequeña;
+no configurar ni activar el proveedor real por la sola aceptación del ADR.
+Se mantienen las pruebas de autenticación, CSRF, revocación, límites, roles y administración.
 
 Corregido PR bca186b: se quitaron registro abierto, bcrypt, Bearer y fallbackJWT.
 Auth cookie/Argon2id, sesiones, refresh concurrente, revocación, límites y CSRF

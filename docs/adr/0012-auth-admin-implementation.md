@@ -1,6 +1,6 @@
 # 0012 — Implementación segura de auth y administración
 
-- Estado: Propuesto para revisión técnica; implementado localmente por encargo de corrección de Ángel.
+- Estado: Aceptado por Ángel el 2026-10-26, mediante aprobación explícita en la conversación.
 - Fecha: 2026-10-25.
 - No sustituye plazos, roles ni reglas aceptadas de ADR 0005/0009/0010/0011.
 
@@ -47,7 +47,13 @@ Las cargas se validan antes de asociar; configurar también límites en un prese
 del proveedor para limitar consumo durante la carga directa, no solo finalizar.
 Conservar alertas de cuota Free; no activar planes de pago.
 
-Falta prueba real del proveedor con la cuenta del equipo y revisión frontend
+Por decisión de Ángel del 2026-10-26, Cloudinary continúa simulado, también en CI.
+No configurar credenciales ni realizar llamadas reales hasta contar con credenciales
+del equipo y autorización explícita para una prueba pequeña. La aceptación de este
+ADR no constituye autorización para activar el proveedor ni certifica su funcionamiento real.
+Se mantienen las pruebas de autenticación, CSRF, revocación, límites, roles y administración.
+
+Falta prueba real del proveedor (aplazada) y revisión frontend
 de cookies/CSRF, límites técnicos y 409 de refresh. No hay registro por ticket,
 recuperación de acceso ni CRUD de empleados implementados por esta corrección.
 

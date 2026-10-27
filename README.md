@@ -12,6 +12,11 @@ Las protecciones de GitHub requieren activación manual; no basta con estos arch
 
 ## Estado
 
+**ORD-01, 2026-10-26:** primera entrega local de órdenes pendientes móvil/caja,
+cálculo/snapshots backend, idempotencia, consultas protegidas y preparación/LISTO.
+[Rutas, reglas y límites](docs/orders-implementation.md). Sin cobros, Stripe,
+caja, tickets/QR, worker ni expiración automática. Pendiente revisión e integración.
+
 **Estado vigente 2026-10-25:** autenticación corregida (Argon2id, cookies,
 sesiones/refresh/CSRF/roles) y administración de catálogo implementadas.
 [Guía de uso, rutas y límites](docs/auth-admin-implementation.md).
@@ -59,7 +64,7 @@ regresión solo cuando Docker esté disponible. Ver guía de verificación.
 
 - Enrique: frontend.
 - Leonel: base de datos.
-- Responsable solicitante: backend.
+- Angel: backend.
 - Todos colaboran y revisan cambios de los demás.
 
 ## Organización

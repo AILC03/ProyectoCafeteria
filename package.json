@@ -37,7 +37,7 @@
     "auth:cleanup": "tsx scripts/cleanup-auth.ts",
     "api:features": "node scripts/update-feature-contract.mjs",
     "images:cleanup": "tsx scripts/cleanup-images.ts",
-    "test:integration": "node scripts/test-catalog-integration.mjs"
+    "test:integration": "node --env-file-if-exists=.env.docker scripts/test-catalog-integration.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",
