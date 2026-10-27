@@ -1,6 +1,7 @@
 # Órdenes — primera entrega ORD-01
 
-2026-10-26. Implementación local, pendiente de revisión humana e integración.
+2026-10-26. Implementado y verificado en `dev`; pendiente de revisión humana y
+fusión hacia `main`.
 Fuentes y criterios: [tarea ORD-01](tasks/ORD-01-pending-orders.md).
 Contrato aditivo: [OpenAPI 0.4.0](api/openapi.yaml).
 

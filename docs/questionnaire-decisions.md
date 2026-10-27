@@ -1,6 +1,9 @@
 # Respuestas del cuestionario y decisiones vigentes
 
-Fecha de incorporación: 2026-10-14. Fuente: respuestas explícitas del responsable del backend en este chat. ADR 0001–0010 aceptadas explícitamente; este archivo resume el resultado vigente.
+Registro histórico incorporado el 2026-10-14. Fuente: respuestas explícitas del
+responsable del backend en este chat. ADR 0001–0010 estaban aceptadas entonces;
+ADR 0011 y 0012 se aceptaron después. Consultar el ADR y el estado reconciliado
+para la implementación vigente.
 
 | Tema                    | Resultado                                                                                  |
 | ----------------------- | ------------------------------------------------------------------------------------------ |
@@ -32,7 +35,7 @@ Fecha de incorporación: 2026-10-14. Fuente: respuestas explícitas del responsa
 - Duración de personal resuelta: 8 horas absolutas, sin cierre por inactividad ni extensión mediante refresh.
 - ADR 0005 aceptada: JWT 15 minutos, rotación de renovación con coordinación de concurrencia, revocación inmediata, Argon2id con sal individual y firma secreta exclusiva del backend. Concretar biblioteca, algoritmo de firma y pruebas de concurrencia al implementar.
 - LISTO resuelto: PREPARACION, CAJERO y ADMINISTRADOR pueden marcar EN_PREPARACION como LISTO.
-- ADR 0001–0010 aceptadas. Imágenes: una por producto, JPEG/PNG/WebP, máximo 5 MiB, carga autorizada, reemplazo seguro y marcador visual ante ausencia/fallo. Preparar modelo físico y contratos antes de implementar cada módulo.
+- ADR 0001–0012 aceptadas. Imágenes: una por producto, JPEG/PNG/WebP, máximo 5 MiB, carga autorizada, reemplazo seguro y marcador visual ante ausencia/fallo. Preparar el contrato antes de implementar cada módulo pendiente.
 - Retención/anonimización, hosting, dominio y correo real antes de producción.
 
 ## Cambios necesarios en el modelo

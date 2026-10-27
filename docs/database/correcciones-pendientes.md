@@ -6,7 +6,9 @@ C06 y aprobación C12 ya cerrados; C08 requiere evidencia externa de Leonel/Dock
 La lista inferior conserva la revisión del 18/10; ver backend-progress.md para estado actual.
 
 Actualizado: 18/10/2026. Responsable de revisión final: Angel.
-Estado: **INTEGRADO COMO CANDIDATO, NO APROBADO NI MIGRADO**.
+Estado histórico: **INTEGRADO COMO CANDIDATO, NO APROBADO NI MIGRADO**. Fue
+superado por la aceptación del ADR 0011, las migraciones posteriores y la
+implementación actual en `dev`; conservar como evidencia de la revisión 18/10.
 
 ## Resolución técnica del 18/10/2026
 
@@ -19,7 +21,7 @@ La lista original inferior conserva los hallazgos y criterios. Estado actual:
 | C03 | Corregido: cierre completo obligatorio, actor y diferencia, sin campos de cierre en caja abierta               |
 | C04 | Corregido: esperado/contado no negativos; diferencia negativa válida                                           |
 | C05 | Corregido: índices mapeados, relaciones únicas singulares, ER derivado de Prisma, SVG renderizado y diff vacío |
-| C06 | Protocolos especificados; ADR 0011 propuesta pendiente de aprobación, no servicios implementados               |
+| C06 | Protocolos especificados; en esa fecha ADR 0011 era propuesta. Fue aceptado el 2026-10-20.                     |
 | C07 | Suite funcional repetible: 22 casos y mutantes C01-C04, Prisma deploy/diff/cliente, PostgreSQL 17.10           |
 | C08 | Pendiente externo: Docker falla y no se accede al equipo de Leonel; requiere ejecución suya                    |
 | C09 | Corregido: --to-schema, destinos psql explícitos y runner aislado documentados                                 |

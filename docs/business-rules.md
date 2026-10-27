@@ -77,7 +77,7 @@ Las decisiones restantes se enumeran en [cuestionario resuelto](questionnaire-de
 - BR-ORD-011: PREPARACION, CAJERO y ADMINISTRADOR pueden marcar EN_PREPARACION como LISTO, con actor y fecha registrados; ninguna orden sin pago pasa a LISTO.
 - BR-CAT-007: administrador carga una imagen por producto a Cloudinary Free: JPEG/PNG/WebP, máximo 5 MiB, carga autorizada, reemplazo seguro y marcador visual ante fallo. Conservar referencias en BD y no contratar plan de pago sin decisión explícita. Ver ADR 0010.
 
-ADR 0001–0010 aceptadas; no confundir acuerdos con funciones ya implementadas.
+ADR 0001–0012 aceptadas; no confundir acuerdos con funciones ya implementadas.
 Consultar [decisiones pendientes y aceptación](planning-readiness.md) y
 [matriz de permisos](permissions.md). Las reglas anteriores prevalecen sobre
 el anteproyecto antiguo en registro, permisos de cajero, estados y PostgreSQL.

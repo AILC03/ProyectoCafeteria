@@ -1,5 +1,11 @@
 # Cierre de planeación antes de desarrollo
 
+> **Estado vigente — 2026-10-26.** ADR 0001–0012 aceptados. En `dev` existen
+> persistencia/infraestructura, catálogo, auth/admin y ORD-01; faltan caja,
+> pagos, tickets/registro, recuperación, worker, ventas y Cloudinary real.
+> La evidencia inferior corresponde al cierre de planeación de 2026-10-18 y se
+> conserva como historial, no como lista de trabajo actual.
+
 Actualización vigente 2026-10-20: Ángel aprobó candidato corregido y ADR 0011.
 Migración aplicada a desarrollo, seed y catálogo lectura realizados. Ver
 [backend-progress.md](backend-progress.md). Las puertas de salida inferiores
@@ -8,7 +14,9 @@ registran la etapa histórica de revisión; Docker/entorno Leonel sigue externo.
 Actualizado: 2026-10-18. ADR 0001–0010 aceptadas. Reglas, permisos y parámetros de
 imágenes cerrados; aprobación documental no equivale a funcionalidad implementada.
 
-## Responsabilidades y estado
+## Historial de planeación — 2026-10-18
+
+### Responsabilidades y estado
 
 Coordinar esquema y migraciones con Leonel y contrato con Enrique para frontend.
 Health es el único endpoint implementado. La entrega de Leonel añade 29 modelos,

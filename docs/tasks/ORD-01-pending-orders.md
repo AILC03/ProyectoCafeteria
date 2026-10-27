@@ -3,7 +3,7 @@
 - Responsable: IA por encargo explícito de Ángel, 2026-10-26.
 - Revisor humano: Ángel; coordinación de contrato con Enrique antes de integrar.
 - Rama base: dev. Se conserva la rama actual y todo cambio previo.
-- Estado: implementada localmente; en revisión. Formato global bloqueado por documento previo ajeno (ver evidencia).
+- Estado: implementada y verificada en `dev`; pendiente de revisión humana y fusión a `main`.
 
 ## Objetivo y fuentes
 
@@ -84,20 +84,19 @@ las fuentes; no inventar aprobación. Activar proveedores o pago queda fuera del
 - Cambios previos de aceptación ADR 0012/Cloudinary y archivo ajeno
   `RUTA_DESARROLLO_BACKEND_ACTUAL.md` conservados; no pertenecen a ORD-01.
 
-| Comando ejecutado        | Resultado real de cierre                                                                |
-| ------------------------ | --------------------------------------------------------------------------------------- |
-| npm run typecheck        | Correcto                                                                                |
-| npm run lint             | Correcto                                                                                |
-| npm test                 | 56 correctas, 50 integraciones omitidas aquí y ejecutadas por el runner dedicado        |
-| npm run api:validate     | OpenAPI válido, 40 ejemplos conformes                                                   |
-| npm run db:validate      | Esquema válido; no prueba migración ni conexión por sí solo                             |
-| npm run test:integration | 50 correctas: 19 auth/admin, 13 catálogo, 18 orders                                     |
-| npm run db:verify        | PostgreSQL 17.10: 22 comprobaciones correctas y mutantes C01–C04 detectados             |
-| npm run build            | Correcto                                                                                |
-| npm run format:check     | Falla solo por RUTA_DESARROLLO_BACKEND_ACTUAL.md, archivo previo ajeno; no reformateado |
+| Comando ejecutado        | Resultado real de cierre                                                         |
+| ------------------------ | -------------------------------------------------------------------------------- |
+| npm run typecheck        | Correcto                                                                         |
+| npm run lint             | Correcto                                                                         |
+| npm test                 | 56 correctas, 50 integraciones omitidas aquí y ejecutadas por el runner dedicado |
+| npm run api:validate     | OpenAPI válido, 40 ejemplos conformes                                            |
+| npm run db:validate      | Esquema válido; no prueba migración ni conexión por sí solo                      |
+| npm run test:integration | 50 correctas: 19 auth/admin, 13 catálogo, 18 orders                              |
+| npm run db:verify        | PostgreSQL 17.10: 22 comprobaciones correctas y mutantes C01–C04 detectados      |
+| npm run build            | Correcto                                                                         |
+| npm run format:check     | Correcto tras formatear la documentación previa que lo bloqueaba                 |
 
-- Formato de todos los archivos de ORD-01 comprobado por separado; el bloqueo
-  global queda pendiente de resolución por el responsable antes de integrar.
+- Formato global comprobado correctamente; el bloqueo documental anterior quedó resuelto.
 - Durante desarrollo se corrigieron errores de tipos de helpers de tests y una
   diferencia de orden de claves JSON entre respuesta inicial/replay. La respuesta
   inicial ahora procede de la misma representación JSONB persistida. La suite final pasa.

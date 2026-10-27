@@ -1,7 +1,8 @@
 # Protocolos de integridad
 
-2026-10-18. Especificación de servicios futuros, no funcionalidades construidas.
-Precisiones de políticas requieren revisión de ADR 0011 propuesta.
+2026-10-18. Especificación de servicios futuros. ADR 0011 fue aceptado el
+2026-10-20; algunas garantías ya se implementaron en auth/orders y las restantes
+continúan como guía para sus módulos pendientes.
 
 ## Identificadores
 
@@ -49,7 +50,7 @@ Reintentar deadlocks/fallos serializables con límite e idempotencia.
 
 ## Ticket y refresh
 
-Ver ADR 0011 propuesta; esquema soporta expiración/revocación, no fija por sí
+Ver ADR 0011 aceptado; el esquema soporta expiración/revocación, no fija por sí
 solo duración ni protocolo concurrente. Token ticket nunca permite ver estado.
 
 ## Restricciones manuales SQL

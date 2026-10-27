@@ -14,7 +14,9 @@ Actualizado: 2026-10-21. Autorización explícita de Ángel el 2026-10-20: candi
 datos ficticios y continuar infraestructura común/catálogo. No equivale a permitir
 otras funcionalidades ni despliegue de producción.
 
-## 1. Persistencia y datos
+## Historial de catálogo e infraestructura — 2026-10-21
+
+### 1. Persistencia y datos
 
 - Se comprobó desarrollo/shadow: 0 tablas antes de migrar.
 - DATABASE_URL realmente apunta a la base local `ProyectoCafeteria`, no al nombre
@@ -55,8 +57,9 @@ hay endpoint de login: la cuenta queda preparada para el módulo de autenticaci�
 - Límite público por IP configurable CATALOG_RATE_LIMIT (120/minuto por defecto)
   en memoria por proceso; health excluido. Es protección inicial de lectura,
   no reemplaza limitación persistente de login ni sirve como límite distribuido.
-- No hay operaciones de escritura HTTP, login ni cookies de sesión todavía.
-  CSRF y controles de autenticación son requisito antes de incorporarlos.
+- En esa etapa aún no había operaciones de escritura HTTP, login ni cookies de
+  sesión. Actualmente auth/admin implementan esos controles; este punto se
+  conserva como evidencia histórica.
 - Dependencias de implementación: cors, helmet, pino, express-rate-limit y argon2;
   sus funciones justifican su incorporación. Argon2 ya estaba definido en ADR 0005.
 

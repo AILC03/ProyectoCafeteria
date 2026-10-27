@@ -9,16 +9,16 @@ explica cómo usarla; no sustituye los esquemas, ejemplos ni códigos de error d
 
 ## 1. Estado actual del backend
 
-| Área                                                            | Estado                                                   | Qué puede construir frontend ahora                                                                   |
-| --------------------------------------------------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Catálogo público                                                | Implementado                                             | Menú, categorías, detalle de producto y selección de opciones.                                       |
-| Autenticación                                                   | Implementada                                             | Login de cliente/personal, sesión actual, refresh, logout y cambio de NIP/contraseña.                |
-| Administración                                                  | Implementada                                             | Catálogo, disponibilidad, configuraciones y flujo de carga de imágenes.                              |
-| Órdenes ORD-01                                                  | Implementado localmente, pendiente de integración humana | Crear órdenes pendientes, consultar según rol, asociar cliente en caja y vista de preparación/LISTO. |
-| Caja y cobro efectivo                                           | Pendiente                                                | No mostrar cobro, apertura/cierre, cambio ni QR de cobro como funciones activas.                     |
-| Stripe                                                          | Pendiente                                                | No iniciar Checkout ni interpretar una orden Stripe como pagada.                                     |
-| Registro QR, recuperación de NIP, correo, favoritos e historial | Pendiente                                                | No crear pantallas finales conectadas a endpoints inexistentes.                                      |
-| Cloudinary                                                      | Flujo backend implementado; proveedor real pendiente     | Preparar interfaz de imagen; validar con el equipo antes de habilitarla contra una cuenta real.      |
+| Área                                                            | Estado                                                             | Qué puede construir frontend ahora                                                                   |
+| --------------------------------------------------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| Catálogo público                                                | Implementado                                                       | Menú, categorías, detalle de producto y selección de opciones.                                       |
+| Autenticación                                                   | Implementada                                                       | Login de cliente/personal, sesión actual, refresh, logout y cambio de NIP/contraseña.                |
+| Administración                                                  | Implementada                                                       | Catálogo, disponibilidad, configuraciones y flujo de carga de imágenes.                              |
+| Órdenes ORD-01                                                  | Implementado y verificado en `dev`; pendiente de fusionar a `main` | Crear órdenes pendientes, consultar según rol, asociar cliente en caja y vista de preparación/LISTO. |
+| Caja y cobro efectivo                                           | Pendiente                                                          | No mostrar cobro, apertura/cierre, cambio ni QR de cobro como funciones activas.                     |
+| Stripe                                                          | Pendiente                                                          | No iniciar Checkout ni interpretar una orden Stripe como pagada.                                     |
+| Registro QR, recuperación de NIP, correo, favoritos e historial | Pendiente                                                          | No crear pantallas finales conectadas a endpoints inexistentes.                                      |
+| Cloudinary                                                      | Flujo backend implementado; proveedor real pendiente               | Preparar interfaz de imagen; validar con el equipo antes de habilitarla contra una cuenta real.      |
 
 ## 2. Archivos que se deben leer antes de implementar una pantalla
 
@@ -283,7 +283,7 @@ Al terminar una tarea backend que cambie integración:
 
 1. Actualizar OpenAPI y validarlo antes de dar por disponible una ruta.
 2. Cambiar la tabla de estado, las rutas y los flujos de esta guía.
-3. Indicar si la función está propuesta, implementada localmente, verificada o integrada.
+3. Indicar si la función está propuesta, implementada en `dev`, verificada o integrada en `main`.
 4. Añadir una entrada al historial con fecha, tarea, rutas afectadas y acción necesaria
    para frontend.
 5. Avisar al responsable de frontend antes de romper o cambiar un contrato existente.

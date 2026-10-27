@@ -3,7 +3,7 @@
 - Responsable: Ángel/Codex, 2026-10-26.
 - Revisor humano: Ángel.
 - Rama base: dev.
-- Estado: en revisión.
+- Estado: implementada y validada en `dev`; pendiente de revisión humana y fusión a `main`.
 
 ## Objetivo y fuentes
 

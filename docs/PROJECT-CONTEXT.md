@@ -1,18 +1,19 @@
 # Contexto y continuidad del proyecto — Backend Cafetería
 
-## Estado vigente — ORD-01, 2026-10-26
+## Estado vigente — `dev`, 2026-10-26
 
-Primera entrega de orders implementada localmente: creación móvil/caja pendiente,
+ADR 0001–0012 aceptados. Primera entrega de orders implementada y verificada en
+`dev`: creación móvil/caja pendiente,
 precios/snapshots backend, idempotencia 48 h, consulta propia/operativa por ID,
 búsqueda/asociación mínima de cliente y preparación/LISTO con actor/fecha.
 OpenAPI 0.4.0; sin migración nueva ni aplicación a desarrollo/shadow/producción.
 No hay cobros, Stripe, caja, tickets/QR, worker ni expiración automática.
 Se conservan auth/admin y Cloudinary simulado. Ver [guía](orders-implementation.md)
 y [tarea con criterios/evidencia](tasks/ORD-01-pending-orders.md).
-Pendiente revisión humana y coordinación con Enrique antes de integrar.
+Pendiente revisión humana y coordinación con Enrique antes de fusionar a `main`.
 Los estados inferiores se conservan como historial.
 
-## Estado vigente — 2026-10-25
+## Historial — 2026-10-25
 
 Decisión posterior — 2026-10-26: Ángel aceptó explícitamente ADR 0012.
 Cloudinary continúa simulado, también en CI. La prueba real queda aplazada hasta
@@ -30,7 +31,7 @@ pruebas, intents y dispatcher durable implementados. No hay recuperación/regist
 por ticket, CRUD empleados ni módulos de compras. Ver auth-admin-implementation.md.
 Las secciones inferiores son historial y no sustituyen este estado.
 
-## Estado vigente — 2026-10-20
+## Historial — 2026-10-20
 
 Ángel aprobó candidato y ADR 0011, datos demo y desarrollo de pasos 2/3.
 Migración aplicada sin reset a ProyectoCafeteria local (vacía antes de aplicar),
@@ -40,7 +41,7 @@ requiere contraseña interactiva mediante npm run admin:create; no se creó con
 contraseña predeterminada. [Detalle vigente](backend-progress.md).
 Las secciones de revisión previas son historial, no el estado actual de módulos.
 
-## Actualización de correcciones — 2026-10-18
+## Historial de correcciones — 2026-10-18
 
 - Candidato SQL corregido: 21 defaults, cambio efectivo no nulo, cierre completo
   e importes no negativos. Índices/relaciones únicas alineados con Prisma.
@@ -54,11 +55,10 @@ Las secciones de revisión previas son historial, no el estado actual de módulo
 - Nuevos comandos api:validate, db:diagram, db:verify y db:verify:docker.
 - Herramientas dev de validación: Swagger Parser, AJV, ajv-formats y YAML;
   añadidas para validación reproducible del contrato, no al runtime.
-- ADR 0011 es propuesta, no aceptada: números únicos, ticket y refresh concurrente.
-- Pendientes: C08 en entorno Leonel/Docker, aprobación ADR 0011 y cierre C12.
-- No hay módulos de negocio implementados ni migración a las bases del proyecto.
+- En ese momento ADR 0011 era propuesta; fue aceptado el 2026-10-20.
+- Los pendientes y la ausencia de módulos corresponden a esta revisión histórica.
 
-Actualizado: 2026-10-18. ADR 0001–0010 aprobadas; entrega candidata de Leonel integrada.
+Actualizado: 2026-10-18. ADR 0001–0010 aprobadas en esa fecha; entrega candidata de Leonel integrada.
 Este archivo resume acuerdos e implementación real; no sustituye reglas ni ADR.
 
 ## 1. Ubicación y responsabilidades
@@ -78,7 +78,7 @@ No inferir el nombre del responsable del backend por el usuario de Windows.
 - Configuración de entorno validada con Zod; arranque y cierre SIGINT/SIGTERM.
 - Prisma PostgreSQL con 29 modelos y SQL de migración candidatos recibidos de Leonel.
   Integrados localmente, sin corregir ni aplicar a las bases del proyecto.
-- OpenAPI incorpora cuatro consultas del catálogo como contrato futuro; no endpoints.
+- En esa fecha OpenAPI incorporaba cuatro consultas de catálogo como contrato futuro; no endpoints.
 - ER, diccionario físico, backlog e informes en docs/database y docs/development-tasks.md.
   Revisar [correcciones pendientes](database/correcciones-pendientes.md) antes de aprobar.
 - npm y lockfile, ESLint, Prettier, EditorConfig y TypeScript estricto.
@@ -93,10 +93,10 @@ El código actual tiene express.json de 100kb. ADR 0009 exige 256 KiB:
 es una diferencia de implementación pendiente, no cambiar el acuerdo para
 describir como terminado lo que aún no está implementado.
 
-No hay autenticación, CRUD de negocio, persistencia de negocio aplicada, pagos, caja, workers,
-correo, integración Cloudinary ni endpoints de negocio. Directorios .gitkeep no
-implican funcionalidad. Solo health está implementado. Git independiente confirmado;
-dev es la rama de trabajo y la copia local sigue origin/dev.
+En esa fecha no había autenticación, CRUD de negocio, persistencia aplicada ni
+endpoints de negocio fuera de health. Esa afirmación está superada por las
+entregas posteriores; los pagos, caja, worker, correo y Cloudinary real siguen
+pendientes. Git independiente confirmado; dev es la rama de trabajo.
 No se ha confirmado configuración CI.
 
 ## 3. Decisiones aceptadas
