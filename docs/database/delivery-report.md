@@ -1,6 +1,10 @@
 # Entrega de Leonel — ESMAOS (candidato de revisión)
 
-**Estado: ENTREGADO PARA REVISIÓN DE ÁNGEL — NO APROBADO.**
+> **Documento histórico de la entrega inicial.** ADR 0011 fue aceptado, las
+> migraciones posteriores y módulos actuales están en `dev`; este informe no
+> sustituye `prisma/schema.prisma`, los ADR ni el estado reconciliado.
+
+**Estado al momento de la entrega: ENTREGADO PARA REVISIÓN DE ÁNGEL — NO APROBADO.**
 
 ## Actualización de revisión técnica — 18/10/2026
 
@@ -16,8 +20,9 @@ Esto es evidencia de revisión, no comprobaciones atribuidas a Leonel.
 Ver `verification.md` y `review-evidence/corrections-results.json`.
 
 No se migró desarrollo, shadow ni producción; no se publicó ni se creó commit.
-Siguen pendientes C08 en equipo de Leonel/Docker, revisión de propuesta ADR 0011
-y aprobación final. No cerrar la entrega automáticamente por pasar pruebas.
+En ese momento seguían pendientes C08 en equipo de Leonel/Docker, revisión de la
+propuesta ADR 0011 y aprobación final. No cerrar la entrega automáticamente por
+pasar pruebas.
 
 ## Origen
 

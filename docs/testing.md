@@ -1,9 +1,10 @@
 # Estrategia de pruebas
 
-Vitest y Supertest configurados según ADR 0002. Ejecutar npm test.
-Actualmente solo existen pruebas de health y configuración; los casos de
-negocio siguientes son criterios pendientes, no pruebas implementadas.
-Consultar la matriz AC-01–AC-22 en [cierre de planeación](planning-readiness.md).
+Vitest y Supertest están configurados según ADR 0002. En `dev`, `npm test`
+verificó 56 pruebas unitarias/HTTP y `npm run test:integration` verificó 50
+pruebas PostgreSQL para auth/admin, catálogo y ORD-01. Los casos siguientes
+siguen siendo criterios de los módulos aún pendientes, salvo los ya cubiertos
+por esas suites. Consultar el [estado reconciliado](tasks/DOC-01-adr-status-reconciliation.md).
 
 ## Niveles previstos
 
@@ -33,8 +34,12 @@ Usar datos ficticios y base aislada. Nunca ejecutar limpieza de pruebas contra
 producción. No exigir credenciales Stripe reales para pruebas unitarias.
 
 El entorno Docker prepara cafeteria_test y TEST_DATABASE_URL en .env.docker.
-Ver [arranque local](database-setup.md). Esto no conecta automáticamente Vitest a
-PostgreSQL: las pruebas actuales siguen sin base de negocio. La futura limpieza
+`npm run test:integration` carga ese archivo automáticamente cuando existe;
+ejecutar antes `npm run db:up` para iniciar PostgreSQL. Si se usa otra instalación
+local, definir `TEST_DATABASE_URL` en el entorno sin imprimir credenciales.
+Ver [arranque local](database-setup.md). Esto no conecta automáticamente cualquier
+prueba nueva a PostgreSQL: las suites de integración existentes sí cubren negocio.
+La futura limpieza
 debe validar su destino explícitamente; jamás usar desarrollo ni shadow.
 
 ## Casos adicionales de ADR aceptadas
@@ -54,5 +59,6 @@ debe validar su destino explícitamente; jamás usar desarrollo ni shadow.
 - Carga Cloudinary solo admin, una imagen JPEG/PNG/WebP hasta 5 MiB; fallo no pierde foto anterior.
 - Worker reiniciable, reintento idempotente y outbox cifrada con purga; recuperación/verificación 30 minutos.
 
-El código actual aún aplica JSON 100kb; cambiar a 256 KiB al implementar
-ADR 0009 y cubrir el límite con pruebas. No registrar estos casos como ejecutados.
+El límite JSON y los controles transversales de ADR 0009 están implementados en
+los módulos disponibles. No registrar como ejecutados los casos de pagos,
+recuperación, worker o Cloudinary real hasta que existan sus pruebas.

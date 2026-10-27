@@ -8,9 +8,10 @@ default UTC. Índice de expiración/consumo. El intent pertenece al administrado
 creador y a un producto; vence en 10 min y se consume una vez. CAS compara
 public_id y versión. No almacena archivos ni secretos Cloudinary.
 
-Modelo lógico consolidado con ADR 0001–0010 y cuestionario. No es todavía
-DDL ni esquema Prisma implementado. Longitudes y restricciones concretas se
-detallarán antes de generar migraciones. PK: clave primaria; FK: referencia;
+Modelo lógico consolidado con ADR 0001–0012 y cuestionario. El esquema físico
+implementado se consulta en `prisma/schema.prisma` y sus migraciones; este
+documento también conserva el diseño de referencia de los flujos pendientes.
+PK: clave primaria; FK: referencia;
 UQ: único; `?`: nullable. IDs internos BIGINT, dinero como enteros
 en centavos, fechas UTC. No eliminar históricos físicamente.
 
@@ -36,7 +37,7 @@ aleatorios SHA-256; NIP/contraseñas con Argon2id y sal individual (ADR 0005). P
 ## 2. Catálogo y personalizaciones
 
 Imágenes: proveedor Cloudinary Free aceptado en ADR 0010. image_url se conserva;
-image_public_id e image_version conservan referencia de reemplazo/limpieza. Una imagen JPEG/PNG/WebP por producto, máximo 5 MiB; carga firmada, validación y reemplazo seguro. orders.ready_by_employee_id audita quién marca LISTO (PREPARACION/CAJERO/ADMINISTRADOR). No hay modelos ni migraciones implementados.
+image_public_id e image_version conservan referencia de reemplazo/limpieza. Una imagen JPEG/PNG/WebP por producto, máximo 5 MiB; carga firmada, validación y reemplazo seguro. orders.ready_by_employee_id audita quién marca LISTO (PREPARACION/CAJERO/ADMINISTRADOR). Los modelos y migraciones de catálogo están implementados; Cloudinary real sigue pendiente y se usa proveedor simulado en pruebas.
 
 | Tabla                 | Campos                                                                                                                                                       |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |

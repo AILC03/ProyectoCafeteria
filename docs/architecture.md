@@ -2,7 +2,7 @@
 
 ## Base acordada
 
-Frontend y backend en repositorios separados. Backend previsto con Node.js,
+Frontend y backend en repositorios separados. Backend implementado con Node.js,
 Express, TypeScript y PostgreSQL; comunicación HTTP/JSON mediante API REST.
 
 ## Organización aceptada — ADR 0003
@@ -40,5 +40,8 @@ ADR 0007 aceptada: confirmación, reconciliación y expiración de pagos.
 ADR 0008 aceptada: tareas persistentes, worker, reintentos y correo.
 ADR 0009 aceptada: seguridad web, CI, entornos y respaldos.
 ADR 0010 aceptada: Cloudinary Free, carga desde panel y límites de imágenes.
-Quedan diseño físico y contratos por operación antes de implementar módulos.
-Consultar [cierre de planeación](planning-readiness.md) y [permisos](permissions.md).
+ADR 0011 y ADR 0012 también están aceptadas. Ya existen los módulos de catálogo,
+auth, admin y orders en `dev`; siguen pendientes cash, payments, customers,
+tickets y worker. El esquema y contrato de cada flujo pendiente deben definirse
+antes de implementarlo. Consultar [estado reconciliado](tasks/DOC-01-adr-status-reconciliation.md)
+y [permisos](permissions.md).

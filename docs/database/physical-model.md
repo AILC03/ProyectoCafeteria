@@ -1,6 +1,9 @@
 # Modelo físico candidato — ESMAOS
 
-> Estado: **candidato para revisión de Ángel**, no migrado a bases compartidas. Fuente: ADR 0001–0010 y `docs/data-dictionary.md`.
+> **Registro histórico de la revisión inicial.** El esquema y las migraciones
+> vigentes están en `prisma/schema.prisma` y `prisma/migrations/`; ADR 0001–0012
+> están aceptados. Este documento conserva el candidato original y no sustituye
+> esas fuentes.
 
 ## Convenciones
 

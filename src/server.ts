@@ -11,6 +11,8 @@ import { AdminService } from './modules/catalog/admin.service.js';
 import { ImageService } from './modules/catalog/image.service.js';
 import { CloudinaryProvider } from './modules/catalog/image.provider.js';
 import { cloudinaryConfiguration } from './config/cloudinary.js';
+import { OrdersRepository } from './modules/orders/orders.repository.js';
+import { OrdersService } from './modules/orders/orders.service.js';
 
 const logger = pino({
   redact: [
@@ -52,6 +54,7 @@ async function main() {
     catalogRateLimit: env.CATALOG_RATE_LIMIT,
     authService: auth ? new AuthService(new AuthRepository(database), auth) : undefined,
     adminService,
+    ordersService: new OrdersService(new OrdersRepository(database)),
     imageService: cloud ? new ImageService(adminService, new CloudinaryProvider(cloud)) : undefined,
   });
   const server = app.listen(env.PORT, () =>

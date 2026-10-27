@@ -1,5 +1,10 @@
 # Verificación y evidencias — candidato corregido
 
+> **Registro histórico de validación.** ADR 0011 fue aceptado el 2026-10-20 y
+> el proyecto avanzó con migraciones, auth/admin y ORD-01 en `dev`. Las secciones
+> siguientes preservan la evidencia de la revisión del candidato; no describen
+> por sí solas el estado actual de implementación.
+
 ## Revisión del 18/10/2026
 
 La sección histórica inferior describe la entrega original de Leonel. La
@@ -39,8 +44,9 @@ ajv-formats); 18 ejemplos contra esquemas y rutas. Dependencias solo de
 desarrollo añadidas para hacer reproducible la corrección C10, no para la API runtime.
 ER renderizado con Mermaid CLI 11; fuente generable con `npm run db:diagram`.
 
-Pendientes externos: conexión en el ordenador de Leonel y primer arranque Compose
-(C08), aprobación de precisiones ADR 0011 y revisión final de Ángel (C12).
+Pendientes en esa revisión: conexión en el ordenador de Leonel y primer arranque
+Compose (C08), aprobación de ADR 0011 y revisión final de Ángel (C12). La
+aprobación de ADR 0011 ocurrió posteriormente.
 
 ## Estado real al entregar
 

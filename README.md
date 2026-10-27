@@ -12,29 +12,35 @@ Las protecciones de GitHub requieren activación manual; no basta con estos arch
 
 ## Estado
 
-**Estado vigente 2026-10-25:** autenticación corregida (Argon2id, cookies,
+**Estado vigente en `dev`, 2026-10-26:** ADR 0001–0012 aceptados. Primera
+entrega de órdenes pendientes móvil/caja,
+cálculo/snapshots backend, idempotencia, consultas protegidas y preparación/LISTO.
+[Rutas, reglas y límites](docs/orders-implementation.md). Sin cobros, Stripe,
+caja, tickets/QR, worker ni expiración automática. Pendiente revisión del PR y
+fusión hacia `main`.
+
+**Entrega previa, 2026-10-25:** autenticación corregida (Argon2id, cookies,
 sesiones/refresh/CSRF/roles) y administración de catálogo implementadas.
 [Guía de uso, rutas y límites](docs/auth-admin-implementation.md).
 Cloudinary requiere credenciales y prueba real; hay mock e infraestructura de
 intents/limpieza. No hay registro abierto. La contraseña de AngelAdmin se conserva.
 Las notas inferiores de etapas 1–3 se conservan como historial.
 
-**Actualización 2026-10-20:** candidato y ADR 0011 aprobados, migración aplicada
+**Historial, 2026-10-20:** candidato y ADR 0011 aprobados, migración aplicada
 a desarrollo y menú demo cargado. Infraestructura común y cuatro GET de catálogo
 implementados. [Estado vigente y comandos](docs/backend-progress.md).
 Crear administrador en terminal local con `npm run admin:create`; todavía no
 existe endpoint de login.
 
-Base Express/TypeScript ejecutable con health y catálogo de lectura, 29 modelos,
-migración aprobada y contrato OpenAPI. Candidato probado en PostgreSQL 17.10;
-pendiente evidencia en equipo de Leonel, no la aprobación de Ángel ya otorgada.
-Ver [correcciones pendientes](docs/database/correcciones-pendientes.md).
-Migración aplicada a desarrollo local; shadow sin cambios. Arranque Docker preparado; ver estado de
-validación en la guía de PostgreSQL.
+La base incluye Express/TypeScript, persistencia Prisma, catálogo, auth/admin y
+órdenes pendientes. El historial de validación inicial se conserva en
+[correcciones pendientes](docs/database/correcciones-pendientes.md); no describe
+el alcance actual.
 
 Tecnologías previstas: Node.js, Express, TypeScript, API REST y PostgreSQL.
 Prisma 7, npm, Zod, ESLint 10, Prettier, Vitest 5 y Supertest aprobados en ADR 0002.
-Autenticación definida en ADR 0005, todavía sin implementar.
+Autenticación implementada conforme ADR 0005; los flujos de recuperación de NIP
+siguen pendientes.
 
 ## Ejecutar localmente
 
@@ -59,7 +65,7 @@ regresión solo cuando Docker esté disponible. Ver guía de verificación.
 
 - Enrique: frontend.
 - Leonel: base de datos.
-- Responsable solicitante: backend.
+- Angel: backend.
 - Todos colaboran y revisan cambios de los demás.
 
 ## Organización
@@ -89,9 +95,9 @@ Los archivos `.gitkeep` mantienen directorios vacíos al versionarlos.
 
 ## Próximo trabajo
 
-1. Crear AngelAdmin localmente con admin:create (sin contraseña predeterminada).
-2. Revisar contrato de catálogo implementado con Enrique.
-3. Implementar autenticación/permisos/CSRF antes de CRUD o cobros.
-4. Continuar administración, órdenes y compra en efectivo según backlog.
+1. Revisar y fusionar el PR de `dev` a `main`.
+2. Coordinar con frontend el contrato OpenAPI vigente.
+3. Implementar caja y cobro en efectivo antes de Stripe.
+4. Continuar tickets/registro, recuperación de NIP, worker y pagos según backlog.
 
 Nunca subir `.env`, claves Stripe, credenciales reales ni datos personales.

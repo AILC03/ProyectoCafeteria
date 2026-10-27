@@ -1,7 +1,8 @@
 # Registro de decisiones arquitectónicas (ADR)
 
 [0012 — Precisiones de implementación auth/admin](0012-auth-admin-implementation.md):
-propuesto para revisión técnica; implementación local y pruebas disponibles.
+aceptado explícitamente por Ángel el 2026-10-26; implementación y pruebas disponibles.
+Cloudinary continúa simulado, también en CI; la aceptación no autoriza una prueba real.
 
 ADR adicional: [0011 — Protocolos de integridad](0011-integrity-protocols.md),
 aceptada explícitamente el 2026-10-20. ADR 0001–0010 conservan su estado aceptado.
@@ -21,14 +22,14 @@ recargos globales excepto tamaños por producto. Ver reglas y diccionario.
 
 ## Estado actual
 
-ADR 0001–0010 aceptadas, incluidos límites y procedimiento de imágenes.
-Quedan preparación del modelo físico, contratos por operación y configuración
-de entornos; las aprobaciones no equivalen a funcionalidades implementadas.
+ADR 0001–0012 están aceptadas. En `dev` ya se implementaron infraestructura y
+persistencia, catálogo, auth/admin y `ORD-01`; que una ADR esté aceptada no
+convierte automáticamente el resto de sus flujos en funcionalidad disponible.
 
-Prisma, herramientas y pruebas ya se eligieron en ADR 0002. Las decisiones
-posteriores concretan su uso; no son funcionalidades implementadas.
-Consultar [cierre de planeación](../planning-readiness.md),
-[permisos](../permissions.md) y [contrato](../api/contract-plan.md).
+Pendientes principales: caja/efectivo, pagos Stripe, tickets y registro QR,
+recuperación de NIP, worker/correo, ventas y Cloudinary real. Consultar el
+[estado reconciliado](../tasks/DOC-01-adr-status-reconciliation.md), el
+[contrato](../api/contract-plan.md) y las tareas de desarrollo.
 
 ## ADR registrados
 
