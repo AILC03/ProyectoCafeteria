@@ -41,7 +41,9 @@ ADR 0008 aceptada: tareas persistentes, worker, reintentos y correo.
 ADR 0009 aceptada: seguridad web, CI, entornos y respaldos.
 ADR 0010 aceptada: Cloudinary Free, carga desde panel y límites de imágenes.
 ADR 0011 y ADR 0012 también están aceptadas. Ya existen los módulos de catálogo,
-auth, admin y orders en `dev`; siguen pendientes cash, payments, customers,
-tickets y worker. El esquema y contrato de cada flujo pendiente deben definirse
+auth, admin y orders en `dev`. Entrega local CASH-01/02 añade cash, payments,
+sales (repositorio) y tickets, pendiente revisión/integración; customers y worker
+siguen pendientes. Ver [diseño y límites](cash-implementation.md).
+El esquema y contrato de cada flujo pendiente deben definirse
 antes de implementarlo. Consultar [estado reconciliado](tasks/DOC-01-adr-status-reconciliation.md)
 y [permisos](permissions.md).

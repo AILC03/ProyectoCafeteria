@@ -157,6 +157,11 @@ export class OrdersService {
       if (!order) throw notFound();
       if (order.status !== 'EN_PREPARACION' || !order.paidAt)
         throw orderConflict('Solo órdenes pagadas EN_PREPARACION pueden pasar a LISTO');
+      if (
+        order.paymentMethod === 'CASH' &&
+        !(await tx.hasSuccessfulCashPayment(id, order.totalCents))
+      )
+        throw orderConflict('Falta pago CASH exitoso y venta coherente');
       const now = this.now(),
         updated = await tx.ready(id, actor.userId, now);
       await tx.audit(actor.userId, 'ORDER_READY', id, now);

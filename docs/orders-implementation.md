@@ -1,5 +1,11 @@
 # Órdenes — primera entrega ORD-01
 
+Continuidad CASH-01/02 — 2026-10-27: [cobro efectivo y ticket](cash-implementation.md)
+implementados localmente. CASH ahora exige pago SUCCEEDED y venta coherente al
+marcar LISTO, además de estado/paidAt. Las exclusiones inferiores corresponden
+a la entrega histórica ORD-01; OpenAPI vigente 0.5.0. Registro final/Stripe/worker
+siguen pendientes. No se cambió cálculo ni snapshots de órdenes.
+
 2026-10-26. Implementado y verificado en `dev`; pendiente de revisión humana y
 fusión hacia `main`.
 Fuentes y criterios: [tarea ORD-01](tasks/ORD-01-pending-orders.md).

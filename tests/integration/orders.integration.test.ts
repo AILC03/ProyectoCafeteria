@@ -498,8 +498,42 @@ describe.skipIf(!target)('orders con PostgreSQL real aislado', () => {
     const created = await create(guest());
     expect(created.status).toBe(201);
     const id = BigInt(created.body.data.id);
-    // Fixture explícita de pago: esta entrega no expone endpoint de pago/preparación.
-    await db.order.update({ where: { id }, data: { status: 'EN_PREPARACION', paidAt: now() } });
+    // Fixture coherente con CASH-02: paidAt aislado ya no demuestra pago exitoso.
+    await db.$transaction(async (tx) => {
+      const order = await tx.order.findUniqueOrThrow({ where: { id } });
+      const owner = who('cashier').principal.userId;
+      const session =
+        (await tx.cashSession.findFirst({ where: { closedAt: null } })) ??
+        (await tx.cashSession.create({ data: { employeeId: owner, openingAmountCents: 0n } }));
+      const payment = await tx.payment.create({
+        data: {
+          orderId: id,
+          method: 'CASH',
+          status: 'SUCCEEDED',
+          amountCents: order.totalCents,
+          currency: 'MXN',
+          cashierId: owner,
+          cashSessionId: session.id,
+          cashReceivedCents: order.totalCents,
+          changeCents: 0n,
+          confirmedAt: now(),
+        },
+      });
+      const [reserved] = await tx.$queryRaw<
+        { id: bigint }[]
+      >`SELECT nextval(pg_get_serial_sequence('sales','id')) AS id`;
+      await tx.sale.create({
+        data: {
+          id: reserved!.id,
+          saleNumber: `V${reserved!.id.toString().padStart(6, '0')}`,
+          orderId: id,
+          paymentId: payment.id,
+          totalCents: order.totalCents,
+          soldAt: now(),
+        },
+      });
+      await tx.order.update({ where: { id }, data: { status: 'EN_PREPARACION', paidAt: now() } });
+    });
     return id;
   }
   it('solo EN_PREPARACION se lista; cada rol operativo marca LISTO con actor/fecha', async () => {

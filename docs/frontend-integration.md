@@ -1,6 +1,6 @@
 # Guía viva de integración para frontend
 
-Actualizada: 2026-10-26. Responsable de coordinación: Ángel. Esta guía sirve al
+Actualizada: 2026-10-31. Responsable de coordinación: Ángel. Esta guía sirve al
 frontend para consumir el backend actual y debe actualizarse en la misma entrega
 que cambie un contrato, permiso, flujo o estado de implementación.
 
@@ -9,16 +9,17 @@ explica cómo usarla; no sustituye los esquemas, ejemplos ni códigos de error d
 
 ## 1. Estado actual del backend
 
-| Área                                                            | Estado                                                             | Qué puede construir frontend ahora                                                                   |
-| --------------------------------------------------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
-| Catálogo público                                                | Implementado                                                       | Menú, categorías, detalle de producto y selección de opciones.                                       |
-| Autenticación                                                   | Implementada                                                       | Login de cliente/personal, sesión actual, refresh, logout y cambio de NIP/contraseña.                |
-| Administración                                                  | Implementada                                                       | Catálogo, disponibilidad, configuraciones y flujo de carga de imágenes.                              |
-| Órdenes ORD-01                                                  | Implementado y verificado en `dev`; pendiente de fusionar a `main` | Crear órdenes pendientes, consultar según rol, asociar cliente en caja y vista de preparación/LISTO. |
-| Caja y cobro efectivo                                           | Pendiente                                                          | No mostrar cobro, apertura/cierre, cambio ni QR de cobro como funciones activas.                     |
-| Stripe                                                          | Pendiente                                                          | No iniciar Checkout ni interpretar una orden Stripe como pagada.                                     |
-| Registro QR, recuperación de NIP, correo, favoritos e historial | Pendiente                                                          | No crear pantallas finales conectadas a endpoints inexistentes.                                      |
-| Cloudinary                                                      | Flujo backend implementado; proveedor real pendiente               | Preparar interfaz de imagen; validar con el equipo antes de habilitarla contra una cuenta real.      |
+| Área                                               | Estado                                                                  | Qué puede construir frontend ahora                                                                     |
+| -------------------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Catálogo público                                   | Implementado                                                            | Menú, categorías, detalle de producto y selección de opciones.                                         |
+| Autenticación                                      | Implementada                                                            | Login de cliente/personal, sesión actual, refresh, logout y cambio de NIP/contraseña.                  |
+| Administración                                     | Implementada                                                            | Catálogo, disponibilidad, configuraciones y flujo de carga de imágenes.                                |
+| Órdenes ORD-01                                     | Implementado y verificado en `dev`; pendiente de fusionar a `main`      | Crear órdenes pendientes, consultar según rol, asociar cliente en caja y vista de preparación/LISTO.   |
+| Caja y cobro efectivo                              | Implementado y verificado localmente; pendiente de revisión/integración | Apertura/resumen/cierre y cobro por ID, ticket JSON y QR de registro preparado. QR de cobro pendiente. |
+| Stripe                                             | Pendiente                                                               | No iniciar Checkout ni interpretar una orden Stripe como pagada.                                       |
+| Registro QR AUTH-02                                | Implementado/verificado localmente; pendiente revisión/integración      | Formulario con token de ticket pagado, CSRF y login posterior; sin sesión automática.                  |
+| Recuperación de NIP, correo, favoritos e historial | Pendiente                                                               | No crear pantallas finales conectadas a endpoints inexistentes.                                        |
+| Cloudinary                                         | Flujo backend implementado; proveedor real pendiente                    | Preparar interfaz de imagen; validar con el equipo antes de habilitarla contra una cuenta real.        |
 
 ## 2. Archivos que se deben leer antes de implementar una pantalla
 
@@ -120,13 +121,13 @@ El frontend debe tratar estos resultados así:
 
 ## 5. Roles y áreas de interfaz
 
-| Rol           | Área principal | Lo que ya puede consumir                                                                                                     |
-| ------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Invitado      | Móvil          | Catálogo y creación de orden pendiente. No consulta órdenes por folio ni historial.                                          |
-| CLIENTE       | Móvil          | Catálogo, login, cambio de NIP y sus propias órdenes por ID.                                                                 |
-| CAJERO        | Caja           | Login, catálogo, disponibilidad, creación de orden de caja, búsqueda/asociación mínima y preparación/LISTO. Cobro pendiente. |
-| PREPARACION   | Preparación    | Consulta de órdenes `EN_PREPARACION` y acción `LISTO`.                                                                       |
-| ADMINISTRADOR | Administración | Hereda caja y administra catálogo/opciones/imágenes. CRUD de empleados y recuperación de cuentas siguen pendientes.          |
+| Rol           | Área principal | Lo que ya puede consumir                                                                                            |
+| ------------- | -------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Invitado      | Móvil          | Catálogo y creación de orden pendiente. No consulta órdenes por folio ni historial.                                 |
+| CLIENTE       | Móvil          | Catálogo, login, cambio de NIP y sus propias órdenes por ID.                                                        |
+| CAJERO        | Caja           | Lo anterior más caja propia, cobro CASH y ticket protegido de esta entrega local. No cobra/cierra caja ajena.       |
+| PREPARACION   | Preparación    | Consulta de órdenes `EN_PREPARACION` y acción `LISTO`.                                                              |
+| ADMINISTRADOR | Administración | Hereda caja y administra catálogo/opciones/imágenes. CRUD de empleados y recuperación de cuentas siguen pendientes. |
 
 El frontend puede ocultar o mostrar navegación por rol, pero nunca debe interpretar
 eso como autorización suficiente: el backend siempre vuelve a validar rol, sesión y
@@ -243,20 +244,55 @@ POST /orders/{id}/ready
 ```
 
 La lista contiene solo `EN_PREPARACION`. La acción `ready` solo sirve para una orden
-pagada y en ese estado; al confirmarse, retirar la orden de la lista sin borrarla del
-historial. No existe una acción frontend para mover una orden a preparación: eso llegará
-con los módulos de cobro.
+pagada y en ese estado; CASH exige pago exitoso y venta coherente. Al confirmarse,
+retirar la orden de la lista sin borrarla del historial. No enviar estado/paidAt:
+el cobro CASH ahora hace la transición a preparación transaccionalmente.
+
+## Caja y efectivo — entrega local CASH-01/CASH-02
+
+Consultar [guía de caja](cash-implementation.md) y OpenAPI 0.6.0. Pendiente revisión
+e integración; no confundir implementación local con despliegue activo.
+
+1. `GET /cash-sessions/current`: data=null significa sin caja abierta. Mostrar
+   responsable y resumen; ver caja ajena no concede permiso para cobrar/cerrar.
+2. `POST /cash-sessions` con `{openingAmountCents}`. Requiere CSRF y clave UUID v4
+   de idempotencia, como crear orden. Una carrera de apertura produce 409 para el perdedor.
+3. `POST /payments/cash` con `{cashSessionId,orderId,cashReceivedCents}`. Solo responsable
+   de sesión abierta. El backend calcula cambio desde snapshots; no enviar total.
+   `changeCents` opcional es solo aserción: si difiere, el backend rechaza 409.
+4. Ante red incierta, repetir mismo cuerpo/clave. No generar otra clave ni simular
+   pago en UI. El resultado incluye pago, venta, orden y `ticket.path`, sin token.
+5. Recuperar el ticket mediante GET a `ticket.path` con sesión de cajero/admin.
+   Renderizar/imprimir JSON de snapshots con texto escapado. Si `registration` no
+   es null, renderizar su `qrPayload` como QR de **registro futuro**, junto con su
+   vencimiento. No es QR de pago, no URL navegable y no hay alta final conectada aún.
+   Nunca registrar/cachear token/QR, ponerlo en URL backend ni guardarlo en localStorage.
+   Reimpresión conserva token y plazo; usado/vencido o cliente asociado no lleva QR.
+6. `POST /cash-sessions/{id}/close` con `{countedCashCents}`: backend calcula
+   esperado/diferencia. Admin solo cierra ajena con `exceptionalCloseReason` no vacío;
+   esa excepción no le permite cobrar por otro responsable.
+
+Apertura, cierre y cobro exigen Idempotency-Key y CSRF. Después de un replay,
+refrescar caja actual/resumen: la respuesta idempotente es la original, no estado vivo.
+Un 409 CASH_CONFLICT exige revisar caja/orden/importe, no forzar el estado.
+503 al cobrar invitado puede indicar falta de configuración segura de tickets;
+no confirmar venta visualmente ni intentar sortearlo. La impresión/renderizador
+frontend y el manejo final del QR de registro siguen por implementar fuera de este repo.
+Si el cobro ya respondió 201 pero falla el GET del ticket, conservar referencias
+de pago/venta y reintentar solo la impresión tras resolver configuración; nunca
+iniciar otro cobro con una clave nueva por un fallo de impresión.
 
 ## 10. Flujos pendientes: comportamiento esperado para diseño
 
 Estas reglas ya están acordadas, pero aún no tienen endpoints de frontend:
 
-- Efectivo: apertura/cierre de caja, QR de cobro solo para `CASH`, recibido/cambio,
-  venta y ticket imprimible.
+- Efectivo pendiente: emisión/escaneo del QR de cobro; apertura/cierre, cobro por ID,
+  venta y datos del ticket imprimible están implementados localmente en CASH-01/02.
 - Stripe: Checkout, webhook confirmado solo por backend, reconciliación antes de
   expirar y reembolso excepcional si se cobra después de expiración definitiva.
 - Invitados: compra pagada genera QR de registro de un uso y 24 horas; compra ya
-  asociada no imprime QR de registro.
+  asociada no imprime QR de registro. Emisión y consumo/alta AUTH-02 implementados
+  localmente; acceso digital de invitado al ticket continúa pendiente.
 - Recuperación: cambio de NIP desde perfil; recuperación por correo verificado;
   reset presencial por administrador con NIP temporal, cambio obligatorio y auditoría.
 - Clientes: perfil, historial, favoritos y repetición del pedido con catálogo actual.
@@ -265,6 +301,36 @@ El diseño visual puede anticipar estas pantallas, pero usar datos simulados cla
 separados y no añadir rutas falsas al cliente HTTP compartido.
 
 ## 11. Errores, carga y accesibilidad
+
+### Registro QR de ticket — AUTH-02 (local, pendiente revisión/integración)
+
+1. Escanear `cafeteria:register:<token>` del ticket; enviar solo `<token>` original.
+   No confundir con QR de cobro ni ticket digital. No ponerlo en URL, logs,
+   analytics, localStorage ni mensajes de error; conservarlo solo en memoria.
+2. El flujo es de invitado: sin cookies de acceso/refresh. Si hay sesión, cerrar
+   sesión mediante auth normal antes de registrar otra cuenta. Obtener CSRF con
+   `GET /api/v1/auth/csrf`, enviar credentials/include, Origin permitido y X-CSRF-Token.
+3. `POST /api/v1/customer-registration/ticket`, JSON estricto:
+   `{token,name,phone,pin}`. Nombre trim 1–120, teléfono MX de 10 dígitos o +52,
+   sin separadores; NIP **string** de exactamente cuatro dígitos, incluidos ceros.
+4. 201 `{data:{customer:{customerNumber:"C000123",name:"Ana López",phone:"+526641234567"}}}`.
+   Número con prefijo C según ADR0011, no CLI-. Sin IDs internos, cookies ni JWT.
+   Mostrar confirmación y ofrecer login normal; no considerar autenticado al cliente.
+5. 400 `VALIDATION_ERROR`; 404 `REGISTRATION_TOKEN_INVALID`; 409
+   `REGISTRATION_TOKEN_EXPIRED`, `REGISTRATION_TOKEN_USED`,
+   `REGISTRATION_PURCHASE_INELIGIBLE`, `PHONE_ALREADY_REGISTERED`.
+   Teléfono existente no consume el QR: ofrecer login, no un segundo registro.
+   Token usado no reentrega identidad. Ante respuesta perdida no repetir el alta
+   automáticamente ni asumir sesión; ofrecer login/asistencia sin revelar otra cuenta.
+6. Límite propio 20 intentos/minuto/IP (por proceso), 429
+   `REGISTRATION_RATE_LIMITED`, además del límite global. Respetar Retry-After.
+   Deshabilitar envío concurrente en UI; no se requiere Idempotency-Key.
+
+El backend consume el QR y asocia solo su compra en una transacción. Se conserva
+histórico y se elimina la copia cifrada del token, no su hash. Caduca como máximo
+24h tras pago; un QR no permite consultar órdenes/historial ni asociar otras compras.
+Sin verificación SMS ni recuperación de NIP en esta entrega. Contrato exacto:
+[OpenAPI](api/openapi.yaml); evidencia [AUTH-02](tasks/AUTH-02-ticket-qr-registration.md).
 
 - Todas las peticiones pueden devolver `application/problem+json`. Crear una función
   común que convierta `code`, `status` y `requestId` en estado de interfaz.
@@ -290,6 +356,8 @@ Al terminar una tarea backend que cambie integración:
 
 ### Historial de cambios
 
-| Fecha      | Cambio                                          | Impacto para frontend                                                       |
-| ---------- | ----------------------------------------------- | --------------------------------------------------------------------------- |
-| 2026-10-26 | Primera versión: catálogo, auth/admin y ORD-01. | Ya puede comenzar menú, sesión, administración y flujos de orden pendiente. |
+| Fecha      | Cambio                                          | Impacto para frontend                                                                                                  |
+| ---------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-31 | AUTH-02 registro QR local; OpenAPI 0.6.0.       | Integrar formulario con CSRF, token solo en memoria y login posterior; no sesión automática.                           |
+| 2026-10-27 | CASH-01/02 local, OpenAPI 0.5.0.                | Integrar caja/cobro por ID y ticket protegido tras revisión; conservar claves de idempotencia y no almacenar QR/token. |
+| 2026-10-26 | Primera versión: catálogo, auth/admin y ORD-01. | Ya puede comenzar menú, sesión, administración y flujos de orden pendiente.                                            |

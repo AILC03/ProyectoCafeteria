@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { hash, verify, argon2id } from 'argon2';
+import { verify } from 'argon2';
+import { hashCredential } from './auth.credentials.js';
 import { HttpProblem } from '../../shared/http/problem.js';
 import { AuthTokens, digest, opaque, unauthorized, forbidden } from './auth.tokens.js';
 import { AuthRepository } from './auth.repository.js';
@@ -11,7 +12,6 @@ import {
   type RoleName,
 } from './auth.types.js';
 
-const hashOptions = { type: argon2id, memoryCost: 19456, timeCost: 2, parallelism: 1 } as const;
 const blocked = () =>
   new HttpProblem(429, 'AUTH_RATE_LIMITED', 'No se puede iniciar sesión en este momento');
 let dummyHash: Promise<string> | undefined;
@@ -75,7 +75,7 @@ export class AuthService {
       if (counter.blockedUntil && counter.blockedUntil > now) return { status: 'blocked' } as const;
       const user = candidate ? await this.repository.user(candidate.id, tx) : null;
       const stored = user ? (kind === 'staff' ? user.passwordHash : user.pinHash) : null;
-      dummyHash ??= hash('comparison-only-not-an-account', hashOptions);
+      dummyHash ??= hashCredential('comparison-only-not-an-account');
       const fallbackHash = await dummyHash;
       let correct: boolean;
       try {
@@ -269,7 +269,7 @@ export class AuthService {
         });
         return count >= 5 ? ('blocked' as const) : ('invalid' as const);
       }
-      const newHash = await hash(next, hashOptions);
+      const newHash = await hashCredential(next);
       await tx.authAttemptLimit.update({
         where: { id: counter.id },
         data: { attemptCount: 0, blockedUntil: null, windowStartedAt: now },

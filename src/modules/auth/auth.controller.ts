@@ -3,9 +3,10 @@ import { z } from 'zod';
 import { invalidInput } from '../../shared/http/problem.js';
 import { names, cookie, principal, clearCookies, setCredentials, setCsrf } from './auth.http.js';
 import type { AuthService } from './auth.service.js';
+import { normalizeMxPhone, pinSchema } from '../../shared/http/customer-input.js';
 
 const password = z.string().min(8).max(24);
-const pin = z.string().regex(/^\d{4}$/);
+const pin = pinSchema;
 const staff = z.object({ username: z.string().trim().min(1).max(24), password }).strict();
 const customer = z.object({ identifier: z.string().trim().min(1).max(32), pin }).strict();
 export function authController(service: AuthService) {
@@ -26,8 +27,7 @@ export function authController(service: AuthService) {
   };
   const loginCustomer: RequestHandler = async (request, response) => {
     const body = customer.parse(request.body);
-    let identifier = body.identifier.toUpperCase();
-    if (/^\d{10}$/.test(identifier)) identifier = `+52${identifier}`;
+    const identifier = normalizeMxPhone(body.identifier.toUpperCase());
     if (!/^(\+52\d{10}|C\d{1,19})$/.test(identifier)) throw invalidInput();
     setCredentials(
       response,

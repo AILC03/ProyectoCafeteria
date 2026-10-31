@@ -1,4 +1,3 @@
-import 'dotenv/config';
 import process from 'node:process';
 import console from 'node:console';
 import { randomBytes } from 'node:crypto';

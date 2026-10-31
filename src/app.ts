@@ -15,6 +15,14 @@ import type { AdminService } from './modules/catalog/admin.service.js';
 import type { ImageService } from './modules/catalog/image.service.js';
 import { ordersRoutes } from './modules/orders/orders.routes.js';
 import type { OrdersService } from './modules/orders/orders.service.js';
+import type { CashService } from './modules/cash/cash.service.js';
+import type { PaymentsService } from './modules/payments/payments.service.js';
+import type { TicketsService } from './modules/tickets/tickets.service.js';
+import { cashRoutes } from './modules/cash/cash.routes.js';
+import { paymentsRoutes } from './modules/payments/payments.routes.js';
+import { ticketsRoutes } from './modules/tickets/tickets.routes.js';
+import { customerRegistrationRoutes } from './modules/customer-registration/customer-registration.routes.js';
+import type { CustomerRegistrationService } from './modules/customer-registration/customer-registration.service.js';
 
 type AppOptions = {
   catalogRepository?: CatalogRepository;
@@ -25,6 +33,11 @@ type AppOptions = {
   adminService?: AdminService;
   imageService?: ImageService;
   ordersService?: OrdersService;
+  cashService?: CashService;
+  paymentsService?: PaymentsService;
+  ticketsService?: TicketsService;
+  registrationService?: CustomerRegistrationService;
+  registrationRateLimit?: number;
 };
 
 export function createApp(options: AppOptions = {}) {
@@ -93,6 +106,25 @@ export function createApp(options: AppOptions = {}) {
 
   if (options.authService && options.ordersService)
     app.use('/api/v1', ordersRoutes(options.authService, options.ordersService));
+  if (options.authService && options.cashService)
+    app.use('/api/v1', cashRoutes(options.authService, options.cashService));
+  if (options.authService && options.paymentsService)
+    app.use('/api/v1', paymentsRoutes(options.authService, options.paymentsService));
+  if (options.authService && options.ticketsService)
+    app.use('/api/v1', ticketsRoutes(options.authService, options.ticketsService));
+  if (options.authService && options.registrationService)
+    app.use(
+      '/api/v1',
+      customerRegistrationRoutes(
+        options.authService,
+        options.registrationService,
+        options.registrationRateLimit,
+      ),
+    );
+  else
+    app.post('/api/v1/customer-registration/ticket', (_request, _response, next) =>
+      next(unavailable()),
+    );
 
   const repository = options.catalogRepository ?? {
     async listCategories() {

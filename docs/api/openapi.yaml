@@ -1,12 +1,13 @@
 openapi: 3.0.3
 info:
   title: API de Cafetería — Backend
-  version: 0.4.0
+  version: 0.6.0
   description:
-    'API de catálogo, autenticación cookie/CSRF y administración. No hay registro abierto.
-    Cloudinary es opcional y requiere credenciales; ninguna clave real forma parte del contrato.
-    ORD-01: creación pendiente, consultas protegidas, asociación mínima y preparación/LISTO; sin
-    pagos ni expiración automática.'
+    'API de catálogo, autenticación cookie/CSRF, administración y órdenes con snapshots. No
+    hay registro abierto. CASH-01/02: caja, cobro efectivo, venta y ticket. AUTH-02: registro de
+    cliente exclusivamente con QR válido de ticket pagado, sin login automático ni recuperación. Sin
+    Stripe, worker ni expiración automática. Cloudinary real pendiente de
+    configuración/verificación; ninguna clave real forma parte del contrato.'
 paths:
   /api/v1/health:
     get:
@@ -3784,7 +3785,7 @@ paths:
           name: id
           in: path
           required: true
-          schema: &a32
+          schema: &a40
             type: string
             pattern: ^[1-9][0-9]{0,18}$
             description: BIGINT positivo <=9223372036854775807; nunca Number.
@@ -3978,7 +3979,8 @@ paths:
         'PREPARACION/CAJERO/ADMINISTRADOR. Body {}. Bajo lock de orden revalida EN_PREPARACION
         y paidAt no nulo; guarda LISTO, readyAt y readyByEmployeeId con auditoría. Estado diferente
         o repetición: 409 sin modificar actor/fecha. No existe endpoint para forzar pago/preparación
-        ni CANCELADO.'
+        ni CANCELADO. CASH-02: CASH además exige payment SUCCEEDED y venta coherentes; paidAt
+        aislado no basta.'
       security: *a22
       parameters:
         - *a23
@@ -4289,6 +4291,854 @@ paths:
             example:
               identifier: C000010
               confirmedName: Cliente ficticio
+  /api/v1/cash-sessions:
+    post:
+      operationId: openCashSession
+      tags:
+        - Cash
+      summary: openCashSession
+      description:
+        CAJERO/ADMINISTRADOR; fondo inicial, una sesión abierta globalmente con lock e índice
+        único parcial; auditoría. No cambia responsable. Idempotency-Key UUID v4 obligatorio, por
+        usuario/operación, 48h; replay devuelve resultado público original incluso tras cierre sin
+        repetir efectos; cuerpo distinto 409. Nunca almacena token de registro en response_json.
+      security: &a30
+        - accessCookie: &a24 []
+          csrfHeader: []
+        - productionAccessCookie: &a25 []
+          csrfHeader: []
+      parameters:
+        - *a16
+      responses:
+        '201':
+          description: 'Correcto. Cache-Control: no-store.'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CashSession'
+                required:
+                  - data
+              example:
+                data: &a28
+                  id: '1'
+                  employeeId: '2'
+                  openedAt: 2026-10-26T12:00:00.000Z
+                  closedAt: null
+                  closedByEmployeeId: null
+                  exceptionalCloseReason: null
+                  openingAmountCents: '50000'
+                  expectedCashCents: null
+                  countedCashCents: null
+                  differenceCents: null
+                  cashSalesCents: '0'
+                  successfulPayments: '0'
+                  computedExpectedCashCents: '50000'
+        '400':
+          description: 'VALIDATION_ERROR: campos adicionales, query, ID/clave o importes inválidos.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED / ORIGIN_NOT_ALLOWED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description:
+            'CASH_CONFLICT / IDEMPOTENCY_CONFLICT: estado, responsable, cambio, saldo o entrada
+            incompatibles.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description:
+            'DEPENDENCY_UNAVAILABLE: también clave de ticket ausente/inválida o cifrado no
+            recuperable.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CashOpen'
+            example:
+              openingAmountCents: '50000'
+  /api/v1/cash-sessions/current:
+    get:
+      operationId: currentCashSession
+      tags:
+        - Cash
+      summary: currentCashSession
+      description: 'CAJERO/ADMINISTRADOR. Caja activa y resumen calculado bajo lock: fondo + ventas
+        efectivo (ingreso neto, no recibido bruto). data=null si no existe. No altera caja al
+        expirar auth.'
+      security: &a29
+        - accessCookie: *a24
+        - productionAccessCookie: *a25
+      parameters: []
+      responses:
+        '200':
+          description: 'Correcto. Cache-Control: no-store.'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: false
+                    properties: &a45
+                      id: &a26
+                        type: string
+                        pattern: ^[1-9][0-9]{0,18}$
+                        description: BIGINT <=9223372036854775807.
+                      employeeId: *a26
+                      openedAt: &a47
+                        type: string
+                        format: date-time
+                      closedAt:
+                        type: string
+                        format: date-time
+                        nullable: true
+                      closedByEmployeeId:
+                        type: string
+                        pattern: ^[1-9][0-9]{0,18}$
+                        description: BIGINT <=9223372036854775807.
+                        nullable: true
+                      exceptionalCloseReason:
+                        type: string
+                        minLength: 1
+                        maxLength: 500
+                        nullable: true
+                      openingAmountCents: &a27
+                        type: string
+                        pattern: ^(0|[1-9][0-9]{0,18})$
+                        description: Centavos no negativos <=9223372036854775807; sin decimales ni Number.
+                      expectedCashCents:
+                        type: string
+                        pattern: ^(0|[1-9][0-9]{0,18})$
+                        description: Centavos no negativos <=9223372036854775807; sin decimales ni Number.
+                        nullable: true
+                      countedCashCents:
+                        type: string
+                        pattern: ^(0|[1-9][0-9]{0,18})$
+                        description: Centavos no negativos <=9223372036854775807; sin decimales ni Number.
+                        nullable: true
+                      differenceCents:
+                        type: string
+                        pattern: ^-?(0|[1-9][0-9]{0,18})$
+                        nullable: true
+                      cashSalesCents: *a27
+                      successfulPayments:
+                        type: string
+                        pattern: ^[0-9]+$
+                      computedExpectedCashCents: *a27
+                    required: &a46
+                      - id
+                      - employeeId
+                      - openedAt
+                      - closedAt
+                      - closedByEmployeeId
+                      - exceptionalCloseReason
+                      - openingAmountCents
+                      - expectedCashCents
+                      - countedCashCents
+                      - differenceCents
+                      - cashSalesCents
+                      - successfulPayments
+                      - computedExpectedCashCents
+                    nullable: true
+                required:
+                  - data
+              example:
+                data: *a28
+        '400':
+          description: 'VALIDATION_ERROR: campos adicionales, query, ID/clave o importes inválidos.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED / ORIGIN_NOT_ALLOWED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description:
+            'CASH_CONFLICT / IDEMPOTENCY_CONFLICT: estado, responsable, cambio, saldo o entrada
+            incompatibles.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description:
+            'DEPENDENCY_UNAVAILABLE: también clave de ticket ausente/inválida o cifrado no
+            recuperable.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/v1/cash-sessions/{id}:
+    get:
+      operationId: getCashSession
+      tags:
+        - Cash
+      summary: getCashSession
+      description:
+        CAJERO/ADMINISTRADOR. Resumen de sesión abierta o cerrada por ID; no acceso a perfiles
+        de clientes.
+      security: *a29
+      parameters:
+        - &a31
+          name: id
+          in: path
+          required: true
+          schema: *a26
+      responses:
+        '200':
+          description: 'Correcto. Cache-Control: no-store.'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CashSession'
+                required:
+                  - data
+              example:
+                data: *a28
+        '400':
+          description: 'VALIDATION_ERROR: campos adicionales, query, ID/clave o importes inválidos.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED / ORIGIN_NOT_ALLOWED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description:
+            'CASH_CONFLICT / IDEMPOTENCY_CONFLICT: estado, responsable, cambio, saldo o entrada
+            incompatibles.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description:
+            'DEPENDENCY_UNAVAILABLE: también clave de ticket ausente/inválida o cifrado no
+            recuperable.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/v1/cash-sessions/{id}/close:
+    post:
+      operationId: closeCashSession
+      tags:
+        - Cash
+      summary: closeCashSession
+      description: Responsable cierra su caja. ADMINISTRADOR puede cerrar ajena solo con
+        exceptionalCloseReason no vacío (1–500 tras trim). Responsable original inmutable,
+        actor/fecha/motivo registrados y auditoría. Motivo en cierre propio se rechaza.
+        Esperado=fondo+ventas CASH; diferencia=contado-esperado, calculados en backend. Serializado
+        con cobros. Idempotency-Key UUID v4 obligatorio, por usuario/operación, 48h; replay devuelve
+        resultado público original incluso tras cierre sin repetir efectos; cuerpo distinto 409.
+        Nunca almacena token de registro en response_json.
+      security: *a30
+      parameters:
+        - *a31
+        - *a16
+      responses:
+        '200':
+          description: 'Correcto. Cache-Control: no-store.'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CashSession'
+                required:
+                  - data
+              example:
+                data:
+                  id: '1'
+                  employeeId: '2'
+                  openedAt: 2026-10-26T12:00:00.000Z
+                  closedAt: 2026-10-26T12:00:00.000Z
+                  closedByEmployeeId: '2'
+                  exceptionalCloseReason: null
+                  openingAmountCents: '50000'
+                  expectedCashCents: '50000'
+                  countedCashCents: '49000'
+                  differenceCents: '-1000'
+                  cashSalesCents: '0'
+                  successfulPayments: '0'
+                  computedExpectedCashCents: '50000'
+        '400':
+          description: 'VALIDATION_ERROR: campos adicionales, query, ID/clave o importes inválidos.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED / ORIGIN_NOT_ALLOWED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description:
+            'CASH_CONFLICT / IDEMPOTENCY_CONFLICT: estado, responsable, cambio, saldo o entrada
+            incompatibles.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description:
+            'DEPENDENCY_UNAVAILABLE: también clave de ticket ausente/inválida o cifrado no
+            recuperable.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CashClose'
+            example:
+              countedCashCents: '49000'
+  /api/v1/payments/cash:
+    post:
+      operationId: chargeCashOrder
+      tags:
+        - Cash
+      summary: chargeCashOrder
+      description:
+        Solo responsable de cashSessionId abierta (CAJERO/ADMINISTRADOR, sin excepción de cobro
+        ajeno). Orden CASH PENDIENTE_PAGO, paidAt NULL, no vencida; locks caja→orden→pago→venta.
+        Recibido>=total de snapshots; calcula cambio; changeCents opcional solo como aserción y debe
+        coincidir. Crea payment SUCCEEDED, sale V+identity, paidAt y EN_PREPARACION, auditoría y
+        token de registro si invitado, todo atómico. No recotiza catálogo. Orden
+        pagada/expirada/STRIPE o caja cerrada 409; ajena 403. Sin clave cifrado de tickets, invitado
+        503 y rollback. Ticket se obtiene aparte por ruta protegida, nunca token en respuesta
+        idempotente. Idempotency-Key UUID v4 obligatorio, por usuario/operación, 48h; replay
+        devuelve resultado público original incluso tras cierre sin repetir efectos; cuerpo distinto
+        409. Nunca almacena token de registro en response_json.
+      security: *a30
+      parameters:
+        - *a16
+      responses:
+        '201':
+          description: 'Correcto. Cache-Control: no-store.'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CashChargeResult'
+                required:
+                  - data
+              example:
+                data:
+                  payment:
+                    id: '1'
+                    orderId: '1'
+                    method: CASH
+                    status: SUCCEEDED
+                    amountCents: '2000'
+                    currency: MXN
+                    cashierId: '2'
+                    cashSessionId: '1'
+                    cashReceivedCents: '5000'
+                    changeCents: '3000'
+                    confirmedAt: 2026-10-26T12:00:00.000Z
+                  sale:
+                    id: '1'
+                    saleNumber: V000001
+                    orderId: '1'
+                    paymentId: '1'
+                    totalCents: '2000'
+                    soldAt: 2026-10-26T12:00:00.000Z
+                  order:
+                    id: '1'
+                    folio: A000001
+                    status: EN_PREPARACION
+                    paidAt: 2026-10-26T12:00:00.000Z
+                  ticket:
+                    saleId: '1'
+                    path: /api/v1/sales/1/ticket
+        '400':
+          description: 'VALIDATION_ERROR: campos adicionales, query, ID/clave o importes inválidos.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED / ORIGIN_NOT_ALLOWED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description:
+            'CASH_CONFLICT / IDEMPOTENCY_CONFLICT: estado, responsable, cambio, saldo o entrada
+            incompatibles.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description:
+            'DEPENDENCY_UNAVAILABLE: también clave de ticket ausente/inválida o cifrado no
+            recuperable.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CashCharge'
+            example:
+              cashSessionId: '1'
+              orderId: '1'
+              cashReceivedCents: '5000'
+              changeCents: '3000'
+  /api/v1/sales/{id}/ticket:
+    get:
+      operationId: getCashTicket
+      tags:
+        - Cash
+      summary: getCashTicket
+      description:
+        'CAJERO/ADMINISTRADOR únicamente. Ticket JSON imprimible desde snapshots y pago/venta
+        CASH coherentes. Invitado pagado: registration contiene token aleatorio un uso, caduca
+        exactamente 24h desde pago; qrPayload es dato para renderizar en frontend, no URL de
+        consulta. Reimpresión no crea/consume/renueva token. Asociado, usado o vencido:
+        registration=null. Nunca expone QR de pago ni acceso digital de invitado, ni implementa
+        endpoint final de registro. No-store, Referrer-Policy:no-referrer; no guardar respuesta
+        sensible en logs/cachés/localStorage.'
+      security: *a29
+      parameters:
+        - *a31
+      responses:
+        '200':
+          description: 'Correcto. Cache-Control: no-store.'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CashTicket'
+                required:
+                  - data
+              example:
+                data:
+                  saleId: '1'
+                  saleNumber: V000001
+                  orderFolio: A000001
+                  soldAt: 2026-10-26T12:00:00.000Z
+                  currency: MXN
+                  totalCents: '2000'
+                  cashReceivedCents: '5000'
+                  changeCents: '3000'
+                  items:
+                    - id: '1'
+                      productId: '1'
+                      productName: Café
+                      basePriceCents: '2000'
+                      unitPriceCents: '2000'
+                      quantity: 1
+                      lineTotalCents: '2000'
+                      options: []
+                  registration:
+                    purpose: CUSTOMER_REGISTRATION
+                    token: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                    qrPayload: cafeteria:register:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                    expiresAt: 2026-10-27T12:00:00.000Z
+        '400':
+          description: 'VALIDATION_ERROR: campos adicionales, query, ID/clave o importes inválidos.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / CSRF_INVALID / PIN_CHANGE_REQUIRED / ORIGIN_NOT_ALLOWED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: NOT_FOUND
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description:
+            'CASH_CONFLICT / IDEMPOTENCY_CONFLICT: estado, responsable, cambio, saldo o entrada
+            incompatibles.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description:
+            'DEPENDENCY_UNAVAILABLE: también clave de ticket ausente/inválida o cifrado no
+            recuperable.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/v1/customer-registration/ticket:
+    post:
+      tags:
+        - CustomerRegistration
+      operationId: registerCustomerFromTicket
+      summary: Registrar cliente exclusivamente mediante QR de compra pagada de invitado
+      description:
+        'Público para invitado con Origin exacto y CSRF prelogin (GET /auth/csrf). No admite
+        cookies de acceso/refresh ni un registro libre sin token. Comparar SHA-256 del original,
+        bloquear token→venta→orden/pago y serializar teléfono; validar no usado, plazo y coherencia
+        de pago SUCCEEDED/confirmado MXN con orden EN_PREPARACION/LISTO pagada, cliente NULL,
+        referencias/total/método iguales. Cuenta CLIENTE/CUSTOMER, asociación solo de esa compra y
+        consumo usedAt/usedBy se realizan en una transacción; conservar snapshots y hash, purgar
+        cifrado al consumir. Vence al menor de expiresAt y pago+24h, revalidado tras hash de NIP.
+        Teléfono existente 409 sin consumir token. Dos solicitudes simultáneas: una 201, las demás
+        409 usado. No hay replay de respuesta con identidad ni Idempotency-Key requerido. Sin
+        cookies/JWT/login, IDs internos ni secretos en respuesta. QR no concede consultas de
+        compras. Tras alta, iniciar sesión por flujo existente; ante respuesta perdida, no crear
+        otra cuenta. No implementa Stripe, correo, recuperación ni historial.'
+      security:
+        - csrfHeader: []
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TicketCustomerRegistration'
+            example:
+              token: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+              name: Ana López
+              phone: '6641234567'
+              pin: '0007'
+      responses:
+        '201':
+          description:
+            Cliente creado, compra del QR asociada y token consumido. Sin sesión automática ni
+            Set-Cookie. Cache-Control:no-store, Referrer-Policy:no-referrer.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RegisteredTicketCustomer'
+                required:
+                  - data
+              example:
+                data:
+                  customer:
+                    customerNumber: C000123
+                    name: Ana López
+                    phone: '+526641234567'
+        '400':
+          description:
+            'VALIDATION_ERROR: estructura/forma inválida, campos extra, NIP, teléfono o nombre
+            inválidos.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description:
+            'CSRF_INVALID / FORBIDDEN / ORIGIN_NOT_ALLOWED: bootstrap CSRF y Origin exacto; solo
+            invitado, sin cookie de acceso/refresh.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description:
+            'REGISTRATION_TOKEN_INVALID: código inexistente/no válido para este propósito. No
+            revelar identificadores.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description:
+            REGISTRATION_TOKEN_USED / REGISTRATION_TOKEN_EXPIRED / REGISTRATION_PURCHASE_INELIGIBLE
+            / PHONE_ALREADY_REGISTERED / REGISTRATION_CONFLICT. No incluye datos de compras ni
+            cuentas ajenas.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: about:blank
+                title: El código de registro ya fue utilizado
+                status: 409
+                detail: El código de registro ya fue utilizado
+                instance: /api/v1/customer-registration/ticket
+                code: REGISTRATION_TOKEN_USED
+                requestId: req_example
+        '413':
+          description: PAYLOAD_TOO_LARGE
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description:
+            'REGISTRATION_RATE_LIMITED / RATE_LIMITED: límite propio 20 intentos/minuto/IP (memoria
+            por proceso), además del límite global.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: 'DEPENDENCY_UNAVAILABLE: servicio/rol CLIENTE/BD indisponible.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
 tags:
   - name: Auth
     description: Autenticación y recuperación.
@@ -4304,6 +5154,8 @@ tags:
     description: Registro por ticket, historial y favoritos.
   - name: Admin
     description: Administración protegida, solo disponibilidad admite CAJERO.
+  - name: CustomerRegistration
+    description: Alta de cliente solo con token de registro de ticket pagado; no registro abierto.
 components:
   responses:
     ForbiddenOrigin:
@@ -4332,7 +5184,7 @@ components:
         - id
         - name
       properties:
-        id: &a24
+        id: &a32
           type: string
           pattern: ^[0-9]+$
           example: '10'
@@ -4351,7 +5203,7 @@ components:
         - imageUrl
         - isAvailable
       properties:
-        id: *a24
+        id: *a32
         categoryId:
           type: string
           pattern: ^[0-9]+$
@@ -4384,7 +5236,7 @@ components:
         - isAvailable
       additionalProperties: false
       properties:
-        id: *a24
+        id: *a32
         name:
           type: string
           example: Leche de almendra
@@ -4406,7 +5258,7 @@ components:
         - values
       additionalProperties: false
       properties:
-        id: *a24
+        id: *a32
         name:
           type: string
           example: Leche
@@ -4502,7 +5354,7 @@ components:
           enum:
             - STAFF
             - CUSTOMER
-        mustChangePin: &a25
+        mustChangePin: &a33
           type: boolean
       required:
         - id
@@ -4595,23 +5447,23 @@ components:
     CategoryCreate:
       type: object
       additionalProperties: false
-      properties: &a26
+      properties: &a34
         name:
           type: string
           minLength: 1
           maxLength: 120
-        isActive: *a25
+        isActive: *a33
       required:
         - name
     CategoryPatch:
       type: object
       additionalProperties: false
-      properties: *a26
+      properties: *a34
       minProperties: 1
     ProductCreate:
       type: object
       additionalProperties: false
-      properties: &a27
+      properties: &a35
         name:
           type: string
           minLength: 1
@@ -4621,11 +5473,11 @@ components:
           type: string
           maxLength: 1500
           nullable: true
-        basePriceCents: &a30
+        basePriceCents: &a38
           type: string
           pattern: ^(0|[1-9][0-9]{0,6})$
           description: Centavos enteros, máximo 9999900.
-        isAvailable: *a25
+        isAvailable: *a33
       required:
         - name
         - categoryId
@@ -4633,12 +5485,12 @@ components:
     ProductPatch:
       type: object
       additionalProperties: false
-      properties: *a27
+      properties: *a35
       minProperties: 1
     GroupCreate:
       type: object
       additionalProperties: false
-      properties: &a28
+      properties: &a36
         name:
           type: string
           minLength: 1
@@ -4654,12 +5506,12 @@ components:
     GroupPatch:
       type: object
       additionalProperties: false
-      properties: *a28
+      properties: *a36
       minProperties: 1
     ValueCreate:
       type: object
       additionalProperties: false
-      properties: &a29
+      properties: &a37
         name:
           type: string
           minLength: 1
@@ -4669,19 +5521,19 @@ components:
           pattern: ^(0|[1-9][0-9]{0,6})$
           description: Centavos enteros, máximo 9999900.
           nullable: true
-        isAvailable: *a25
+        isAvailable: *a33
       required:
         - name
     ValuePatch:
       type: object
       additionalProperties: false
-      properties: *a29
+      properties: *a37
       minProperties: 1
     Availability:
       type: object
       additionalProperties: false
       properties:
-        isAvailable: *a25
+        isAvailable: *a33
       required:
         - isAvailable
     ProductConfiguration:
@@ -4735,12 +5587,12 @@ components:
           type: string
           minLength: 1
           maxLength: 120
-        isActive: *a25
+        isActive: *a33
         deletedAt:
           type: string
           format: date-time
           nullable: true
-        createdAt: &a31
+        createdAt: &a39
           type: string
           format: date-time
       required:
@@ -4763,7 +5615,7 @@ components:
           type: string
           maxLength: 1500
           nullable: true
-        basePriceCents: *a30
+        basePriceCents: *a38
         imageUrl:
           type: string
           format: uri
@@ -4778,13 +5630,13 @@ components:
           minLength: 1
           maxLength: 40
           nullable: true
-        isAvailable: *a25
+        isAvailable: *a33
         deletedAt:
           type: string
           format: date-time
           nullable: true
-        createdAt: *a31
-        updatedAt: *a31
+        createdAt: *a39
+        updatedAt: *a39
       required:
         - id
         - categoryId
@@ -4836,7 +5688,7 @@ components:
           pattern: ^(0|[1-9][0-9]{0,6})$
           description: Centavos enteros, máximo 9999900.
           nullable: true
-        isAvailable: *a25
+        isAvailable: *a33
         deletedAt:
           type: string
           format: date-time
@@ -4853,7 +5705,7 @@ components:
       additionalProperties: false
       properties:
         intentId: *a15
-        expiresAt: *a31
+        expiresAt: *a39
         maxBytes:
           type: integer
         maxDimension:
@@ -4885,7 +5737,7 @@ components:
       type: object
       additionalProperties: false
       properties:
-        identifier: &a36
+        identifier: &a44
           type: string
           pattern: ^(C[0-9]{1,19}|\+52[0-9]{10}|[0-9]{10})$
           description: Búsqueda exacta por customer_number o teléfono MX; se normaliza trim/mayúsculas/+52.
@@ -4900,7 +5752,7 @@ components:
       type: object
       additionalProperties: false
       properties:
-        id: *a32
+        id: *a40
         name:
           type: string
           minLength: 1
@@ -4917,7 +5769,7 @@ components:
       type: object
       additionalProperties: false
       properties:
-        productId: *a32
+        productId: *a40
         quantity:
           type: integer
           minimum: 1
@@ -4926,7 +5778,7 @@ components:
           type: array
           maxItems: 5000
           uniqueItems: true
-          items: *a32
+          items: *a40
           description:
             IDs únicos de opciones asignadas al producto. Omisión equivale a []; se validan todos
             los mínimos/máximos.
@@ -4946,7 +5798,7 @@ components:
           type: string
           minLength: 1
           maxLength: 120
-        items: &a33
+        items: &a41
           type: array
           minItems: 1
           maxItems: 50
@@ -4969,7 +5821,7 @@ components:
           maxLength: 120
         customer:
           $ref: '#/components/schemas/OrderCustomerSelection'
-        items: *a33
+        items: *a41
       required:
         - paymentMethod
         - items
@@ -4977,7 +5829,7 @@ components:
       type: object
       additionalProperties: false
       properties:
-        optionValueId: *a32
+        optionValueId: *a40
         groupName:
           type: string
           minLength: 1
@@ -4986,7 +5838,7 @@ components:
           type: string
           minLength: 1
           maxLength: 120
-        surchargeCents: &a34
+        surchargeCents: &a42
           type: string
           pattern: ^(0|[1-9][0-9]{0,6})$
           description: Centavos enteros <=9999900.
@@ -4999,19 +5851,19 @@ components:
       type: object
       additionalProperties: false
       properties:
-        id: *a32
-        productId: *a32
+        id: *a40
+        productId: *a40
         productName:
           type: string
           minLength: 1
           maxLength: 160
-        basePriceCents: *a34
-        unitPriceCents: *a34
+        basePriceCents: *a42
+        unitPriceCents: *a42
         quantity:
           type: integer
           minimum: 1
           maximum: 99
-        lineTotalCents: *a34
+        lineTotalCents: *a42
         options:
           type: array
           items:
@@ -5029,7 +5881,7 @@ components:
       type: object
       additionalProperties: false
       properties:
-        id: *a32
+        id: *a40
         folio:
           type: string
           pattern: ^A[0-9]{6,}$
@@ -5050,7 +5902,7 @@ components:
           enum:
             - CASH
             - STRIPE
-        totalCents: *a34
+        totalCents: *a42
         customerId:
           type: string
           pattern: ^[1-9][0-9]{0,18}$
@@ -5061,7 +5913,7 @@ components:
           minLength: 1
           maxLength: 120
           nullable: true
-        paymentExpiresAt: &a35
+        paymentExpiresAt: &a43
           type: string
           format: date-time
         paidAt:
@@ -5077,7 +5929,7 @@ components:
           pattern: ^[1-9][0-9]{0,18}$
           description: BIGINT positivo <=9223372036854775807; nunca Number.
           nullable: true
-        createdAt: *a35
+        createdAt: *a43
         items:
           type: array
           minItems: 1
@@ -5103,7 +5955,7 @@ components:
       type: object
       additionalProperties: false
       properties:
-        id: *a32
+        id: *a40
         folio:
           type: string
           pattern: ^A[0-9]{6,}$
@@ -5116,7 +5968,7 @@ components:
           type: string
           enum:
             - EN_PREPARACION
-        createdAt: *a35
+        createdAt: *a43
       required:
         - id
         - folio
@@ -5127,9 +5979,257 @@ components:
       type: object
       additionalProperties: false
       properties:
-        identifier: *a36
+        identifier: *a44
       required:
         - identifier
+    CashOpen:
+      type: object
+      additionalProperties: false
+      properties:
+        openingAmountCents: *a27
+      required:
+        - openingAmountCents
+    CashClose:
+      type: object
+      additionalProperties: false
+      properties:
+        countedCashCents: *a27
+        exceptionalCloseReason:
+          type: string
+          minLength: 1
+          maxLength: 500
+      required:
+        - countedCashCents
+    CashCharge:
+      type: object
+      additionalProperties: false
+      properties:
+        cashSessionId: *a26
+        orderId: *a26
+        cashReceivedCents: *a27
+        changeCents: *a27
+      required:
+        - cashSessionId
+        - orderId
+        - cashReceivedCents
+    CashSession:
+      type: object
+      additionalProperties: false
+      properties: *a45
+      required: *a46
+    CashPayment:
+      type: object
+      additionalProperties: false
+      properties:
+        id: *a26
+        orderId: *a26
+        method:
+          type: string
+          enum:
+            - CASH
+        status:
+          type: string
+          enum:
+            - SUCCEEDED
+        amountCents: *a27
+        currency:
+          type: string
+          enum:
+            - MXN
+        cashierId: *a26
+        cashSessionId: *a26
+        cashReceivedCents: *a27
+        changeCents: *a27
+        confirmedAt: *a47
+      required:
+        - id
+        - orderId
+        - method
+        - status
+        - amountCents
+        - currency
+        - cashierId
+        - cashSessionId
+        - cashReceivedCents
+        - changeCents
+        - confirmedAt
+    CashSale:
+      type: object
+      additionalProperties: false
+      properties:
+        id: *a26
+        saleNumber:
+          type: string
+          pattern: ^V[0-9]{6,}$
+        orderId: *a26
+        paymentId: *a26
+        totalCents: *a27
+        soldAt: *a47
+      required:
+        - id
+        - saleNumber
+        - orderId
+        - paymentId
+        - totalCents
+        - soldAt
+    CashChargeResult:
+      type: object
+      additionalProperties: false
+      properties:
+        payment:
+          $ref: '#/components/schemas/CashPayment'
+        sale:
+          $ref: '#/components/schemas/CashSale'
+        order:
+          type: object
+          additionalProperties: false
+          properties:
+            id: *a26
+            folio:
+              type: string
+            status:
+              type: string
+              enum:
+                - EN_PREPARACION
+            paidAt: *a47
+          required:
+            - id
+            - folio
+            - status
+            - paidAt
+        ticket:
+          type: object
+          additionalProperties: false
+          properties:
+            saleId: *a26
+            path:
+              type: string
+          required:
+            - saleId
+            - path
+      required:
+        - payment
+        - sale
+        - order
+        - ticket
+    RegistrationQr:
+      type: object
+      additionalProperties: false
+      properties: &a48
+        purpose:
+          type: string
+          enum:
+            - CUSTOMER_REGISTRATION
+        token:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{43}$
+          description:
+            32 bytes aleatorios. Solo registro futuro, no credencial de lectura ni pago. No
+            registrar ni persistir en frontend.
+        qrPayload:
+          type: string
+          pattern: ^cafeteria:register:[A-Za-z0-9_-]{43}$
+        expiresAt: *a47
+      required: &a49
+        - purpose
+        - token
+        - qrPayload
+        - expiresAt
+    CashTicket:
+      type: object
+      additionalProperties: false
+      properties:
+        saleId: *a26
+        saleNumber:
+          type: string
+        orderFolio:
+          type: string
+        soldAt: *a47
+        currency:
+          type: string
+          enum:
+            - MXN
+        totalCents: *a27
+        cashReceivedCents: *a27
+        changeCents: *a27
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItemSnapshot'
+        registration:
+          type: object
+          additionalProperties: false
+          properties: *a48
+          required: *a49
+          nullable: true
+      required:
+        - saleId
+        - saleNumber
+        - orderFolio
+        - soldAt
+        - currency
+        - totalCents
+        - cashReceivedCents
+        - changeCents
+        - items
+        - registration
+    TicketCustomerRegistration:
+      type: object
+      additionalProperties: false
+      properties:
+        token:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{43}$
+          writeOnly: true
+          description:
+            Original de 32 bytes base64url emitido por CASH-02; no enviar qrPayload ni su prefijo.
+            No se descifra el ticket ni se acepta token de pago/ticket digital.
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+          description: Nombre en un campo, trim; no controles ASCII.
+        phone:
+          type: string
+          pattern: ^(\+52[0-9]{10}|[0-9]{10})$
+          description:
+            Teléfono MX tras trim, sin separadores; se normaliza a +52 y debe ser único incluso en
+            cuentas inactivas.
+        pin:
+          type: string
+          pattern: ^[0-9]{4}$
+          writeOnly: true
+          description: NIP string de cuatro dígitos; conserva ceros. Hash Argon2id con la política de auth.
+      required:
+        - token
+        - name
+        - phone
+        - pin
+    RegisteredTicketCustomer:
+      type: object
+      additionalProperties: false
+      properties:
+        customer:
+          type: object
+          additionalProperties: false
+          properties:
+            customerNumber:
+              type: string
+              pattern: ^C[0-9]{6,19}$
+              description: 'ADR0011: C + identity mínimo seis dígitos; nunca Number ni CLI-.'
+            name:
+              type: string
+              minLength: 1
+              maxLength: 120
+            phone:
+              type: string
+              pattern: ^\+52[0-9]{10}$
+          required:
+            - customerNumber
+            - name
+            - phone
+      required:
+        - customer
   securitySchemes:
     accessCookie:
       type: apiKey

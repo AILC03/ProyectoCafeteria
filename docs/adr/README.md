@@ -22,12 +22,14 @@ recargos globales excepto tamaños por producto. Ver reglas y diccionario.
 
 ## Estado actual
 
-ADR 0001–0012 están aceptadas. En `dev` ya se implementaron infraestructura y
-persistencia, catálogo, auth/admin y `ORD-01`; que una ADR esté aceptada no
-convierte automáticamente el resto de sus flujos en funcionalidad disponible.
+ADR 0001–0012 están aceptadas. En entregas locales pendientes de revisión/integración
+ya se implementaron infraestructura y persistencia, catálogo, auth/admin, `ORD-01`,
+`CASH-01/02` y registro QR `AUTH-02`; que una ADR esté aceptada no convierte
+automáticamente el resto de sus flujos en funcionalidad disponible.
 
-Pendientes principales: caja/efectivo, pagos Stripe, tickets y registro QR,
-recuperación de NIP, worker/correo, ventas y Cloudinary real. Consultar el
+Pendientes principales: QR de cobro, ticket digital de invitado, pagos Stripe,
+recuperación de NIP, worker/correo, perfil/historial, consulta de ventas y Cloudinary
+real. Consultar el
 [estado reconciliado](../tasks/DOC-01-adr-status-reconciliation.md), el
 [contrato](../api/contract-plan.md) y las tareas de desarrollo.
 
