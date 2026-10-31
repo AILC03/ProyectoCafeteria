@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { idSchema } from '../../shared/http/pagination.js';
+import { normalizeMxPhone } from '../../shared/http/customer-input.js';
 
 export const emptyInput = z.object({}).strict();
 export const operationKey = z
@@ -12,8 +13,7 @@ export const customerIdentifier = z
   .trim()
   .max(32)
   .transform((value) => {
-    const normalized = value.toUpperCase();
-    return /^\d{10}$/.test(normalized) ? `+52${normalized}` : normalized;
+    return normalizeMxPhone(value.toUpperCase());
   })
   .pipe(z.string().regex(/^(C\d{1,19}|\+52\d{10})$/));
 export const customerSearch = z.object({ identifier: customerIdentifier }).strict();

@@ -1,5 +1,29 @@
 # Contexto y continuidad del proyecto — Backend Cafetería
 
+## Entrega local AUTH-02 — 2026-10-31
+
+Registro de cliente solo con QR original de ticket pagado, OpenAPI 0.6.0. Alta,
+asociación exclusiva de compra y consumo permanente en una transacción PostgreSQL;
+Argon2id y teléfono MX único, sin cookies/JWT/login automático. Sin nueva migración.
+Pruebas reales de PostgreSQL aislado, concurrencia y rollback; evidencia completa
+en [AUTH-02](tasks/AUTH-02-ticket-qr-registration.md). Sin commit/push/despliegue.
+Recuperación/reset, perfil/historial, QR de cobro, acceso digital público al ticket,
+Stripe, correo y worker siguen pendientes. Revisión humana y coordinación frontend
+antes de integrar. Las entregas inferiores son historial.
+
+## Entrega local CASH-01/CASH-02 — 2026-10-27
+
+Caja única, apertura/resumen/cierre propio/excepcional, cobro CASH atómico con
+payment/sale separados y ticket JSON protegido con registro de invitado preparado.
+OpenAPI 0.5.0; nueva migración aditiva de cifrado temporal de registro de ticket,
+probada solo en PostgreSQL aislado, no aplicada a las bases del proyecto.
+LISTO CASH verifica pago exitoso/venta además de paidAt. Auth/catalog se conservan;
+Cloudinary simulado. Registro final, QR de cobro, acceso digital público al ticket,
+Stripe, correo y worker siguen pendientes. Clave externa y scheduling de limpieza
+requieren configuración operativa antes de uso real. No hubo commit/push/despliegue.
+Ver [implementación](cash-implementation.md) y [evidencia](tasks/CASH-01-02-cash-payments.md).
+Los estados inferiores son historial; esta entrega local aún necesita revisión/integración.
+
 ## Estado vigente — `dev`, 2026-10-26
 
 ADR 0001–0012 aceptados. Primera entrega de orders implementada y verificada en

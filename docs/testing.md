@@ -1,5 +1,10 @@
 # Estrategia de pruebas
 
+CASH-01/02, verificación local 2026-10-27: nuevas suites de importes/cifrado y
+HTTP+PostgreSQL aislado para caja/cobro/ticket. Matriz de resultados y limitaciones
+en [tarea CASH](tasks/CASH-01-02-cash-payments.md). Los datos inferiores de ORD-01
+se conservan como referencia de esa etapa. No se probó el alta final de registro.
+
 Vitest y Supertest están configurados según ADR 0002. En `dev`, `npm test`
 verificó 56 pruebas unitarias/HTTP y `npm run test:integration` verificó 50
 pruebas PostgreSQL para auth/admin, catálogo y ORD-01. Los casos siguientes
@@ -34,7 +39,8 @@ Usar datos ficticios y base aislada. Nunca ejecutar limpieza de pruebas contra
 producción. No exigir credenciales Stripe reales para pruebas unitarias.
 
 El entorno Docker prepara cafeteria_test y TEST_DATABASE_URL en .env.docker.
-`npm run test:integration` carga ese archivo automáticamente cuando existe;
+`npm run test:integration` carga ese archivo cuando existe y no se proporcionó ya
+TEST_DATABASE_URL explícita (prioridad para CI/revisión aislada);
 ejecutar antes `npm run db:up` para iniciar PostgreSQL. Si se usa otra instalación
 local, definir `TEST_DATABASE_URL` en el entorno sin imprimir credenciales.
 Ver [arranque local](database-setup.md). Esto no conecta automáticamente cualquier

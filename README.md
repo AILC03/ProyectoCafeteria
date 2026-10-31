@@ -12,6 +12,17 @@ Las protecciones de GitHub requieren activación manual; no basta con estos arch
 
 ## Estado
 
+**CASH-01/CASH-02 local, 2026-10-27:** caja, cobro efectivo por ID, venta y ticket
+JSON protegido. [Guía y límites](docs/cash-implementation.md). La entrega posterior
+AUTH-02 ya consume el QR de registro de invitado; QR de cobro, Stripe y worker siguen
+pendientes. Las entregas locales requieren revisión/integración y configuración operativa.
+
+**AUTH-02 local, 2026-10-31:** registro de cliente exclusivamente con QR válido de
+ticket pagado, en transacción, con NIP Argon2id, teléfono único y sin sesión automática.
+[Alcance y evidencia](docs/tasks/AUTH-02-ticket-qr-registration.md). El contrato vigente
+es OpenAPI 0.6.0; recuperación de NIP, perfil/historial y ticket digital de invitado no
+forman parte de esta entrega.
+
 **Estado vigente en `dev`, 2026-10-26:** ADR 0001–0012 aceptados. Primera
 entrega de órdenes pendientes móvil/caja,
 cálculo/snapshots backend, idempotencia, consultas protegidas y preparación/LISTO.
@@ -95,9 +106,9 @@ Los archivos `.gitkeep` mantienen directorios vacíos al versionarlos.
 
 ## Próximo trabajo
 
-1. Revisar y fusionar el PR de `dev` a `main`.
-2. Coordinar con frontend el contrato OpenAPI vigente.
-3. Implementar caja y cobro en efectivo antes de Stripe.
-4. Continuar tickets/registro, recuperación de NIP, worker y pagos según backlog.
+1. Revisar e integrar las entregas locales pendientes según el flujo de PR.
+2. Coordinar con frontend el contrato OpenAPI 0.6.0 vigente.
+3. Continuar preparación, perfil/historial de cliente y ticket digital según backlog.
+4. Implementar worker/correo antes de recuperación de NIP; Stripe conserva su secuencia propia.
 
 Nunca subir `.env`, claves Stripe, credenciales reales ni datos personales.

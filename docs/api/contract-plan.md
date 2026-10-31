@@ -1,10 +1,18 @@
 # Operaciones del contrato por completar
 
-## Estado vigente — 2026-10-26
+Entrega local CASH-01/02 — 2026-10-27: caja, cobro CASH por ID, venta y ticket
+protegido. [Alcance](../cash-implementation.md). AUTH-02 local — 2026-10-31 añade el
+registro de cliente exclusivamente con QR de ese ticket pagado, sin sesión automática.
+El contrato vigente es OpenAPI 0.6.0; QR de cobro, ticket digital público, Stripe y
+worker siguen pendientes. Rutas anteriores conservadas; LISTO CASH comprueba
+pago/venta coherentes.
 
-Contrato OpenAPI 0.4.0 con auth/admin, catálogo y primera entrega orders
-implementados en `dev`. Incluye creación pendiente móvil/caja, consulta protegida, preparación/LISTO y búsqueda/asociación
-mínima de cliente; no pagos ni worker. [Detalle](../orders-implementation.md).
+## Estado de entregas locales — 2026-10-31
+
+OpenAPI 0.6.0 contiene auth/admin, catálogo, órdenes, caja/efectivo, ticket protegido y
+registro QR de invitado. Las entregas CASH y AUTH-02 están implementadas y verificadas
+localmente, pendientes de revisión humana/integración; Stripe, worker, QR de cobro,
+ticket digital público, recuperación y perfil/historial continúan pendientes.
 Las notas inferiores describen etapas históricas, no pendientes vigentes.
 
 ### Historial — 2026-10-21 y entrega inicial
@@ -28,9 +36,9 @@ Validar esquemas y casos de error por operación.
 | auth      | Recuperación por correo y reset administrativo; login/sesión/cambio ya disponibles | AC-16/17                                         |
 | catalog   | Cloudinary real; lecturas y CRUD administrativo ya disponibles                     | ADR 0010: JPEG/PNG/WebP, una por producto, 5 MiB |
 | orders    | Expiración automática e historial; crear/consultar/asociar/LISTO ya disponibles    | AC-01/02/10                                      |
-| payments  | Crear/reutilizar Checkout; cobrar efectivo; webhook con cuerpo raw                 | AC-03/05/07/08/09                                |
-| cash      | Abrir, consultar actual, resumen y cerrar                                          | AC-04; responsable y cierre excepcional auditado |
-| customers | Buscar cliente para caja, consumir token ticket, perfil/historial                  | AC-11/12/13/14                                   |
+| payments  | Crear/reutilizar Checkout y webhook con cuerpo raw; efectivo ya disponible         | AC-03/05/07/08/09                                |
+| cash      | Caja y cierre ya disponibles; revisar/integrar entrega local                       | AC-04; responsable y cierre excepcional auditado |
+| customers | Perfil/historial; búsqueda y consumo de token ticket ya disponibles                | AC-11/12/13/14                                   |
 | customers | Favoritos y repetir selección con catálogo actual                                  | AC-19/21                                         |
 | tickets   | Ticket de venta, acceso digital limitado a comprobante de invitado                 | Sin exponer estado/historial de invitados        |
 
@@ -39,8 +47,8 @@ respuesta/códigos/ejemplos, idempotencia, regla y prueba. El ticket digital de 
 necesita un permiso opaco de alcance limitado: no utilizar folio público ni QR de cobro
 como autorización. Especificar token de acceso al ticket en el diseño físico antes de implementarlo.
 
-Secuencia vigente: especificar caja/efectivo y su contrato; después tickets y
-registro, recuperación/worker y Stripe según dependencias.
+Secuencia vigente: preparar operaciones de preparación/perfil/ticket digital; construir
+worker y correo antes de recuperación, y Stripe según sus dependencias.
 
 Las reglas ya aceptadas deben figurar en cada operación: JWT cookie/CSRF,
 roles y propiedad, LISTO por preparación/cajero/admin, responsable de caja,

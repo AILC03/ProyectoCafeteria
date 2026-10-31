@@ -1,5 +1,15 @@
 # Diccionario de datos
 
+Entrega local CASH-01/02, 2026-10-27: migración aditiva
+`20261026_cash_ticket_delivery` añade a `customer_registration_tokens`
+`encrypted_payload TEXT?`, `key_version VARCHAR(32)?`, CHECK de presencia conjunta
+e índice `expires_at`. Recupera el mismo QR para impresión/reintento: AES-256-GCM,
+clave fuera de BD y contexto por venta/versión; original nunca en claro en BD.
+`token_hash` SHA-256 sigue siendo la identidad del futuro consumo de un uso.
+Cifrado se purga cuando usado/vencido; venta/hash/timestamps se conservan. No
+modifica tablas/migraciones previas ni habilita registro final. Caja, payments y
+sales usan las entidades/restricciones ya existentes. [Detalle](cash-implementation.md).
+
 Actualización 2026-10-25: añadido `image_upload_intents` mediante migración nueva
 20261024_image_upload_intents, sin modificar la inicial. Campos: id PK,
 product_id FK, actor_id FK, public_id único, expected_version nullable,
@@ -102,10 +112,10 @@ Cerrar y cobrar se excluyen transaccionalmente. Pago respeta snapshots de orden.
 
 ## 5. Registro y favoritos
 
-| Tabla                        | Campos                                                                                         |
-| ---------------------------- | ---------------------------------------------------------------------------------------------- |
-| customer_registration_tokens | id PK; sale_id FK UQ; token_hash UQ; expires_at; used_at?; used_by_customer_id? FK; created_at |
-| favorites                    | customer_id PK FK; product_id PK FK; created_at                                                |
+| Tabla                        | Campos                                                                                                                           |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| customer_registration_tokens | id PK; sale_id FK UQ; token_hash UQ; expires_at; used_at?; used_by_customer_id? FK; created_at; encrypted_payload?; key_version? |
+| favorites                    | customer_id PK FK; product_id PK FK; created_at                                                                                  |
 
 Token referencia venta pagada de invitado, vence 24 horas tras confirmación;
 consumir y asociar compra al crear cliente, con bloqueo/transacción. Favorites

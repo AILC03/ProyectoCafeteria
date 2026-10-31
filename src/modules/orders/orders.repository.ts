@@ -3,6 +3,8 @@ import type { Principal, RoleName } from '../auth/auth.types.js';
 import { forbidden, unauthorized } from '../auth/auth.tokens.js';
 import type { Position } from '../../shared/http/pagination.js';
 import type { PricedItem } from './orders.pricing.js';
+import { withTransaction } from '../../shared/database/transaction.js';
+import { visibleNumber } from '../../shared/database/visible-number.js';
 
 const orderSelect = {
   id: true,
@@ -175,7 +177,7 @@ export class OrdersTransaction {
       data: {
         ...fields,
         id: reserved.id,
-        folio: `A${reserved.id.toString().padStart(6, '0')}`,
+        folio: visibleNumber('A', reserved.id),
         order_item_orderId: {
           create: items.map(({ options, ...item }) => ({
             ...item,
@@ -188,6 +190,20 @@ export class OrdersTransaction {
   }
   async lockOrder(id: bigint) {
     await this.tx.$queryRaw`SELECT id FROM orders WHERE id=${id} FOR UPDATE`;
+  }
+  async hasSuccessfulCashPayment(id: bigint, totalCents: bigint) {
+    return !!(await this.tx.payment.findFirst({
+      where: {
+        orderId: id,
+        method: 'CASH',
+        status: 'SUCCEEDED',
+        amountCents: totalCents,
+        confirmedAt: { not: null },
+        currency: 'MXN',
+        sale: { is: { orderId: id, totalCents } },
+      },
+      select: { id: true },
+    }));
   }
   get(id: bigint) {
     return this.tx.order.findUnique({ where: { id }, select: orderSelect });
@@ -236,21 +252,6 @@ export class OrdersTransaction {
 export class OrdersRepository {
   constructor(private db: PrismaClient) {}
   async transaction<T>(fn: (tx: OrdersTransaction) => Promise<T>): Promise<T> {
-    for (let attempt = 0; ; attempt++) {
-      try {
-        return await this.db.$transaction((tx) => fn(new OrdersTransaction(tx)), {
-          timeout: 15000,
-          maxWait: 15000,
-        });
-      } catch (error) {
-        const code = error && typeof error === 'object' && 'code' in error ? error.code : undefined;
-        const meta = error && typeof error === 'object' && 'meta' in error ? error.meta : undefined;
-        const sqlCode = meta && typeof meta === 'object' && 'code' in meta ? meta.code : undefined;
-        const retryable =
-          ['P2034', '40P01', '40001'].includes(String(code)) ||
-          (code === 'P2010' && ['40P01', '40001'].includes(String(sqlCode)));
-        if (attempt >= 2 || !retryable) throw error;
-      }
-    }
+    return withTransaction(this.db, (tx) => fn(new OrdersTransaction(tx)));
   }
 }

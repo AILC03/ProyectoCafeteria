@@ -13,6 +13,13 @@ import { CloudinaryProvider } from './modules/catalog/image.provider.js';
 import { cloudinaryConfiguration } from './config/cloudinary.js';
 import { OrdersRepository } from './modules/orders/orders.repository.js';
 import { OrdersService } from './modules/orders/orders.service.js';
+import { CashRepository } from './modules/cash/cash.repository.js';
+import { CashService } from './modules/cash/cash.service.js';
+import { PaymentsService } from './modules/payments/payments.service.js';
+import { TicketsService } from './modules/tickets/tickets.service.js';
+import { ticketCipherConfiguration } from './modules/tickets/tickets.cipher.js';
+import { CustomerRegistrationRepository } from './modules/customer-registration/customer-registration.repository.js';
+import { CustomerRegistrationService } from './modules/customer-registration/customer-registration.service.js';
 
 const logger = pino({
   redact: [
@@ -31,6 +38,7 @@ const logger = pino({
     'AUTH_JWT_SECRET',
     'AUTH_CSRF_SECRET',
     'CLOUDINARY_API_SECRET',
+    'TICKET_ENCRYPTION_KEY',
   ],
 });
 async function main() {
@@ -39,6 +47,7 @@ async function main() {
   if (env.NODE_ENV === 'production' && (!auth || !env.FRONTEND_ORIGIN.startsWith('https://')))
     throw new Error('Producción requiere claves de autenticación y HTTPS.');
   const cloud = cloudinaryConfiguration(process.env);
+  const ticketCipher = ticketCipherConfiguration(process.env);
   const database = createDatabase(env.DATABASE_URL);
   try {
     await database.$connect();
@@ -47,6 +56,7 @@ async function main() {
     throw new Error('PostgreSQL no disponible; no se inició la API.');
   }
   const adminService = new AdminService(new AdminRepository(database));
+  const cashRepository = new CashRepository(database);
   const app = createApp({
     catalogRepository: new PrismaCatalogRepository(database),
     logger,
@@ -55,6 +65,12 @@ async function main() {
     authService: auth ? new AuthService(new AuthRepository(database), auth) : undefined,
     adminService,
     ordersService: new OrdersService(new OrdersRepository(database)),
+    cashService: new CashService(cashRepository),
+    paymentsService: new PaymentsService(cashRepository, ticketCipher),
+    ticketsService: new TicketsService(cashRepository, ticketCipher),
+    registrationService: new CustomerRegistrationService(
+      new CustomerRegistrationRepository(database),
+    ),
     imageService: cloud ? new ImageService(adminService, new CloudinaryProvider(cloud)) : undefined,
   });
   const server = app.listen(env.PORT, () =>

@@ -11,6 +11,8 @@ propiedad y estado en backend, nunca solo controles del frontend.
 | Crear orden en caja                          | No       | No                          | Sí                              | No                   | Sí                                          |
 | Buscar/asociar cliente antes del pago        | No       | No                          | Teléfono/número y nombre mínimo | No                   | Sí                                          |
 | Abrir caja                                   | No       | No                          | Si no hay sesión abierta        | No                   | Si no hay sesión abierta                    |
+| Consultar caja/resumen operativo             | No       | No                          | Sí                              | No                   | Sí                                          |
+| Obtener ticket CASH protegido para impresión | No       | No                          | Sí                              | No                   | Sí                                          |
 | Cobrar efectivo                              | No       | No                          | Solo responsable de sesión      | No                   | Solo si es responsable                      |
 | Cerrar caja ordinariamente                   | No       | No                          | Solo responsable                | No                   | Solo si es responsable                      |
 | Cerrar caja ajena excepcionalmente           | No       | No                          | No                              | No                   | Sí, con motivo y auditoría                  |
@@ -31,6 +33,12 @@ propiedad y estado en backend, nunca solo controles del frontend.
 ADMINISTRADOR consulta órdenes/ventas operativas, pero eso no concede modificar
 históricos. Cajero no obtiene correo, NIP ni historial personal mediante búsqueda.
 La asociación es inmutable después del pago, salvo alta de invitado por QR.
+La consulta protegida de ticket CASH no habilita ticket digital público del
+invitado. Su QR de registro permite únicamente el alta AUTH-02, nunca lectura de compras.
+POST `/api/v1/customer-registration/ticket` exige invitado sin cookie de acceso/refresh,
+Origin/CSRF prelogin, token original válido, no usado y dentro de 24h desde pago.
+Asocia solo esa compra pagada, consume permanentemente el código y no inicia sesión.
+El QR no permite asociar compras a cuentas existentes ni evita la unicidad de teléfono.
 Al marcar LISTO se registra actor y fecha; no se habilita transición desde pendientes/expiradas.
 
 Una sesión con must_change_pin solo permite cambio obligatorio y logout.

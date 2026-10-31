@@ -17,11 +17,11 @@ imagen oficial `postgres:17-bookworm`, inicia el contenedor y espera su healthch
 La versión mayor 17 queda fija; las actualizaciones menores se revisan con el equipo.
 Solo crea bases vacías, sin tablas de negocio, seed ni migraciones:
 
-| Base             | Uso                                                           |
-| ---------------- | ------------------------------------------------------------- |
-| cafeteria        | Desarrollo                                                    |
-| cafeteria_shadow | Exclusiva de Prisma para calcular migraciones; puede vaciarse |
-| cafeteria_test   | Pruebas aisladas; aún sin pruebas de negocio conectadas       |
+| Base             | Uso                                                                                |
+| ---------------- | ---------------------------------------------------------------------------------- |
+| cafeteria        | Desarrollo                                                                         |
+| cafeteria_shadow | Exclusiva de Prisma para calcular migraciones; puede vaciarse                      |
+| cafeteria_test   | Base control para integraciones; el runner crea y elimina bases temporales propias |
 
 Se publica exclusivamente en `127.0.0.1:55432` para no competir con una instalación
 en 5432. Los datos se conservan en el volumen Docker `cafeteria-local_postgres_data`,
@@ -76,9 +76,12 @@ sin modificar las bases:
 node --env-file=.env.docker node_modules/prisma/build/index.js validate
 ```
 
-Las pruebas actuales son health/configuración; crear `cafeteria_test` no las convierte
-en integración. Antes de añadir limpieza de pruebas, usar `TEST_DATABASE_URL` y
-validar explícitamente el destino. Nunca limpiar desarrollo o shadow para tests.
+`npm run test:integration` usa `cafeteria_test` únicamente como conexión de
+control y crea una base temporal por suite. Actualmente cubre auth/admin,
+catálogo, ORD-01 y CASH-01/02. El runner valida el destino explícitamente y
+elimina solo las bases temporales que creó; nunca limpia desarrollo o shadow.
+Puede usar `.env.docker` cuando no se proporciona `TEST_DATABASE_URL`; una URL
+explícita tiene prioridad y evita cargar archivos de entorno.
 No usar `docker compose down -v` como solución a fallos: elimina el volumen y datos.
 
 ## Solución de problemas

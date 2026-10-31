@@ -1,5 +1,23 @@
 # Avance backend — pasos 1, 2 y 3
 
+## AUTH-02 local — 2026-10-31
+
+Registro exclusivamente con QR de ticket pagado: transacción PostgreSQL, consumo
+único permanente, asociación exclusiva sin alterar snapshots, teléfono MX único y
+NIP Argon2id compatible con auth. Sin sesión automática ni migración nueva.
+Contrato OpenAPI 0.6.0, módulo customer-registration y pruebas HTTP/BD añadidos.
+Revisión humana/integración pendientes; sin recuperación/reset/perfil/Stripe.
+Evidencia y estado de checks: [tarea AUTH-02](tasks/AUTH-02-ticket-qr-registration.md).
+
+## CASH-01/CASH-02 local — 2026-10-27
+
+Implementados caja/apertura/resumen/cierre, cobro CASH por ID con pago/venta/
+preparación atómicos y ticket JSON protegido; QR de registro preparado, sin alta
+final. Probados sobre PostgreSQL 17 aislado, pendientes revisión e integración.
+No hay QR de cobro ni Stripe/worker/expiración automática. Migración aditiva de
+cifrado del token de ticket no aplicada a desarrollo/shadow/producción. Detalle:
+[guía](cash-implementation.md), [tarea y resultados](tasks/CASH-01-02-cash-payments.md).
+
 ## Actualización ORD-01 — 2026-10-26
 
 Auth/admin ya implementados y ADR 0012 aceptado por Ángel; Cloudinary continúa
