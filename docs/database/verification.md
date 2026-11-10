@@ -3,7 +3,9 @@
 > **Registro histórico de validación.** ADR 0011 fue aceptado el 2026-10-20 y
 > el proyecto avanzó con migraciones, auth/admin y ORD-01 en `dev`. Las secciones
 > siguientes preservan la evidencia de la revisión del candidato; no describen
-> por sí solas el estado actual de implementación.
+> por sí solas el estado actual de implementación. Para la evidencia posterior de
+> registro, caja, órdenes y auth consultar el [índice vigente](../README.md) y sus
+> tareas; los pendientes de servicios de la tabla inferior son históricos.
 
 ## Revisión del 18/10/2026
 

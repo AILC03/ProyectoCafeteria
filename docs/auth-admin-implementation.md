@@ -1,4 +1,4 @@
-# Autenticación y administración — estado vigente
+# Autenticación y administración — guía y evidencia de entrega
 
 Actualizado: 2026-10-25. Corrección del PR de Leonel y ampliación del encargo.
 Decisión del 2026-10-26: Ángel acepta ADR 0012. Cloudinary continúa simulado,
@@ -6,11 +6,21 @@ también en CI; no se configurarán credenciales ni se harán llamadas reales si
 credenciales del equipo y autorización explícita para una prueba pequeña.
 Se conservan las pruebas de autenticación, CSRF, revocación, límites, roles y administración.
 Entrega posterior ORD-01: [órdenes pendientes y operación mínima](orders-implementation.md).
-Las exclusiones inferiores describen esta corrección de auth/admin, no esa entrega posterior.
+Entrega posterior AUTH-02: [registro QR de ticket](tasks/AUTH-02-ticket-qr-registration.md).
+Entrega posterior FIN-01: [cuentas/empleados, correo/recuperación y reset](backend-completion.md),
+con revocación y tokens persistentes. Las exclusiones de esta entrega original
+no describen el estado actual de esos módulos.
+Las exclusiones inferiores describen esta corrección de auth/admin, no las entregas
+posteriores. Consultar [estado global vigente](README.md).
 No hay registro abierto, bcrypt, Bearer de 8 h ni clave JWT de respaldo.
 No se modificó la contraseña existente de AngelAdmin.
 
 ## Preparar otro ordenador
+
+Los comandos siguientes preparan una instalación local autorizada, no son pasos
+de esta revisión documental. `db:prepare` aplica las migraciones presentes: revisar
+antes la migración CASH y [sus requisitos operativos](cash-implementation.md), cuya
+aplicación a las bases del proyecto no está acreditada por la entrega.
 
 ```powershell
 npm ci
@@ -109,7 +119,8 @@ Cada escritura genera auditoría sin copiar cuerpos privados.
 
 ## Cloudinary
 
-Configurar CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET locales. No son necesarias
+Solo con autorización posterior, configurar CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET
+locales. No son necesarias
 para login ni CRUD sin imágenes; rutas de imagen devuelven 503 sin proveedor.
 No hay cuenta del equipo ni credenciales inventadas. Validación real pendiente.
 
@@ -155,11 +166,14 @@ test:integration requiere TEST_DATABASE_URL local /cafeteria_test y CREATEDB;
 cada archivo se ejecuta en una base aleatoria propia que se elimina al final.
 No escribe usuarios ni pedidos en desarrollo. Prueba proveedor con mock, no
 certifica red, claves, cuotas ni transformación de imágenes del proveedor real.
-OpenAPI 0.3.0 especifica auth/admin; api:features regenera esas operaciones sin
-reemplazar los GET públicos originales; revisar diff cuando se use.
+OpenAPI 0.3.0 fue el contrato al cierre auth/admin; el vigente es 0.6.0.
+`api:features` regenera auth/admin y conserva los GET públicos; después deben
+ejecutarse los generadores ORD, CASH y registro en ese orden para restituir los
+metadatos actuales. Ver [secuencia de regeneración](orders-implementation.md#verificación).
 
-No se implementan aún registro por ticket, recuperación de correo, reset de NIP
-administrativo, CRUD empleados, órdenes, cobros, caja, Stripe ni frontend.
+Esta corrección no incluyó registro por ticket, órdenes, cobros ni caja; esos
+flujos tienen entregas posteriores. Recuperación de correo, reset de NIP
+administrativo, CRUD empleados, Stripe y frontend siguen fuera de esta entrega.
 Revisar PR con Ángel/Enrique, probar HTTPS/cookies en despliegue y Cloudinary
 real antes de declarar producción lista. No usar npm audit fix --force.
 

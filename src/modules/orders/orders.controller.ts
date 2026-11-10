@@ -73,5 +73,32 @@ export function ordersController(service: OrdersService) {
       ),
     );
   };
-  return { createMobile, createCashier, get, preparation, searchCustomer, associate, ready };
+  const issueCashQr: RequestHandler = async (request, response) => {
+    input.emptyInput.parse(request.query);
+    input.emptyInput.parse(request.body);
+    response.json(
+      jsonValue(
+        await service.issueCashQr(principal(response), BigInt(idSchema.parse(request.params.id))),
+      ),
+    );
+  };
+  const scanCashQr: RequestHandler = async (request, response) => {
+    input.emptyInput.parse(request.query);
+    response.json(
+      jsonValue(
+        await service.scanCashQr(principal(response), input.cashQrScan.parse(request.body).token),
+      ),
+    );
+  };
+  return {
+    createMobile,
+    createCashier,
+    get,
+    preparation,
+    searchCustomer,
+    associate,
+    ready,
+    issueCashQr,
+    scanCashQr,
+  };
 }

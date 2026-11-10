@@ -3,7 +3,9 @@
 Actualización 2026-10-20: Ángel aprobó candidato y ADR 0011, y autorizó aplicar
 la migración a su desarrollo local. Aplicada sin reset; menú demo cargado.
 C06 y aprobación C12 ya cerrados; C08 requiere evidencia externa de Leonel/Docker.
-La lista inferior conserva la revisión del 18/10; ver backend-progress.md para estado actual.
+La lista inferior conserva la revisión del 18/10; ver [índice vigente](../README.md)
+para estado actual. Los pendientes de servicios QR/refresh y aprobación C12 de
+aquella revisión no sustituyen las entregas y aceptaciones posteriores.
 
 Actualizado: 18/10/2026. Responsable de revisión final: Angel.
 Estado histórico: **INTEGRADO COMO CANDIDATO, NO APROBADO NI MIGRADO**. Fue
@@ -12,7 +14,8 @@ implementación actual en `dev`; conservar como evidencia de la revisión 18/10.
 
 ## Resolución técnica del 18/10/2026
 
-La lista original inferior conserva los hallazgos y criterios. Estado actual:
+La lista original inferior conserva los hallazgos y criterios. Corte del 18/10,
+salvo las notas explícitas de aceptación posterior en C06:
 
 | ID  | Resultado de esta corrección                                                                                   |
 | --- | -------------------------------------------------------------------------------------------------------------- |

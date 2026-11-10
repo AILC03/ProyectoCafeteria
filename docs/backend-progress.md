@@ -1,4 +1,46 @@
-# Avance backend — pasos 1, 2 y 3
+# Avance backend — historial de entregas
+
+## FIN-01 — 2026-11-10
+
+Cierre funcional en pruebas: ventas, cuentas/empleados, recuperación/correo,
+worker/expiración, Checkout/eventos/reconciliación/refund Stripe y tickets Stripe/
+propios. OpenAPI 0.11.0; proveedores externos inyectados simulados, no habilitación
+de Stripe real desde server/worker. Migración aditiva probada únicamente en bases
+temporales propias. Evidencia, límites y revisión humana pendiente:
+[FIN-01](tasks/FIN-01-backend-completion.md), [operación](backend-completion.md).
+
+## FAV-01 local — 2026-11-09
+
+Favoritos privados de producto, PUT/DELETE idempotentes, listado con visibilidad
+de catálogo y cursor propio con microsegundos. Repetición con preview sin efectos,
+precio actual/avisos, bloqueo de selecciones inválidas y confirmación por ORD-01.
+Snapshots intactos, sin nueva migración/proveedor. OpenAPI 0.10.0; 109 pruebas
+HTTP/unitarias y 124 de integración PostgreSQL 17.11 aprobadas, db:verify correcto.
+Pendiente revisión/integración y frontend. [Tarea y evidencia](tasks/FAV-01-favorites-repeat.md).
+
+## CUS-01 local — 2026-11-09
+
+GET de perfil propio e historial paginado exclusivos de CLIENTE, con revalidación
+transaccional de sesión/rol, SQL siempre ligado al propietario y cursor que conserva
+microsegundos. Sin cambios de esquema ni datos al leer; detalle/snapshots de ORD-01
+conservados. OpenAPI 0.9.0, 97 pruebas HTTP/unitarias y 115 de integración PostgreSQL
+17.11 aprobadas; db:verify correcto. Pendiente revisión/integración, edición de perfil
+y módulos posteriores. [Tarea y evidencia](tasks/CUS-01-customer-profile-history.md).
+
+## CASH-03 local — 2026-11-09
+
+QR de efectivo con creación opt-in, emisión/reimpresión idempotente por orden y
+escaneo protegido sin efectos de pago; utiliza cobro CASH existente. Original
+cifrado recuperable para replay 48h, hash como identidad y AAD separado de registro.
+Migración aditiva probada solo en bases temporales PostgreSQL 17.11; no aplicada
+a bases del proyecto. OpenAPI 0.8.0, 90 pruebas HTTP/unitarias y 104 de integración
+aprobadas; db:verify correcto. Pendiente revisión/integración y cámara/renderizado
+frontend. [Tarea y evidencia](tasks/CASH-03-cash-qr.md). TKT-02 se conserva.
+
+Estado reconciliado al 2026-11-09: [índice vigente](README.md). Las entradas
+siguientes conservan evidencia y exclusiones de cada fecha; no son por sí solas
+el inventario actual. Preparación/LISTO ya tienen implementación y el registro QR
+final de invitado se añadió en AUTH-02.
 
 ## AUTH-02 local — 2026-10-31
 
@@ -61,7 +103,7 @@ usuario AngelAdmin. Si ya existe, no cambia cuenta ni contraseña. No usar
 argumentos ni variables de entorno para introducir la contraseña. Todavía no
 hay endpoint de login: la cuenta queda preparada para el módulo de autenticación.
 
-## 2. Infraestructura común
+### 2. Infraestructura común
 
 - PrismaPg con pool y desconexión al detener servidor.
 - Validación Zod; errores application/problem+json sin stack, SQL ni secretos.
@@ -81,7 +123,7 @@ hay endpoint de login: la cuenta queda preparada para el módulo de autenticaci�
 - Dependencias de implementación: cors, helmet, pino, express-rate-limit y argon2;
   sus funciones justifican su incorporación. Argon2 ya estaba definido en ADR 0005.
 
-## 3. Catálogo público disponible
+### 3. Catálogo público disponible
 
 | Operación                                | Función                                 |
 | ---------------------------------------- | --------------------------------------- |
@@ -103,7 +145,7 @@ npm run dev
 Abrir http://localhost:3000/api/v1/categories y http://localhost:3000/api/v1/products.
 No suponer IDs de fixtures: obtenerlos del listado y usarlos en detalle/opciones.
 
-## Pruebas y límites
+### Pruebas y límites del cierre de catálogo
 
 Resultado de cierre: 31 pruebas HTTP/unitarias y 13 de integración PostgreSQL
 correctas; tipos, lint, formato, build y contrato también comprobados.
@@ -122,7 +164,7 @@ cuatro productos y strings precisos; AngelAdmin aún no creado (pendiente contra
 - Avisos npm de Prisma siguen pendientes de actualización compatible; no usar
   audit fix --force ni desplegar sin revisión de dependencias/seguridad.
 
-## Lo siguiente
+### Siguientes pasos previstos en 2026-10-21 (historial)
 
 Revisar catálogo con Enrique usando OpenAPI. Crear AngelAdmin localmente.
 Después: autenticación/permisos/CSRF, administración del catálogo, órdenes y

@@ -27,10 +27,12 @@ ya se implementaron infraestructura y persistencia, catálogo, auth/admin, `ORD-
 `CASH-01/02` y registro QR `AUTH-02`; que una ADR esté aceptada no convierte
 automáticamente el resto de sus flujos en funcionalidad disponible.
 
-Pendientes principales: QR de cobro, ticket digital de invitado, pagos Stripe,
-recuperación de NIP, worker/correo, perfil/historial, consulta de ventas y Cloudinary
-real. Consultar el
-[estado reconciliado](../tasks/DOC-01-adr-status-reconciliation.md), el
+FIN-01 (2026-11-10) completa implementación en pruebas de QR/tickets, Stripe,
+recuperación, worker/correo, clientes/favoritos y ventas. Pendientes: revisión humana,
+integración frontend, migraciones/configuración y proveedores reales autorizados.
+Stripe SDK no se habilita desde server/worker; Cloudinary real sigue restringido.
+No se cambia la aceptación de ADR ni se afirma despliegue. Consultar el
+[estado reconciliado](../README.md), el
 [contrato](../api/contract-plan.md) y las tareas de desarrollo.
 
 ## ADR registrados

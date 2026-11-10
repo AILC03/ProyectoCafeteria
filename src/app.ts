@@ -18,11 +18,19 @@ import type { OrdersService } from './modules/orders/orders.service.js';
 import type { CashService } from './modules/cash/cash.service.js';
 import type { PaymentsService } from './modules/payments/payments.service.js';
 import type { TicketsService } from './modules/tickets/tickets.service.js';
-import { cashRoutes } from './modules/cash/cash.routes.js';
+import { cashRoutes, privateCashResponse } from './modules/cash/cash.routes.js';
 import { paymentsRoutes } from './modules/payments/payments.routes.js';
 import { ticketsRoutes } from './modules/tickets/tickets.routes.js';
 import { customerRegistrationRoutes } from './modules/customer-registration/customer-registration.routes.js';
 import type { CustomerRegistrationService } from './modules/customer-registration/customer-registration.service.js';
+import { customersRoutes } from './modules/customers/customers.routes.js';
+import type { CustomersService } from './modules/customers/customers.service.js';
+import { accountsRoutes } from './modules/accounts/accounts.routes.js';
+import type { AccountsService } from './modules/accounts/accounts.service.js';
+import { salesRoutes } from './modules/sales/sales.routes.js';
+import type { SalesService } from './modules/sales/sales.service.js';
+import { stripeRoutes, stripeWebhook } from './modules/payments/stripe.routes.js';
+import type { StripeService } from './modules/payments/stripe.service.js';
 
 type AppOptions = {
   catalogRepository?: CatalogRepository;
@@ -38,6 +46,10 @@ type AppOptions = {
   ticketsService?: TicketsService;
   registrationService?: CustomerRegistrationService;
   registrationRateLimit?: number;
+  customersService?: CustomersService;
+  accountsService?: AccountsService;
+  salesService?: SalesService;
+  stripeService?: StripeService;
 };
 
 export function createApp(options: AppOptions = {}) {
@@ -46,6 +58,29 @@ export function createApp(options: AppOptions = {}) {
   app.set('query parser', 'simple');
   app.use(requestContext(options.logger));
   app.use(helmet());
+  // Stripe firma bytes exactos: antes de CORS/JSON/limitadores de navegador.
+  if (options.stripeService)
+    app.post(
+      '/api/v1/stripe/webhook',
+      express.raw({ type: 'application/json', limit: '256kb' }),
+      stripeWebhook(options.stripeService),
+    );
+  // También proteger errores de Origin, parsing y límite anteriores al router.
+  app.use(
+    [
+      '/api/v1/guest-ticket',
+      '/api/v1/sales/:id/ticket-access',
+      '/api/v1/orders',
+      '/api/v1/cashier/orders',
+      '/api/v1/customers/me',
+      '/api/v1/admin/employees',
+      '/api/v1/admin/customers',
+      '/api/v1/sales',
+      '/api/v1/auth/pin-recovery',
+      '/api/v1/auth/email-verification',
+    ],
+    privateCashResponse,
+  );
 
   const origin = options.frontendOrigin ?? 'http://localhost:5173';
   app.use((request, _response, next) => {
@@ -112,6 +147,14 @@ export function createApp(options: AppOptions = {}) {
     app.use('/api/v1', paymentsRoutes(options.authService, options.paymentsService));
   if (options.authService && options.ticketsService)
     app.use('/api/v1', ticketsRoutes(options.authService, options.ticketsService));
+  if (options.authService && options.customersService)
+    app.use('/api/v1', customersRoutes(options.authService, options.customersService));
+  if (options.authService && options.accountsService)
+    app.use('/api/v1', accountsRoutes(options.authService, options.accountsService));
+  if (options.authService && options.salesService)
+    app.use('/api/v1', salesRoutes(options.authService, options.salesService));
+  if (options.authService && options.stripeService)
+    app.use('/api/v1', stripeRoutes(options.authService, options.stripeService));
   if (options.authService && options.registrationService)
     app.use(
       '/api/v1',

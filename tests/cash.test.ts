@@ -64,4 +64,15 @@ describe('ticket: cifrado con contexto y configuración sin fallback', () => {
       new TicketCipher(randomBytes(32).toString('hex')).open(encrypted, 1n, 'v1'),
     ).toThrow();
   });
+  it('QR CASH y registro usan dominios AEAD distintos aun con la misma clave e ID', () => {
+    const key = randomBytes(32).toString('hex'),
+      token = randomBytes(32).toString('base64url');
+    const registration = new TicketCipher(key),
+      cash = new TicketCipher(key, 'v1', 'cash-payment');
+    const payload = cash.seal(token, 1n);
+    expect(cash.open(payload, 1n, 'v1')).toBe(token);
+    expect(() => registration.open(payload, 1n, 'v1')).toThrow();
+    expect(() => cash.open(registration.seal(token, 1n), 1n, 'v1')).toThrow();
+    expect(() => cash.open(payload, 2n, 'v1')).toThrow();
+  });
 });

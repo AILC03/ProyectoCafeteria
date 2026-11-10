@@ -1,13 +1,11 @@
 openapi: 3.0.3
 info:
   title: API de Cafetería — Backend
-  version: 0.6.0
-  description:
-    'API de catálogo, autenticación cookie/CSRF, administración y órdenes con snapshots. No
-    hay registro abierto. CASH-01/02: caja, cobro efectivo, venta y ticket. AUTH-02: registro de
-    cliente exclusivamente con QR válido de ticket pagado, sin login automático ni recuperación. Sin
-    Stripe, worker ni expiración automática. Cloudinary real pendiente de
-    configuración/verificación; ninguna clave real forma parte del contrato.'
+  version: 0.11.0
+  description: 'API de cafetería: catálogo, auth cookie/CSRF, administración, órdenes, CASH/Stripe,
+    tickets, clientes, favoritos, ventas y worker. Registro exclusivamente por QR pagado. FIN-01
+    verificado con proveedores simulados; sin llamadas reales autorizadas, despliegue ni
+    certificación de producción.'
 paths:
   /api/v1/health:
     get:
@@ -3518,13 +3516,16 @@ paths:
       operationId: createMobileOrder
       summary: createMobileOrder
       description:
-        Invitado o CLIENTE, nunca personal. Requiere Origin exacto y bootstrap CSRF incluso
+        'Invitado o CLIENTE, nunca personal. Requiere Origin exacto y bootstrap CSRF incluso
         invitado. Si hay cookie de acceso se valida; no se permite omitir sesión inválida como
         invitado. Cliente se asocia desde sesión, no desde body; guestName solo invitado. CASH o
         STRIPE fijo. Backend calcula catálogo bajo lock (2026,1), valida disponibilidad y selección;
         snapshots inmutables. 1–50 líneas, 1–99 unidades; total <=9999900. Folio A+identity
-        (ADR0011), no permiso. PENDIENTE_PAGO con plazo 30 min; no hay Checkout, cobro, QR ni
-        expiración automática.
+        (ADR0011), no permiso. PENDIENTE_PAGO con plazo 30 min; La creación no cobra: Checkout se
+        solicita aparte y worker realiza expiración. includeCashQr=true solo CASH añade cashQr junto
+        a data; requiere cifrado configurado. Reintentos conservan QR/plazo originales por 48h,
+        incluso tras pago/vencimiento, pero escaneo rechaza QR no cobrable. Sin el flag no se emite
+        QR y se conserva la respuesta anterior. Nunca usar QR para consultar estado.'
       security:
         - csrfHeader: []
       parameters:
@@ -3556,6 +3557,26 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/Order'
+                  cashQr:
+                    $ref: '#/components/schemas/CashPaymentQr'
+                  checkout:
+                    type: object
+                    additionalProperties: false
+                    properties:
+                      purpose:
+                        type: string
+                        enum:
+                          - STRIPE_CHECKOUT
+                      token: &a71
+                        type: string
+                        pattern: ^[A-Za-z0-9_-]{43}$
+                      expiresAt: &a58
+                        type: string
+                        format: date-time
+                    required:
+                      - purpose
+                      - token
+                      - expiresAt
                 required:
                   - data
               example: &a20
@@ -3660,7 +3681,8 @@ paths:
         CAJERO/ADMINISTRADOR. Crea CASH pendiente, sin abrir/cobrar caja ni exigir sesión de
         caja en esta entrega. Cliente opcional por identifier exacto y confirmedName; confirmar
         nombre vigente. customer y guestName son excluyentes. No acepta precios, customerId, source
-        ni estado.
+        ni estado. includeCashQr=true añade cashQr junto a data con plazo original; reintentos
+        conservan original por 48h y no pagan ni renuevan QR.
       security: &a22
         - accessCookie: &a18 []
           csrfHeader: []
@@ -3683,6 +3705,8 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/Order'
+                  cashQr:
+                    $ref: '#/components/schemas/CashPaymentQr'
                 required:
                   - data
               example:
@@ -3785,7 +3809,7 @@ paths:
           name: id
           in: path
           required: true
-          schema: &a40
+          schema: &a80
             type: string
             pattern: ^[1-9][0-9]{0,18}$
             description: BIGINT positivo <=9223372036854775807; nunca Number.
@@ -4436,13 +4460,13 @@ paths:
                   data:
                     type: object
                     additionalProperties: false
-                    properties: &a45
+                    properties: &a85
                       id: &a26
                         type: string
                         pattern: ^[1-9][0-9]{0,18}$
                         description: BIGINT <=9223372036854775807.
                       employeeId: *a26
-                      openedAt: &a47
+                      openedAt: &a87
                         type: string
                         format: date-time
                       closedAt:
@@ -4482,7 +4506,7 @@ paths:
                         type: string
                         pattern: ^[0-9]+$
                       computedExpectedCashCents: *a27
-                    required: &a46
+                    required: &a86
                       - id
                       - employeeId
                       - openedAt
@@ -4915,7 +4939,9 @@ paths:
         consulta. Reimpresión no crea/consume/renueva token. Asociado, usado o vencido:
         registration=null. Nunca expone QR de pago ni acceso digital de invitado, ni implementa
         endpoint final de registro. No-store, Referrer-Policy:no-referrer; no guardar respuesta
-        sensible en logs/cachés/localStorage.'
+        sensible en logs/cachés/localStorage. FIN-01 también admite venta STRIPE coherente; importes
+        de efectivo null en tarjeta. Para Stripe las 24h cuentan desde providerPaidAt. Se conservan
+        los permisos previos, sin consulta pública de estado.'
       security: *a29
       parameters:
         - *a31
@@ -5139,6 +5165,2101 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
+  /api/v1/customers/me:
+    get:
+      tags:
+        - Customers
+      operationId: getCustomerProfile
+      summary: Consultar perfil propio del cliente autenticado
+      description:
+        Solo CLIENTE con cookie de acceso y sesión/rol vigentes en PostgreSQL. Sin query ni
+        body, no acepta ID/cliente/folio/token como autorización. DTO explícito sin hashes, NIP,
+        username, sesiones ni tokens. Correo y fecha de verificación reflejan datos existentes, no
+        habilitan correo ni recuperación. No muta datos ni renueva cookies. No-store/no-referrer.
+      security: &a34
+        - accessCookie: []
+        - productionAccessCookie: []
+      responses:
+        '200':
+          description: Perfil propio; Cache-Control no-store y Referrer-Policy no-referrer.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CustomerProfile'
+              example:
+                data:
+                  customerNumber: C000105
+                  name: Ana López
+                  phone: '+526641234567'
+                  recoveryEmail: null
+                  recoveryEmailVerifiedAt: null
+                  createdAt: 2026-11-09T12:00:00.000Z
+        '400': &a35
+          description: VALIDATION_ERROR; body/query no permitido o parámetros inválidos.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401': &a36
+          description: UNAUTHENTICATED; sesión ausente, inválida, revocada o cuenta inactiva.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403': &a37
+          description: FORBIDDEN / PIN_CHANGE_REQUIRED / ORIGIN_NOT_ALLOWED; solo CLIENTE.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429': &a38
+          description: RATE_LIMITED; límite público por IP/proceso.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500': &a39
+          description: INTERNAL_ERROR; error saneado sin detalles internos.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503': &a40
+          description: DEPENDENCY_UNAVAILABLE; BD/datos de perfil no disponibles.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    patch:
+      tags:
+        - FIN-01
+      summary: updateOwnProfile
+      description:
+        'CLIENTE. Al menos name o phone; cambiar phone requiere currentPin válido y teléfono
+        único. Sesión se revoca tras cambiar teléfono: volver a login. Entradas estrictas; rechaza
+        campos y query extra. Respuestas privadas no-store. Origin exacto y X-CSRF-Token
+        obligatorios.'
+      operationId: updateOwnProfile
+      security:
+        - accessCookie: []
+          csrfHeader: []
+        - productionAccessCookie: []
+          csrfHeader: []
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                name: &a32
+                  type: string
+                  minLength: 1
+                  maxLength: 120
+                phone: &a33
+                  type: string
+                  pattern: ^\+52[0-9]{10}$
+                currentPin: &a70
+                  type: string
+                  pattern: ^[0-9]{4}$
+      responses:
+        '200':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data: &a69
+                    type: object
+                    additionalProperties: false
+                    properties:
+                      id: &a59
+                        type: string
+                        pattern: ^[1-9][0-9]{0,18}$
+                      customerNumber: &a60
+                        type: string
+                      name: *a32
+                      phone: *a33
+                    required:
+                      - id
+                      - customerNumber
+                      - name
+                      - phone
+                required:
+                  - data
+        '400':
+          description: Error 400; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: Error 401; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Error 403; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Error 404; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Error 409; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: Error 429; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Error 500; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Error 503; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/v1/customers/me/orders:
+    get:
+      tags:
+        - Customers
+      operationId: listCustomerOrders
+      summary: Listar resúmenes de órdenes propias con cursor estable
+      description:
+        Solo CLIENTE con sesión/rol vigentes. Incluye todos los estados persistidos de sus
+        órdenes asociadas, no solo pagadas; no es reporte de ventas ni expira pendientes
+        automáticamente. Identidad siempre de sesión, no query. Ascendente por (createdAt,id), seis
+        decimales PostgreSQL para cursor, ligado a recurso/cliente. Cursor no autoriza datos ajenos
+        incluso si se modifica. Limit 20 por defecto, máximo 100. Sin body ni filtros adicionales.
+        Para detalle/snapshots usar GET /api/v1/orders/{id}, que ya valida propiedad. Una asociación
+        histórica nueva puede requerir refrescar primera página; el cursor no congela el conjunto.
+        No-store/no-referrer y sin Set-Cookie.
+      security: *a34
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: cursor
+          in: query
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 2048
+      responses:
+        '200':
+          description: Lista propia; sin resultados devuelve data vacía y nextCursor null.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - data
+                  - page
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CustomerOrderSummary'
+                  page:
+                    type: object
+                    additionalProperties: false
+                    required:
+                      - limit
+                      - nextCursor
+                    properties:
+                      limit:
+                        type: integer
+                        minimum: 1
+                        maximum: 100
+                      nextCursor:
+                        type: string
+                        nullable: true
+              example:
+                data: []
+                page:
+                  limit: 20
+                  nextCursor: null
+        '400': *a35
+        '401': *a36
+        '403': *a37
+        '429': *a38
+        '500': *a39
+        '503': *a40
+  /api/v1/customers/me/favorites:
+    get:
+      tags:
+        - Customers
+      operationId: listCustomerFavorites
+      summary: Listar productos favoritos propios con catálogo actual
+      description:
+        'Solo CLIENTE con sesión/rol vigentes. Sin body; query solo limit/cursor. Producto, no
+        configuración. Orden ascendente por (favoritedAt,productId) con microsegundos; cursor ligado
+        a recurso/cliente. Misma visibilidad que catálogo público: agotados visibles,
+        retirados/categoría inactiva ocultos sin borrar la fila. Owner siempre de sesión.
+        No-store/no-referrer.'
+      security: *a34
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: cursor
+          in: query
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 2048
+      responses:
+        '200':
+          description: Favoritos propios visibles, con datos actuales de producto.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - data
+                  - page
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CustomerFavorite'
+                  page:
+                    type: object
+                    additionalProperties: false
+                    required:
+                      - limit
+                      - nextCursor
+                    properties:
+                      limit:
+                        type: integer
+                        minimum: 1
+                        maximum: 100
+                      nextCursor:
+                        type: string
+                        nullable: true
+              example:
+                data: []
+                page:
+                  limit: 20
+                  nextCursor: null
+        '400': *a35
+        '401': *a36
+        '403': *a37
+        '429': *a38
+        '500': *a39
+        '503': *a40
+  /api/v1/customers/me/favorites/{productId}:
+    parameters:
+      - name: productId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}$
+    put:
+      tags:
+        - Customers
+      operationId: addCustomerFavorite
+      summary: Fijar producto como favorito propio de forma idempotente
+      description:
+        Solo CLIENTE, cookie/sesión/rol vigentes, Origin exacto y CSRF. Sin query; body ausente
+        o JSON vacío, sin configuración ni precio/cliente. Visible agotado permitido;
+        retirado/categoría oculta 404. Repeticiones/concurrencia conservan una fila y fecha inicial.
+        No exige Idempotency-Key. No-store/no-referrer.
+      security: &a41
+        - accessCookie: []
+          csrfHeader: []
+        - productionAccessCookie: []
+          csrfHeader: []
+      requestBody: &a42
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+            example: {}
+      responses:
+        '204':
+          description: Favorito propio fijado; sin body ni Set-Cookie.
+        '400': *a35
+        '401': *a36
+        '403': *a37
+        '404': &a43
+          description: Producto no visible/ausente u orden no propia/no disponible.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429': *a38
+        '500': *a39
+        '503': *a40
+    delete:
+      tags:
+        - Customers
+      operationId: removeCustomerFavorite
+      summary: Retirar solo el favorito propio, incluso si el producto fue retirado
+      description:
+        Solo CLIENTE con sesión vigente, Origin y CSRF. Sin query ni datos extra. Body ausente
+        o JSON vacío. 204 también si no existía. No borra catálogo, favoritos ajenos ni snapshots.
+        No exige Idempotency-Key. No-store/no-referrer.
+      security: *a41
+      requestBody: *a42
+      responses:
+        '204':
+          description: Favorito propio ausente; sin body ni Set-Cookie.
+        '400': *a35
+        '401': *a36
+        '403': *a37
+        '429': *a38
+        '500': *a39
+        '503': *a40
+  /api/v1/customers/me/orders/{id}/repeat-preview:
+    post:
+      tags:
+        - Customers
+      operationId: previewRepeatedCustomerOrder
+      summary: Preparar selección revisable desde una orden propia con precios actuales
+      description:
+        Solo CLIENTE, sesión/rol vigentes, Origin y CSRF. Body JSON vacío, sin query. Solo
+        orden propia en cualquier estado. Bajo lock de catálogo, revalida disponibilidad, opciones,
+        min/max, precios y máximo 9999900. No elimina ni sustituye IDs/opciones originales. Avisos
+        bloqueantes dejan canCreateOrder false y total null; líneas inválidas sin precio actual.
+        Diferencias de precio/nombres válidos avisan sin bloquear. No crea orden/carrito
+        persistente, pago/venta ni modifica históricos. Confirmar explícitamente con POST /orders
+        existente, nueva Idempotency-Key y método elegido; esa ruta revalida todo. Preview no
+        reserva precio/disponibilidad, no exige Idempotency-Key. No-store/no-referrer.
+      security: *a41
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[1-9][0-9]{0,18}$
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+            example: {}
+      responses:
+        '200':
+          description: Selección actual y avisos; no constituye orden ni garantía de precio.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RepeatOrderPreview'
+              example:
+                data:
+                  sourceOrderId: '1'
+                  canCreateOrder: true
+                  totalCents: '2000'
+                  items:
+                    - productId: '1'
+                      productName: Agua
+                      quantity: 1
+                      optionValueIds: []
+                      currentUnitPriceCents: '2000'
+                      currentLineTotalCents: '2000'
+                  warnings: []
+        '400': *a35
+        '401': *a36
+        '403': *a37
+        '404': *a43
+        '429': *a38
+        '500': *a39
+        '503': *a40
+  /api/v1/cashier/orders/{id}/cash-qr:
+    post:
+      tags:
+        - Orders
+      operationId: issueCashPaymentQr
+      summary: Emitir o reimprimir QR de cobro CASH, sin cobrar
+      description:
+        CAJERO/ADMINISTRADOR, cookie vigente, Origin y CSRF. Solo orden CASH pendiente dentro
+        de su plazo original. Emisiones concurrentes/reintentos devuelven el mismo token y no
+        amplían plazo. No exige caja abierta ni confirma pago. Hash en orders y original cifrado con
+        AAD cash-payment. Sin clave/versión recuperable devuelve 503; rollback sin QR parcial.
+        No-store/no-referrer.
+      security: *a22
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[1-9][0-9]{0,18}$
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+            example: {}
+      responses:
+        '200':
+          description: QR original emitido o recuperado, sin cobro ni extensión.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CashPaymentQr'
+              example:
+                data:
+                  purpose: CASH_PAYMENT
+                  token: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                  qrPayload: cafeteria:cash:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                  expiresAt: 2026-11-09T12:30:00.000Z
+        '400': &a44
+          description: Entrada/query/ID inválidos o campos adicionales.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401': &a45
+          description: Sesión ausente, inválida o revocada.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403': &a46
+          description: Rol, cambio obligatorio de NIP, Origin o CSRF incompatible.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404': &a47
+          description: Orden/token no disponible. Folio y tokens de registro/ticket no autorizan.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409': &a48
+          description: ORDER_CONFLICT; no CASH, ya pagada o fuera del plazo original.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413': &a49
+          description: Límite de cuerpo JSON excedido.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429': &a50
+          description: Límite público por IP/proceso excedido.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500': &a51
+          description: Error interno saneado, sin secretos.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503': &a52
+          description: BD/cifrado no disponible; sin efectos parciales.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/v1/cashier/orders/scan-cash-qr:
+    post:
+      tags:
+        - Orders
+      operationId: scanCashPaymentQr
+      summary: Resolver QR de efectivo para caja, sin consumirlo ni cobrar
+      description:
+        CAJERO/ADMINISTRADOR, cookie vigente, Origin y CSRF. Body token original sin prefijo
+        cafeteria:cash:. Respuesta mínima desde snapshots; no cuenta/historial. Solo CASH
+        PENDIENTE_PAGO vigente. Lectura repetible sin efectos; después del escaneo POST
+        /payments/cash revalida caja abierta, responsable, plazo y total, con Idempotency-Key.
+        Escanear no confirma pago. No-store/no-referrer.
+      security: *a22
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - token
+              properties:
+                token:
+                  type: string
+                  pattern: ^[A-Za-z0-9_-]{43}$
+                  writeOnly: true
+            example:
+              token: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+      responses:
+        '200':
+          description: Solo datos necesarios para presentar y confirmar el cobro en caja.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: false
+                    required:
+                      - orderId
+                      - orderFolio
+                      - totalCents
+                      - paymentExpiresAt
+                      - items
+                    properties:
+                      orderId:
+                        type: string
+                        pattern: ^[1-9][0-9]{0,18}$
+                      orderFolio:
+                        type: string
+                      totalCents:
+                        type: string
+                        pattern: ^(0|[1-9][0-9]{0,6})$
+                      paymentExpiresAt:
+                        type: string
+                        format: date-time
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/OrderItemSnapshot'
+              example:
+                data:
+                  orderId: '1'
+                  orderFolio: A000001
+                  totalCents: '2000'
+                  paymentExpiresAt: 2026-11-09T12:30:00.000Z
+                  items:
+                    - id: '1'
+                      productId: '1'
+                      productName: Agua
+                      basePriceCents: '2000'
+                      unitPriceCents: '2000'
+                      quantity: 1
+                      lineTotalCents: '2000'
+                      options: []
+        '400': *a44
+        '401': *a45
+        '403': *a46
+        '404': *a47
+        '409': *a48
+        '413': *a49
+        '429': *a50
+        '500': *a51
+        '503': *a52
+  /api/v1/sales/{id}/ticket-access:
+    post:
+      operationId: issueGuestTicketAccess
+      tags:
+        - Cash
+      summary: Emitir o reemitir acceso limitado al comprobante de invitado
+      description:
+        CAJERO/ADMINISTRADOR con sesión vigente, Origin exacto y CSRF. Solo venta CASH pagada y
+        coherente sin cliente asociado. Cada éxito revoca accesos anteriores y entrega un original
+        nuevo; no es idempotente. Caduca 24h desde pago confirmado, nunca desde emisión. Si se
+        pierde la respuesta, reemitir desde caja. Solo hash SHA-256 persistido, sin token en
+        auditoría. No habilita consulta de estado, historial ni registro. No-store y no-referrer.
+        FIN-01 también admite venta STRIPE coherente; importes de efectivo null en tarjeta. Para
+        Stripe las 24h cuentan desde providerPaidAt. Se conservan los permisos previos, sin consulta
+        pública de estado.
+      security:
+        - accessCookie: []
+          csrfHeader: []
+        - productionAccessCookie: []
+          csrfHeader: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[1-9][0-9]{0,18}$
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+            example: {}
+      responses:
+        '201':
+          description: Acceso emitido; Cache-Control no-store y Referrer-Policy no-referrer.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: false
+                    required:
+                      - purpose
+                      - token
+                      - expiresAt
+                      - path
+                    properties:
+                      purpose:
+                        type: string
+                        enum:
+                          - GUEST_TICKET
+                      token:
+                        type: string
+                        pattern: ^[A-Za-z0-9_-]{43}$
+                      expiresAt:
+                        type: string
+                        format: date-time
+                      path:
+                        type: string
+                        enum:
+                          - /api/v1/guest-ticket
+              example:
+                data:
+                  purpose: GUEST_TICKET
+                  token: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                  expiresAt: 2026-11-10T12:00:00.000Z
+                  path: /api/v1/guest-ticket
+        '400': &a53
+          description: Entrada inválida, campos adicionales o query/body no permitido.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: Sesión ausente, inválida o revocada.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Rol, Origin, CSRF o cambio obligatorio de NIP incompatible.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404': &a54
+          description: Recurso inexistente o no autorizado; no revela existencia ni motivo.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429': &a55
+          description: Límite público por IP/proceso excedido.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500': &a56
+          description: Error interno sin detalles sensibles.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503': &a57
+          description: Dependencia indisponible.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/v1/guest-ticket:
+    get:
+      operationId: getGuestTicket
+      tags:
+        - Cash
+      summary: Consultar únicamente el comprobante pagado con permiso opaco
+      description:
+        Enviar original de 32 bytes base64url exclusivamente en X-Ticket-Token. No acepta query
+        ni body. Cookies, folio y QR de registro/cobro no autorizan. Token ausente, desconocido,
+        vencido (24h desde pago) o revocado devuelve 404 indistinguible; formato inválido 400.
+        Lectura repetible sin consumo ni extensión del plazo. Alta QR posterior conserva solo este
+        acceso limitado. No devuelve estado, datos de cliente, historial ni token de registro.
+        Cache-Control no-store y Referrer-Policy no-referrer; no persistir token en frontend. FIN-01
+        también admite venta STRIPE coherente; importes de efectivo null en tarjeta. Para Stripe las
+        24h cuentan desde providerPaidAt. Se conservan los permisos previos, sin consulta pública de
+        estado.
+      security:
+        - guestTicketHeader: []
+      responses:
+        '200':
+          description: Solo comprobante pagado, desde snapshots históricos.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/GuestTicket'
+        '400': *a53
+        '403':
+          description: Origin no permitido.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404': *a54
+        '429': *a55
+        '500': *a56
+        '503': *a57
+  /api/v1/sales:
+    get:
+      tags:
+        - FIN-01
+      summary: listSales
+      description:
+        CAJERO/ADMINISTRADOR. from inclusivo y to exclusivo sobre soldAt. Orden (soldAt,id),
+        cursor ligado a filtros; no expone clientes. Entradas estrictas; rechaza campos y query
+        extra. Respuestas privadas no-store. Sin body.
+      operationId: listSales
+      security:
+        - accessCookie: []
+        - productionAccessCookie: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema: &a63
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: cursor
+          in: query
+          required: false
+          schema: &a64
+            type: string
+            maxLength: 2048
+        - name: from
+          in: query
+          required: false
+          schema: *a58
+        - name: to
+          in: query
+          required: false
+          schema: *a58
+        - name: method
+          in: query
+          required: false
+          schema: &a61
+            type: string
+            enum:
+              - CASH
+              - STRIPE
+      responses:
+        '200':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: false
+                      properties:
+                        id: *a59
+                        saleNumber: *a60
+                        orderId: *a59
+                        paymentId: *a59
+                        totalCents: &a62
+                          type: string
+                          pattern: ^[0-9]+$
+                        soldAt: *a58
+                        method:
+                          type: string
+                          enum:
+                            - CASH
+                            - STRIPE
+                      required:
+                        - id
+                        - saleNumber
+                        - orderId
+                        - paymentId
+                        - totalCents
+                        - soldAt
+                        - method
+                  page: &a65
+                    type: object
+                    additionalProperties: false
+                    properties:
+                      limit:
+                        type: integer
+                      nextCursor:
+                        type: string
+                        nullable: true
+                    required:
+                      - limit
+                      - nextCursor
+                required:
+                  - data
+                  - page
+        '400':
+          description: Error 400; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: Error 401; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Error 403; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Error 404; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Error 409; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: Error 429; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Error 500; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Error 503; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/v1/sales/summary:
+    get:
+      tags:
+        - FIN-01
+      summary: summarizeSales
+      description:
+        CAJERO/ADMINISTRADOR. Totales del conjunto filtrado completo, no solo la página. Ventas
+        históricas, no saldo neto de reembolsos. Entradas estrictas; rechaza campos y query extra.
+        Respuestas privadas no-store. Sin body.
+      operationId: summarizeSales
+      security:
+        - accessCookie: []
+        - productionAccessCookie: []
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema: *a58
+        - name: to
+          in: query
+          required: false
+          schema: *a58
+        - name: method
+          in: query
+          required: false
+          schema: *a61
+      responses:
+        '200':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: false
+                    properties:
+                      count: *a62
+                      totalCents: *a62
+                      cashCents: *a62
+                      stripeCents: *a62
+                    required:
+                      - count
+                      - totalCents
+                      - cashCents
+                      - stripeCents
+                required:
+                  - data
+        '400':
+          description: Error 400; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: Error 401; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Error 403; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Error 404; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Error 409; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: Error 429; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Error 500; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Error 503; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/v1/admin/employees:
+    get:
+      tags:
+        - FIN-01
+      summary: listEmployees
+      description:
+        Solo ADMINISTRADOR. Incluye bajas; nunca hashes. Entradas estrictas; rechaza campos y
+        query extra. Respuestas privadas no-store. Sin body.
+      operationId: listEmployees
+      security:
+        - accessCookie: []
+        - productionAccessCookie: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema: *a63
+        - name: cursor
+          in: query
+          required: false
+          schema: *a64
+      responses:
+        '200':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    type: array
+                    items: &a67
+                      type: object
+                      additionalProperties: false
+                      properties:
+                        id: *a59
+                        name: *a32
+                        username: *a60
+                        role: &a66
+                          type: string
+                          enum:
+                            - CAJERO
+                            - PREPARACION
+                            - ADMINISTRADOR
+                        isActive:
+                          type: boolean
+                      required:
+                        - id
+                        - name
+                        - username
+                        - role
+                        - isActive
+                  page: *a65
+                required:
+                  - data
+                  - page
+        '400':
+          description: Error 400; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: Error 401; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Error 403; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Error 404; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Error 409; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: Error 429; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Error 500; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Error 503; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    post:
+      tags:
+        - FIN-01
+      summary: createEmployee
+      description: Solo ADMINISTRADOR. Argon2id, username único, auditoría sin contraseña. Entradas
+        estrictas; rechaza campos y query extra. Respuestas privadas no-store. Origin exacto y
+        X-CSRF-Token obligatorios.
+      operationId: createEmployee
+      security:
+        - accessCookie: []
+          csrfHeader: []
+        - productionAccessCookie: []
+          csrfHeader: []
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                name: *a32
+                username:
+                  type: string
+                  pattern: ^[A-Za-z0-9_]{3,24}$
+                password:
+                  type: string
+                  minLength: 8
+                  maxLength: 24
+                role: *a66
+              required:
+                - name
+                - username
+                - password
+                - role
+      responses:
+        '201':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data: *a67
+                required:
+                  - data
+        '400':
+          description: Error 400; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: Error 401; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Error 403; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Error 404; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Error 409; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: Error 429; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Error 500; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Error 503; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/v1/admin/employees/{id}:
+    patch:
+      tags:
+        - FIN-01
+      summary: updateEmployee
+      description:
+        Solo ADMINISTRADOR. Baja lógica y cambio de rol revocan sesiones. No desactivar ni
+        degradar la propia cuenta; no desactivar/degradar al responsable de caja abierta. No cambiar
+        contraseñas por esta ruta. Entradas estrictas; rechaza campos y query extra. Respuestas
+        privadas no-store. Origin exacto y X-CSRF-Token obligatorios.
+      operationId: updateEmployee
+      security:
+        - accessCookie: []
+          csrfHeader: []
+        - productionAccessCookie: []
+          csrfHeader: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: *a59
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                name: *a32
+                role: *a66
+                isActive:
+                  type: boolean
+                reason: &a68
+                  type: string
+                  minLength: 1
+                  maxLength: 500
+              required:
+                - reason
+      responses:
+        '200':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data: *a67
+                required:
+                  - data
+        '400':
+          description: Error 400; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: Error 401; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Error 403; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Error 404; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Error 409; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: Error 429; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Error 500; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Error 503; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/v1/admin/customers/{id}:
+    patch:
+      tags:
+        - FIN-01
+      summary: correctCustomer
+      description:
+        Solo ADMINISTRADOR; al menos name o phone. Auditoría y unicidad, no modifica compras.
+        Cambio de teléfono revoca sesiones. Entradas estrictas; rechaza campos y query extra.
+        Respuestas privadas no-store. Origin exacto y X-CSRF-Token obligatorios.
+      operationId: correctCustomer
+      security:
+        - accessCookie: []
+          csrfHeader: []
+        - productionAccessCookie: []
+          csrfHeader: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: *a59
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                name: *a32
+                phone: *a33
+                reason: *a68
+              required:
+                - reason
+      responses:
+        '200':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data: *a69
+                required:
+                  - data
+        '400':
+          description: Error 400; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: Error 401; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Error 403; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Error 404; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Error 409; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: Error 429; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Error 500; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Error 503; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/v1/admin/customers/{id}/pin-reset:
+    post:
+      tags:
+        - FIN-01
+      summary: resetCustomerPin
+      description:
+        Solo ADMINISTRADOR. Verificar identidad presencialmente y proporcionar una venta pagada
+        reciente asociada. NIP temporal introducido por administrador, no devuelto ni auditado.
+        Revoca sesiones, activa must_change_pin. Entradas estrictas; rechaza campos y query extra.
+        Respuestas privadas no-store. Origin exacto y X-CSRF-Token obligatorios.
+      operationId: resetCustomerPin
+      security:
+        - accessCookie: []
+          csrfHeader: []
+        - productionAccessCookie: []
+          csrfHeader: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: *a59
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                temporaryPin: *a70
+                reason: *a68
+                verificationSummary: *a68
+                recentSaleId: *a59
+              required:
+                - temporaryPin
+                - reason
+                - verificationSummary
+                - recentSaleId
+      responses:
+        '204':
+          description: Operación completada sin cuerpo
+        '400':
+          description: Error 400; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: Error 401; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Error 403; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Error 404; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Error 409; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: Error 429; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Error 500; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Error 503; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/v1/customers/me/recovery-email:
+    post:
+      tags:
+        - FIN-01
+      summary: requestEmailVerification
+      description:
+        CLIENTE. Entrega vía outbox cifrada; conserva correo anterior hasta confirmar. Enlace
+        de un uso, 30 minutos. Requiere cifrado y transporte de correo configurados. Entradas
+        estrictas; rechaza campos y query extra. Respuestas privadas no-store. Origin exacto y
+        X-CSRF-Token obligatorios.
+      operationId: requestEmailVerification
+      security:
+        - accessCookie: []
+          csrfHeader: []
+        - productionAccessCookie: []
+          csrfHeader: []
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                email:
+                  type: string
+                  format: email
+                  maxLength: 254
+              required:
+                - email
+      responses:
+        '202':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: false
+                    properties:
+                      accepted:
+                        type: boolean
+                    required:
+                      - accepted
+                required:
+                  - data
+        '400':
+          description: Error 400; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: Error 401; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Error 403; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Error 404; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Error 409; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: Error 429; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Error 500; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Error 503; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/v1/auth/email-verification:
+    post:
+      tags:
+        - FIN-01
+      summary: confirmRecoveryEmail
+      description:
+        Token del enlace en body, no query. Consumo único; revoca verificaciones/recuperaciones
+        anteriores. No inicia sesión. Entradas estrictas; rechaza campos y query extra. Respuestas
+        privadas no-store. Origin exacto y X-CSRF-Token obligatorios.
+      operationId: confirmRecoveryEmail
+      security:
+        - csrfHeader: []
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                token: *a71
+              required:
+                - token
+      responses:
+        '204':
+          description: Operación completada sin cuerpo
+        '400':
+          description: Error 400; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: Error 401; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Error 403; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Error 404; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Error 409; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: Error 429; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Error 500; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Error 503; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/v1/auth/pin-recovery:
+    post:
+      tags:
+        - FIN-01
+      summary: requestPinRecovery
+      description:
+        Respuesta genérica incluso si no existe, está inactivo o no tiene correo verificado.
+        Rate limit persistente por IP/cuenta. No devuelve token. Entradas estrictas; rechaza campos
+        y query extra. Respuestas privadas no-store. Origin exacto y X-CSRF-Token obligatorios.
+      operationId: requestPinRecovery
+      security:
+        - csrfHeader: []
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                identifier:
+                  type: string
+                  maxLength: 32
+              required:
+                - identifier
+      responses:
+        '202':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: false
+                    properties:
+                      accepted:
+                        type: boolean
+                    required:
+                      - accepted
+                required:
+                  - data
+        '400':
+          description: Error 400; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: Error 401; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Error 403; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Error 404; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Error 409; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: Error 429; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Error 500; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Error 503; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/v1/auth/pin-recovery/confirm:
+    post:
+      tags:
+        - FIN-01
+      summary: confirmPinRecovery
+      description:
+        Token de uso único 30 minutos; Argon2id, revoca sesiones y tokens anteriores. No inicia
+        sesión. Entradas estrictas; rechaza campos y query extra. Respuestas privadas no-store.
+        Origin exacto y X-CSRF-Token obligatorios.
+      operationId: confirmPinRecovery
+      security:
+        - csrfHeader: []
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                token: *a71
+                newPin: *a70
+              required:
+                - token
+                - newPin
+      responses:
+        '204':
+          description: Operación completada sin cuerpo
+        '400':
+          description: Error 400; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: Error 401; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Error 403; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Error 404; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Error 409; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: Error 429; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Error 500; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Error 503; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/v1/orders/{id}/checkout:
+    post:
+      tags:
+        - FIN-01
+      summary: createStripeCheckout
+      description:
+        Solo CLIENTE propietario de orden STRIPE pendiente. Reutiliza intento persistente con
+        clave Stripe estable; HTTP proveedor fuera de transacciones. Incertidumbre no crea segundo
+        intento. Invitado recibe permiso limitado checkout al crear orden STRIPE, en
+        X-Checkout-Token; no permite consultar estado. Idempotency-Key UUID v4 obligatoria. Entradas
+        estrictas; rechaza campos y query extra. Respuestas privadas no-store. Origin exacto y
+        X-CSRF-Token obligatorios.
+      operationId: createStripeCheckout
+      security:
+        - accessCookie: []
+          csrfHeader: []
+        - checkoutToken: []
+          csrfHeader: []
+        - productionAccessCookie: []
+          csrfHeader: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: *a59
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties: {}
+      responses:
+        '200':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: false
+                    properties:
+                      paymentId: *a59
+                      checkoutSessionId: *a60
+                      url:
+                        type: string
+                        format: uri
+                      expiresAt: *a58
+                    required:
+                      - paymentId
+                      - checkoutSessionId
+                      - url
+                      - expiresAt
+                required:
+                  - data
+        '400':
+          description: Error 400; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: Error 401; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Error 403; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Error 404; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Error 409; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: Error 429; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Error 500; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Error 503; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/v1/stripe/webhook:
+    post:
+      tags:
+        - FIN-01
+      operationId: receiveStripeWebhook
+      summary: Recibir evento firmado Stripe
+      description: Cuerpo raw antes del parser JSON y sin cookies/CSRF. Firma Stripe-Signature
+        obligatoria. Guarda evento y job antes de 200; duplicados seguros. No llama proveedor dentro
+        de la transacción. Payload normalizado no conserva datos de tarjeta/cliente. Solo
+        checkout.session.completed y checkout.session.expired se procesan; otros se ignoran.
+      security: []
+      parameters:
+        - name: Stripe-Signature
+          in: header
+          required: true
+          schema: *a60
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Evento persistido o duplicado
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  received:
+                    type: boolean
+                required:
+                  - received
+        '400':
+          description: Firma/cuerpo inválido
+        '503':
+          description: Proveedor/configuración o persistencia indisponible; reintentar
+  /api/v1/customers/me/orders/{id}/ticket:
+    get:
+      tags:
+        - FIN-01
+      summary: getOwnOrderTicket
+      description:
+        Solo CLIENTE propietario de orden pagada CASH o STRIPE. Comprobante con snapshots y sin
+        QR de registro; 404 si ajena o no pagada. Entradas estrictas; rechaza campos y query extra.
+        Respuestas privadas no-store. Sin body.
+      operationId: getOwnOrderTicket
+      security:
+        - accessCookie: []
+        - productionAccessCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: *a59
+      responses:
+        '200':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CashTicket'
+                required:
+                  - data
+        '400':
+          description: Error 400; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: Error 401; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Error 403; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: Error 404; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Error 409; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: Error 429; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Error 500; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Error 503; application/problem+json con code, status y requestId
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
 tags:
   - name: Auth
     description: Autenticación y recuperación.
@@ -5184,7 +7305,7 @@ components:
         - id
         - name
       properties:
-        id: &a32
+        id: &a72
           type: string
           pattern: ^[0-9]+$
           example: '10'
@@ -5203,7 +7324,7 @@ components:
         - imageUrl
         - isAvailable
       properties:
-        id: *a32
+        id: *a72
         categoryId:
           type: string
           pattern: ^[0-9]+$
@@ -5236,7 +7357,7 @@ components:
         - isAvailable
       additionalProperties: false
       properties:
-        id: *a32
+        id: *a72
         name:
           type: string
           example: Leche de almendra
@@ -5258,7 +7379,7 @@ components:
         - values
       additionalProperties: false
       properties:
-        id: *a32
+        id: *a72
         name:
           type: string
           example: Leche
@@ -5354,7 +7475,7 @@ components:
           enum:
             - STAFF
             - CUSTOMER
-        mustChangePin: &a33
+        mustChangePin: &a73
           type: boolean
       required:
         - id
@@ -5447,23 +7568,23 @@ components:
     CategoryCreate:
       type: object
       additionalProperties: false
-      properties: &a34
+      properties: &a74
         name:
           type: string
           minLength: 1
           maxLength: 120
-        isActive: *a33
+        isActive: *a73
       required:
         - name
     CategoryPatch:
       type: object
       additionalProperties: false
-      properties: *a34
+      properties: *a74
       minProperties: 1
     ProductCreate:
       type: object
       additionalProperties: false
-      properties: &a35
+      properties: &a75
         name:
           type: string
           minLength: 1
@@ -5473,11 +7594,11 @@ components:
           type: string
           maxLength: 1500
           nullable: true
-        basePriceCents: &a38
+        basePriceCents: &a78
           type: string
           pattern: ^(0|[1-9][0-9]{0,6})$
           description: Centavos enteros, máximo 9999900.
-        isAvailable: *a33
+        isAvailable: *a73
       required:
         - name
         - categoryId
@@ -5485,12 +7606,12 @@ components:
     ProductPatch:
       type: object
       additionalProperties: false
-      properties: *a35
+      properties: *a75
       minProperties: 1
     GroupCreate:
       type: object
       additionalProperties: false
-      properties: &a36
+      properties: &a76
         name:
           type: string
           minLength: 1
@@ -5506,12 +7627,12 @@ components:
     GroupPatch:
       type: object
       additionalProperties: false
-      properties: *a36
+      properties: *a76
       minProperties: 1
     ValueCreate:
       type: object
       additionalProperties: false
-      properties: &a37
+      properties: &a77
         name:
           type: string
           minLength: 1
@@ -5521,19 +7642,19 @@ components:
           pattern: ^(0|[1-9][0-9]{0,6})$
           description: Centavos enteros, máximo 9999900.
           nullable: true
-        isAvailable: *a33
+        isAvailable: *a73
       required:
         - name
     ValuePatch:
       type: object
       additionalProperties: false
-      properties: *a37
+      properties: *a77
       minProperties: 1
     Availability:
       type: object
       additionalProperties: false
       properties:
-        isAvailable: *a33
+        isAvailable: *a73
       required:
         - isAvailable
     ProductConfiguration:
@@ -5587,12 +7708,12 @@ components:
           type: string
           minLength: 1
           maxLength: 120
-        isActive: *a33
+        isActive: *a73
         deletedAt:
           type: string
           format: date-time
           nullable: true
-        createdAt: &a39
+        createdAt: &a79
           type: string
           format: date-time
       required:
@@ -5615,7 +7736,7 @@ components:
           type: string
           maxLength: 1500
           nullable: true
-        basePriceCents: *a38
+        basePriceCents: *a78
         imageUrl:
           type: string
           format: uri
@@ -5630,13 +7751,13 @@ components:
           minLength: 1
           maxLength: 40
           nullable: true
-        isAvailable: *a33
+        isAvailable: *a73
         deletedAt:
           type: string
           format: date-time
           nullable: true
-        createdAt: *a39
-        updatedAt: *a39
+        createdAt: *a79
+        updatedAt: *a79
       required:
         - id
         - categoryId
@@ -5688,7 +7809,7 @@ components:
           pattern: ^(0|[1-9][0-9]{0,6})$
           description: Centavos enteros, máximo 9999900.
           nullable: true
-        isAvailable: *a33
+        isAvailable: *a73
         deletedAt:
           type: string
           format: date-time
@@ -5705,7 +7826,7 @@ components:
       additionalProperties: false
       properties:
         intentId: *a15
-        expiresAt: *a39
+        expiresAt: *a79
         maxBytes:
           type: integer
         maxDimension:
@@ -5737,7 +7858,7 @@ components:
       type: object
       additionalProperties: false
       properties:
-        identifier: &a44
+        identifier: &a84
           type: string
           pattern: ^(C[0-9]{1,19}|\+52[0-9]{10}|[0-9]{10})$
           description: Búsqueda exacta por customer_number o teléfono MX; se normaliza trim/mayúsculas/+52.
@@ -5752,7 +7873,7 @@ components:
       type: object
       additionalProperties: false
       properties:
-        id: *a40
+        id: *a80
         name:
           type: string
           minLength: 1
@@ -5769,7 +7890,7 @@ components:
       type: object
       additionalProperties: false
       properties:
-        productId: *a40
+        productId: *a80
         quantity:
           type: integer
           minimum: 1
@@ -5778,7 +7899,7 @@ components:
           type: array
           maxItems: 5000
           uniqueItems: true
-          items: *a40
+          items: *a80
           description:
             IDs únicos de opciones asignadas al producto. Omisión equivale a []; se validan todos
             los mínimos/máximos.
@@ -5788,7 +7909,21 @@ components:
     MobileOrderCreate:
       type: object
       additionalProperties: false
+      not:
+        required:
+          - paymentMethod
+          - includeCashQr
+        properties:
+          paymentMethod:
+            enum:
+              - STRIPE
+          includeCashQr:
+            enum:
+              - true
       properties:
+        includeCashQr:
+          type: boolean
+          description: Opcional; true solo con CASH. Ausente/false conserva respuesta sin QR.
         paymentMethod:
           type: string
           enum:
@@ -5798,12 +7933,17 @@ components:
           type: string
           minLength: 1
           maxLength: 120
-        items: &a41
+        items: &a81
           type: array
           minItems: 1
           maxItems: 50
           items:
             $ref: '#/components/schemas/OrderLineInput'
+        includeCheckoutToken:
+          type: boolean
+          description:
+            'Opt-in exclusivo de invitado STRIPE: añade checkout con permiso opaco de cobro, nunca
+            consulta de estado. Cifrado configurado; replay 48h conserva original.'
       required:
         - paymentMethod
         - items
@@ -5811,6 +7951,9 @@ components:
       type: object
       additionalProperties: false
       properties:
+        includeCashQr:
+          type: boolean
+          description: Opcional; true añade cashQr al resultado de creación.
         paymentMethod:
           type: string
           enum:
@@ -5821,7 +7964,7 @@ components:
           maxLength: 120
         customer:
           $ref: '#/components/schemas/OrderCustomerSelection'
-        items: *a41
+        items: *a81
       required:
         - paymentMethod
         - items
@@ -5829,7 +7972,7 @@ components:
       type: object
       additionalProperties: false
       properties:
-        optionValueId: *a40
+        optionValueId: *a80
         groupName:
           type: string
           minLength: 1
@@ -5838,7 +7981,7 @@ components:
           type: string
           minLength: 1
           maxLength: 120
-        surchargeCents: &a42
+        surchargeCents: &a82
           type: string
           pattern: ^(0|[1-9][0-9]{0,6})$
           description: Centavos enteros <=9999900.
@@ -5851,19 +7994,19 @@ components:
       type: object
       additionalProperties: false
       properties:
-        id: *a40
-        productId: *a40
+        id: *a80
+        productId: *a80
         productName:
           type: string
           minLength: 1
           maxLength: 160
-        basePriceCents: *a42
-        unitPriceCents: *a42
+        basePriceCents: *a82
+        unitPriceCents: *a82
         quantity:
           type: integer
           minimum: 1
           maximum: 99
-        lineTotalCents: *a42
+        lineTotalCents: *a82
         options:
           type: array
           items:
@@ -5881,7 +8024,7 @@ components:
       type: object
       additionalProperties: false
       properties:
-        id: *a40
+        id: *a80
         folio:
           type: string
           pattern: ^A[0-9]{6,}$
@@ -5902,7 +8045,7 @@ components:
           enum:
             - CASH
             - STRIPE
-        totalCents: *a42
+        totalCents: *a82
         customerId:
           type: string
           pattern: ^[1-9][0-9]{0,18}$
@@ -5913,7 +8056,7 @@ components:
           minLength: 1
           maxLength: 120
           nullable: true
-        paymentExpiresAt: &a43
+        paymentExpiresAt: &a83
           type: string
           format: date-time
         paidAt:
@@ -5929,7 +8072,7 @@ components:
           pattern: ^[1-9][0-9]{0,18}$
           description: BIGINT positivo <=9223372036854775807; nunca Number.
           nullable: true
-        createdAt: *a43
+        createdAt: *a83
         items:
           type: array
           minItems: 1
@@ -5955,7 +8098,7 @@ components:
       type: object
       additionalProperties: false
       properties:
-        id: *a40
+        id: *a80
         folio:
           type: string
           pattern: ^A[0-9]{6,}$
@@ -5968,7 +8111,7 @@ components:
           type: string
           enum:
             - EN_PREPARACION
-        createdAt: *a43
+        createdAt: *a83
       required:
         - id
         - folio
@@ -5979,7 +8122,7 @@ components:
       type: object
       additionalProperties: false
       properties:
-        identifier: *a44
+        identifier: *a84
       required:
         - identifier
     CashOpen:
@@ -6015,8 +8158,8 @@ components:
     CashSession:
       type: object
       additionalProperties: false
-      properties: *a45
-      required: *a46
+      properties: *a85
+      required: *a86
     CashPayment:
       type: object
       additionalProperties: false
@@ -6040,7 +8183,7 @@ components:
         cashSessionId: *a26
         cashReceivedCents: *a27
         changeCents: *a27
-        confirmedAt: *a47
+        confirmedAt: *a87
       required:
         - id
         - orderId
@@ -6064,7 +8207,7 @@ components:
         orderId: *a26
         paymentId: *a26
         totalCents: *a27
-        soldAt: *a47
+        soldAt: *a87
       required:
         - id
         - saleNumber
@@ -6091,7 +8234,7 @@ components:
               type: string
               enum:
                 - EN_PREPARACION
-            paidAt: *a47
+            paidAt: *a87
           required:
             - id
             - folio
@@ -6115,7 +8258,7 @@ components:
     RegistrationQr:
       type: object
       additionalProperties: false
-      properties: &a48
+      properties: &a88
         purpose:
           type: string
           enum:
@@ -6129,12 +8272,274 @@ components:
         qrPayload:
           type: string
           pattern: ^cafeteria:register:[A-Za-z0-9_-]{43}$
-        expiresAt: *a47
-      required: &a49
+        expiresAt: *a87
+      required: &a89
         - purpose
         - token
         - qrPayload
         - expiresAt
+    CustomerFavorite:
+      type: object
+      additionalProperties: false
+      required:
+        - productId
+        - categoryId
+        - name
+        - description
+        - basePriceCents
+        - imageUrl
+        - isAvailable
+        - favoritedAt
+      properties:
+        productId:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}$
+        categoryId:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}$
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        basePriceCents:
+          type: string
+          pattern: ^(0|[1-9][0-9]*)$
+        imageUrl:
+          type: string
+          nullable: true
+        isAvailable:
+          type: boolean
+        favoritedAt:
+          type: string
+          format: date-time
+    RepeatOrderPreview:
+      type: object
+      additionalProperties: false
+      required:
+        - sourceOrderId
+        - canCreateOrder
+        - items
+        - warnings
+        - totalCents
+      properties:
+        sourceOrderId:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}$
+        canCreateOrder:
+          type: boolean
+        totalCents:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,6})$
+          nullable: true
+        items:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - productId
+              - productName
+              - quantity
+              - optionValueIds
+              - currentUnitPriceCents
+              - currentLineTotalCents
+            properties:
+              productId:
+                type: string
+                pattern: ^[1-9][0-9]{0,18}$
+              productName:
+                type: string
+              quantity:
+                type: integer
+                minimum: 1
+                maximum: 99
+              optionValueIds:
+                type: array
+                items:
+                  type: string
+                  pattern: ^[1-9][0-9]{0,18}$
+              currentUnitPriceCents:
+                type: string
+                pattern: ^(0|[1-9][0-9]{0,6})$
+                nullable: true
+              currentLineTotalCents:
+                type: string
+                pattern: ^(0|[1-9][0-9]{0,6})$
+                nullable: true
+        warnings:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - line
+              - code
+              - blocking
+              - optionValueId
+            properties:
+              line:
+                type: integer
+                minimum: 1
+                nullable: true
+              code:
+                type: string
+                enum:
+                  - PRODUCT_UNAVAILABLE
+                  - OPTION_UNAVAILABLE
+                  - SELECTION_INVALID
+                  - PRICE_CHANGED
+                  - PRODUCT_CHANGED
+                  - OPTION_CHANGED
+                  - TOTAL_LIMIT_EXCEEDED
+              blocking:
+                type: boolean
+              optionValueId:
+                type: string
+                pattern: ^[1-9][0-9]{0,18}$
+                nullable: true
+    CustomerProfile:
+      type: object
+      additionalProperties: false
+      required:
+        - customerNumber
+        - name
+        - phone
+        - recoveryEmail
+        - recoveryEmailVerifiedAt
+        - createdAt
+      properties:
+        customerNumber:
+          type: string
+          pattern: ^C[0-9]{6,19}$
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        phone:
+          type: string
+          pattern: ^\+52[0-9]{10}$
+        recoveryEmail:
+          type: string
+          format: email
+          nullable: true
+        recoveryEmailVerifiedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+    CustomerOrderSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - folio
+        - status
+        - paymentMethod
+        - totalCents
+        - createdAt
+        - paymentExpiresAt
+        - paidAt
+        - readyAt
+      properties:
+        id:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}$
+        folio:
+          type: string
+          pattern: ^A[0-9]{6,}$
+        status:
+          type: string
+          enum:
+            - PENDIENTE_PAGO
+            - EN_PREPARACION
+            - LISTO
+            - EXPIRADA
+        paymentMethod:
+          type: string
+          enum:
+            - CASH
+            - STRIPE
+        totalCents:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,6})$
+        createdAt:
+          type: string
+          format: date-time
+        paymentExpiresAt:
+          type: string
+          format: date-time
+        paidAt:
+          type: string
+          format: date-time
+          nullable: true
+        readyAt:
+          type: string
+          format: date-time
+          nullable: true
+    CashPaymentQr:
+      type: object
+      additionalProperties: false
+      required:
+        - purpose
+        - token
+        - qrPayload
+        - expiresAt
+      properties:
+        purpose:
+          type: string
+          enum:
+            - CASH_PAYMENT
+        token:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{43}$
+        qrPayload:
+          type: string
+          pattern: ^cafeteria:cash:[A-Za-z0-9_-]{43}$
+        expiresAt:
+          type: string
+          format: date-time
+    GuestTicket:
+      type: object
+      additionalProperties: false
+      required:
+        - saleId
+        - saleNumber
+        - orderFolio
+        - soldAt
+        - currency
+        - totalCents
+        - cashReceivedCents
+        - changeCents
+        - items
+      properties:
+        saleId: *a26
+        saleNumber:
+          type: string
+        orderFolio:
+          type: string
+        soldAt: *a87
+        currency:
+          type: string
+          enum:
+            - MXN
+        totalCents: *a27
+        cashReceivedCents:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+          description: Centavos no negativos <=9223372036854775807; sin decimales ni Number.
+          nullable: true
+        changeCents:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+          description: Centavos no negativos <=9223372036854775807; sin decimales ni Number.
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItemSnapshot'
     CashTicket:
       type: object
       additionalProperties: false
@@ -6144,14 +8549,22 @@ components:
           type: string
         orderFolio:
           type: string
-        soldAt: *a47
+        soldAt: *a87
         currency:
           type: string
           enum:
             - MXN
         totalCents: *a27
-        cashReceivedCents: *a27
-        changeCents: *a27
+        cashReceivedCents:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+          description: Centavos no negativos <=9223372036854775807; sin decimales ni Number.
+          nullable: true
+        changeCents:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+          description: Centavos no negativos <=9223372036854775807; sin decimales ni Number.
+          nullable: true
         items:
           type: array
           items:
@@ -6159,8 +8572,8 @@ components:
         registration:
           type: object
           additionalProperties: false
-          properties: *a48
-          required: *a49
+          properties: *a88
+          required: *a89
           nullable: true
       required:
         - saleId
@@ -6231,6 +8644,11 @@ components:
       required:
         - customer
   securitySchemes:
+    guestTicketHeader:
+      type: apiKey
+      in: header
+      name: X-Ticket-Token
+      description: Permiso opaco exclusivo al comprobante; no JWT ni token de registro/cobro.
     accessCookie:
       type: apiKey
       in: cookie
@@ -6247,3 +8665,7 @@ components:
       name: X-CSRF-Token
       description: Token de GET /auth/csrf o login/refresh; coincide con cookie HttpOnly firmada y
         requiere Origin exacto.
+    checkoutToken:
+      type: apiKey
+      in: header
+      name: X-Checkout-Token

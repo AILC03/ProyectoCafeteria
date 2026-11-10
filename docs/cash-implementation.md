@@ -6,6 +6,12 @@ Fuentes/criterios/evidencia: [tarea](tasks/CASH-01-02-cash-payments.md).
 Contrato de esta entrega al cierre: OpenAPI 0.5.0. El contrato vigente puede tener
 versiones posteriores; consultar [OpenAPI](api/openapi.yaml).
 
+Continuidad AUTH-02 — 2026-10-31: el consumo del QR y alta final de invitado ya
+tienen implementación y pruebas locales; [tarea y evidencia](tasks/AUTH-02-ticket-qr-registration.md).
+Contrato vigente 0.6.0. Las exclusiones originales de registro de esta entrega
+quedan superadas por AUTH-02; QR de cobro, ticket digital público e impresión
+frontend siguen pendientes. Ver [estado reconciliado](README.md).
+
 ## Rutas disponibles
 
 Prefijo `/api/v1`. Solo CAJERO/ADMINISTRADOR; cookie, sesión/rol vigentes en BD,
@@ -19,7 +25,7 @@ guardado solo en frontend. ID y dinero siempre strings decimales.
 | GET /cash-sessions/{id}        | Resumen de sesión abierta/cerrada por ID                        |
 | POST /cash-sessions/{id}/close | Cierre propio o excepcional admin                               |
 | POST /payments/cash            | Cobrar por ID de orden y sesión, sin recotizar catálogo         |
-| GET /sales/{id}/ticket         | Ticket JSON imprimible protegido; QR de registro preparado      |
+| GET /sales/{id}/ticket         | Ticket JSON imprimible protegido; QR consumible por AUTH-02     |
 
 No hay listado/historial completo de ventas ni ticket público de invitado. Consultar
 una caja ajena no concede cobrarla/cerrarla. Los clientes y preparación no acceden
@@ -110,10 +116,10 @@ analítica, localStorage ni URL de llamadas backend. Asociado, usado o vencido:
 renueva el registro. Respuestas `Cache-Control:no-store` y `Referrer-Policy:no-referrer`.
 
 Este QR no cobra ni permite GET de orden/venta/ticket/pago o historial. No es el
-token de ticket digital invitado de ADR 0011. No hay aún endpoint que consuma el
-registro: la creación de cuenta, asociación y consumo transaccional/un uso se
-implementarán juntos en AUTH-02. Aquí se comprueban unicidad de emisión y manejo
-de usado/vencido, no se afirma probado el flujo final de alta.
+token de ticket digital invitado de ADR 0011. AUTH-02 consume el original mediante
+`POST /api/v1/customer-registration/ticket`: cuenta, asociación y consumo de un
+uso en la misma transacción, sin sesión automática. La suite CASH comprueba
+emisión/reimpresión; la evidencia del alta final pertenece a la suite AUTH-02.
 
 ### Recuperar el token sin guardarlo en claro
 
@@ -146,8 +152,9 @@ snapshots, QR/cifrado, caché/logs y regresiones. Resultados exactos en la tarea
 Se reutiliza el runner que crea y elimina solo bases propias. Con TEST_DATABASE_URL
 explícita se omite cargar .env.docker; uso normal Docker de TEST-01 se conserva.
 
-No incluye QR **de cobro**/escaneo, ticket digital público de invitado, registro
-final, recuperación, Stripe, conciliación, reembolsos, favoritos, historial completo,
+La entrega CASH original no incluyó registro final; AUTH-02 lo añadió después.
+Siguen pendientes QR **de cobro**/escaneo, ticket digital público de invitado,
+recuperación, Stripe, conciliación, reembolsos, favoritos, historial completo,
 correo real, expiración automática ni worker. Cloudinary continúa simulado.
 Antes de uso real: revisar con Ángel/Enrique, aplicar migración mediante el flujo
 aprobado, configurar clave segura y limpieza periódica, e implementar/renderizar

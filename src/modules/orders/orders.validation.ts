@@ -34,12 +34,16 @@ export const orderLine = z
 export const mobileOrder = z
   .object({
     paymentMethod: z.enum(['CASH', 'STRIPE']),
+    includeCashQr: z.boolean().optional(),
+    includeCheckoutToken: z.boolean().optional(),
     guestName: z.string().trim().min(1).max(120).optional(),
     items: z.array(orderLine).min(1).max(50),
   })
-  .strict();
+  .strict()
+  .refine((body) => !body.includeCashQr || body.paymentMethod === 'CASH')
+  .refine((body) => !body.includeCheckoutToken || body.paymentMethod === 'STRIPE');
 export const cashierOrder = mobileOrder
-  .extend({
+  .safeExtend({
     paymentMethod: z.literal('CASH'),
     customer: customerSelection.optional(),
   })
@@ -48,3 +52,4 @@ export type OrderInput = z.infer<typeof mobileOrder> & {
   customer?: z.infer<typeof customerSelection>;
 };
 export type CustomerSelection = z.infer<typeof customerSelection>;
+export const cashQrScan = z.object({ token: z.string().regex(/^[A-Za-z0-9_-]{43}$/) }).strict();

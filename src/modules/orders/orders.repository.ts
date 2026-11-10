@@ -205,8 +205,73 @@ export class OrdersTransaction {
       select: { id: true },
     }));
   }
+  async hasSuccessfulStripePayment(id: bigint, totalCents: bigint) {
+    return !!(await this.tx.payment.findFirst({
+      where: {
+        orderId: id,
+        method: 'STRIPE',
+        status: 'SUCCEEDED',
+        amountCents: totalCents,
+        currency: 'MXN',
+        confirmedAt: { not: null },
+        providerPaidAt: { not: null },
+        sale: { is: { orderId: id, totalCents } },
+      },
+      select: { id: true },
+    }));
+  }
   get(id: bigint) {
     return this.tx.order.findUnique({ where: { id }, select: orderSelect });
+  }
+  cashQr(id: bigint) {
+    return this.tx.order.findUnique({
+      where: { id },
+      select: {
+        cashQrTokenHash: true,
+        cashQrEncryptedPayload: true,
+        cashQrKeyVersion: true,
+        paymentExpiresAt: true,
+      },
+    });
+  }
+  checkoutSecret(id: bigint) {
+    return this.tx.order.findUnique({
+      where: { id },
+      select: {
+        checkoutTokenHash: true,
+        checkoutEncryptedPayload: true,
+        checkoutKeyVersion: true,
+        paymentExpiresAt: true,
+      },
+    });
+  }
+  saveCheckoutSecret(id: bigint, tokenHash: string, encryptedPayload: string, keyVersion: string) {
+    return this.tx.order.update({
+      where: { id },
+      data: {
+        checkoutTokenHash: tokenHash,
+        checkoutEncryptedPayload: encryptedPayload,
+        checkoutKeyVersion: keyVersion,
+      },
+      select: { id: true },
+    });
+  }
+  byCashQr(tokenHash: string) {
+    return this.tx.order.findUnique({
+      where: { cashQrTokenHash: tokenHash },
+      select: { id: true },
+    });
+  }
+  saveCashQr(id: bigint, tokenHash: string, encryptedPayload: string, keyVersion: string) {
+    return this.tx.order.update({
+      where: { id },
+      data: {
+        cashQrTokenHash: tokenHash,
+        cashQrEncryptedPayload: encryptedPayload,
+        cashQrKeyVersion: keyVersion,
+      },
+      select: { id: true },
+    });
   }
   associate(id: bigint, customerId: bigint) {
     return this.tx.order.update({
@@ -254,4 +319,13 @@ export class OrdersRepository {
   async transaction<T>(fn: (tx: OrdersTransaction) => Promise<T>): Promise<T> {
     return withTransaction(this.db, (tx) => fn(new OrdersTransaction(tx)));
   }
+}
+export function purgeCashQrSecrets(db: PrismaClient, now = new Date()) {
+  return db.order.updateMany({
+    where: {
+      cashQrEncryptedPayload: { not: null },
+      createdAt: { lte: new Date(now.getTime() - 48 * 3600000) },
+    },
+    data: { cashQrEncryptedPayload: null, cashQrKeyVersion: null },
+  });
 }

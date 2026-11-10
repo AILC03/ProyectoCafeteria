@@ -1,11 +1,12 @@
 import { createHash, randomBytes } from 'node:crypto';
 import type { Prisma } from '../../generated/prisma/client.js';
-import { HttpProblem, invalidInput, notFound } from '../../shared/http/problem.js';
+import { HttpProblem, invalidInput, notFound, unavailable } from '../../shared/http/problem.js';
 import { jsonValue } from '../../shared/http/serialization.js';
 import { decodeCursor, paginate } from '../../shared/http/pagination.js';
 import type { Principal, RoleName } from '../auth/auth.types.js';
-import { forbidden } from '../auth/auth.tokens.js';
-import { OrdersRepository, orderDto } from './orders.repository.js';
+import { forbidden, opaque } from '../auth/auth.tokens.js';
+import { OrdersRepository, orderDto, type OrdersTransaction } from './orders.repository.js';
+import type { TicketCipher } from '../tickets/tickets.cipher.js';
 import { orderConflict, priceOrder } from './orders.pricing.js';
 import type { CustomerSelection, OrderInput } from './orders.validation.js';
 
@@ -25,13 +26,121 @@ export class OrdersService {
   constructor(
     readonly repository: OrdersRepository,
     readonly now: () => Date = () => new Date(),
+    readonly cashQrCipher?: TicketCipher,
+    readonly checkoutCipher?: TicketCipher,
   ) {}
+  private async cashQrDto(tx: OrdersTransaction, id: bigint) {
+    const secret = await tx.cashQr(id);
+    if (!this.cashQrCipher || !secret?.cashQrEncryptedPayload || !secret.cashQrKeyVersion)
+      throw unavailable();
+    const token = this.cashQrCipher.open(
+      secret.cashQrEncryptedPayload,
+      id,
+      secret.cashQrKeyVersion,
+    );
+    if (digest(token) !== secret.cashQrTokenHash) throw unavailable();
+    return {
+      purpose: 'CASH_PAYMENT',
+      token,
+      qrPayload: `cafeteria:cash:${token}`,
+      expiresAt: secret.paymentExpiresAt,
+    };
+  }
+  private async creationResponse(
+    tx: OrdersTransaction,
+    response: Prisma.JsonValue | null,
+    id: bigint | null,
+    withQr: boolean | undefined,
+    withCheckout?: boolean,
+  ) {
+    if (!withQr && !withCheckout) return response;
+    if (!id || !response || typeof response !== 'object' || Array.isArray(response))
+      throw unavailable();
+    if (withCheckout) {
+      const secret = await tx.checkoutSecret(id);
+      if (!this.checkoutCipher || !secret?.checkoutEncryptedPayload || !secret.checkoutKeyVersion)
+        throw unavailable();
+      const token = this.checkoutCipher.open(
+        secret.checkoutEncryptedPayload,
+        id,
+        secret.checkoutKeyVersion,
+      );
+      if (digest(token) !== secret.checkoutTokenHash) throw unavailable();
+      return jsonValue({
+        ...response,
+        checkout: { purpose: 'STRIPE_CHECKOUT', token, expiresAt: secret.paymentExpiresAt },
+      });
+    }
+    return jsonValue({ ...response, cashQr: await this.cashQrDto(tx, id) });
+  }
+  private requireCashPending(order: NonNullable<Awaited<ReturnType<OrdersTransaction['get']>>>) {
+    if (
+      order.paymentMethod !== 'CASH' ||
+      order.status !== 'PENDIENTE_PAGO' ||
+      order.paidAt ||
+      order.paymentExpiresAt <= this.now()
+    )
+      throw orderConflict('Orden no cobrable en efectivo');
+  }
+  issueCashQr(actor: Principal, id: bigint) {
+    return this.repository.transaction(async (tx) => {
+      if (!staff(await tx.actor(actor, this.now()))) throw forbidden();
+      await tx.lockOrder(id);
+      const order = await tx.get(id);
+      if (!order) throw notFound();
+      this.requireCashPending(order);
+      const secret = await tx.cashQr(id);
+      if (!secret?.cashQrEncryptedPayload) {
+        if (!this.cashQrCipher) throw unavailable();
+        const token = opaque();
+        await tx.saveCashQr(
+          id,
+          digest(token),
+          this.cashQrCipher.seal(token, id),
+          this.cashQrCipher.version,
+        );
+        await tx.audit(actor.userId, 'ORDER_CASH_QR_ISSUED', id, this.now());
+      }
+      const result = { data: await this.cashQrDto(tx, id) };
+      this.requireCashPending(order);
+      return result;
+    });
+  }
+  scanCashQr(actor: Principal, token: string) {
+    return this.repository.transaction(async (tx) => {
+      if (!staff(await tx.actor(actor, this.now()))) throw forbidden();
+      const hash = digest(token),
+        found = await tx.byCashQr(hash);
+      if (!found) throw notFound();
+      await tx.lockOrder(found.id);
+      const order = await tx.get(found.id),
+        secret = await tx.cashQr(found.id);
+      if (!order || secret?.cashQrTokenHash !== hash || !secret.cashQrEncryptedPayload)
+        throw notFound();
+      this.requireCashPending(order);
+      return {
+        data: {
+          orderId: order.id,
+          orderFolio: order.folio,
+          totalCents: order.totalCents,
+          paymentExpiresAt: order.paymentExpiresAt,
+          items: orderDto(order).items,
+        },
+      };
+    });
+  }
   create(
     source: 'MOBILE' | 'CASHIER',
     actor: Principal | undefined,
     input: OrderInput,
     key: string,
   ) {
+    if (input.includeCashQr && input.paymentMethod !== 'CASH') throw invalidInput();
+    if (
+      input.includeCheckoutToken &&
+      (input.paymentMethod !== 'STRIPE' || actor || source !== 'MOBILE')
+    )
+      throw invalidInput();
     return this.repository.transaction(async (tx) => {
       const role = actor ? await tx.actor(actor, this.now()) : undefined;
       if (source === 'CASHIER' ? !role || !staff(role) : role && role !== 'CLIENTE')
@@ -49,7 +158,13 @@ export class OrdersService {
           throw new HttpProblem(409, 'IDEMPOTENCY_CONFLICT', 'Clave usada con otra entrada');
         if (existing.status !== 'COMPLETED' || !existing.responseJson)
           throw orderConflict('Operación no completada');
-        return existing.responseJson;
+        return this.creationResponse(
+          tx,
+          existing.responseJson,
+          existing.resourceId,
+          input.includeCashQr,
+          input.includeCheckoutToken,
+        );
       }
       if (existing) await tx.removeIdempotency(existing.id);
       let customerId = source === 'MOBILE' && actor ? actor.userId : null;
@@ -75,10 +190,30 @@ export class OrdersService {
         ...priced,
         createdAt,
         paymentExpiresAt: new Date(createdAt.getTime() + 30 * 60000),
-        // Satisfacer CHECK CASH existente sin emitir QR/token ni habilitar cobro.
+        // Sin opt-in conservar hash no recuperable; con opt-in se reemplaza abajo atómicamente.
         cashQrTokenHash:
           input.paymentMethod === 'CASH' ? digest(randomBytes(32).toString('hex')) : null,
       });
+      if (input.includeCashQr) {
+        if (!this.cashQrCipher) throw unavailable();
+        const token = opaque();
+        await tx.saveCashQr(
+          order.id,
+          digest(token),
+          this.cashQrCipher.seal(token, order.id),
+          this.cashQrCipher.version,
+        );
+      }
+      if (input.includeCheckoutToken) {
+        if (!this.checkoutCipher) throw unavailable();
+        const token = opaque();
+        await tx.saveCheckoutSecret(
+          order.id,
+          digest(token),
+          this.checkoutCipher.seal(token, order.id),
+          this.checkoutCipher.version,
+        );
+      }
       const response = jsonValue({ data: orderDto(order) }) as Prisma.InputJsonObject;
       const record = await tx.saveIdempotency({
         scope,
@@ -93,7 +228,13 @@ export class OrdersService {
         expiresAt: new Date(createdAt.getTime() + 48 * 3600000),
       });
       // Responder la misma representación JSONB que recibirán todos los reintentos.
-      return record.responseJson;
+      return this.creationResponse(
+        tx,
+        record.responseJson,
+        order.id,
+        input.includeCashQr,
+        input.includeCheckoutToken,
+      );
     });
   }
   get(actor: Principal, id: bigint) {
@@ -162,6 +303,11 @@ export class OrdersService {
         !(await tx.hasSuccessfulCashPayment(id, order.totalCents))
       )
         throw orderConflict('Falta pago CASH exitoso y venta coherente');
+      if (
+        order.paymentMethod === 'STRIPE' &&
+        !(await tx.hasSuccessfulStripePayment(id, order.totalCents))
+      )
+        throw orderConflict('Falta pago STRIPE exitoso y venta coherente');
       const now = this.now(),
         updated = await tx.ready(id, actor.userId, now);
       await tx.audit(actor.userId, 'ORDER_READY', id, now);

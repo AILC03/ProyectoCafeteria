@@ -6,6 +6,7 @@ import { spawnSync } from 'node:child_process';
 import process from 'node:process';
 import console from 'node:console';
 import { URL } from 'node:url';
+import { join } from 'node:path';
 import pg from 'pg';
 import { runRegressionSuite } from '../tests/database/regression-suite.mjs';
 
@@ -150,9 +151,15 @@ try {
   }
   report.cleanup = true;
   await admin.end();
-  mkdirSync(new URL('../docs/database/review-evidence/', import.meta.url), { recursive: true });
+  // Permite conservar evidencia histórica al ejecutar nuevas verificaciones aisladas.
+  const outputDirectory = process.env.DB_REVIEW_OUTPUT_DIR;
+  const evidenceDirectory =
+    outputDirectory ?? new URL('../docs/database/review-evidence/', import.meta.url);
+  mkdirSync(evidenceDirectory, { recursive: true });
   writeFileSync(
-    new URL('../docs/database/review-evidence/corrections-results.json', import.meta.url),
+    outputDirectory
+      ? join(outputDirectory, 'corrections-results.json')
+      : new URL('../docs/database/review-evidence/corrections-results.json', import.meta.url),
     JSON.stringify(report, null, 2) + '\n',
   );
 }
