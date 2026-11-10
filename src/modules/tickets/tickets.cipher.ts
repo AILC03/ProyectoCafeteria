@@ -6,6 +6,8 @@ export class TicketCipher {
   constructor(
     key: string,
     readonly version = 'v1',
+    private readonly purpose:
+      'customer-registration' | 'cash-payment' | 'stripe-checkout' = 'customer-registration',
   ) {
     if (!/^[a-f0-9]{64}$/i.test(key) || !/^[a-zA-Z0-9_-]{1,32}$/.test(version))
       throw new Error('Configuración de cifrado de tickets inválida');
@@ -14,7 +16,7 @@ export class TicketCipher {
   seal(value: string, saleId: bigint) {
     const iv = randomBytes(12),
       cipher = createCipheriv('aes-256-gcm', this.key, iv);
-    cipher.setAAD(Buffer.from(`customer-registration:${saleId}:${this.version}`));
+    cipher.setAAD(Buffer.from(`${this.purpose}:${saleId}:${this.version}`));
     const encrypted = Buffer.concat([cipher.update(value, 'utf8'), cipher.final()]);
     return [iv, cipher.getAuthTag(), encrypted].map((part) => part.toString('base64url')).join('.');
   }
@@ -28,7 +30,7 @@ export class TicketCipher {
         throw unavailable();
       const parts = value.split('.').map((part) => Buffer.from(part, 'base64url'));
       const decipher = createDecipheriv('aes-256-gcm', this.key, parts[0]!);
-      decipher.setAAD(Buffer.from(`customer-registration:${saleId}:${version}`));
+      decipher.setAAD(Buffer.from(`${this.purpose}:${saleId}:${version}`));
       decipher.setAuthTag(parts[1]!);
       const result = Buffer.concat([decipher.update(parts[2]!), decipher.final()]).toString('utf8');
       if (!/^[A-Za-z0-9_-]{43}$/.test(result)) throw unavailable();
@@ -38,7 +40,10 @@ export class TicketCipher {
     }
   }
 }
-export function ticketCipherConfiguration(input: Record<string, string | undefined>) {
+export function ticketCipherConfiguration(
+  input: Record<string, string | undefined>,
+  purpose: 'customer-registration' | 'cash-payment' | 'stripe-checkout' = 'customer-registration',
+) {
   const key = input.TICKET_ENCRYPTION_KEY;
   if (!key && !input.TICKET_KEY_VERSION) return undefined;
   if (
@@ -47,5 +52,5 @@ export function ticketCipherConfiguration(input: Record<string, string | undefin
     key.toLowerCase() === input.AUTH_CSRF_SECRET?.toLowerCase()
   )
     throw new Error('Configuración de tickets incompleta o clave compartida');
-  return new TicketCipher(key, input.TICKET_KEY_VERSION ?? 'v1');
+  return new TicketCipher(key, input.TICKET_KEY_VERSION ?? 'v1', purpose);
 }

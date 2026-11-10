@@ -1,5 +1,18 @@
 # Ruta de desarrollo — Backend de cafetería
 
+## Continuidad vigente — 2026-11-10
+
+La ruta inferior es el corte histórico del 2026-10-26, **no una lista actual de
+pendientes**. FIN-01 completa el backlog funcional en pruebas y OpenAPI 0.11.0:
+ventas, cuentas/empleados, recuperación/correo, worker/expiración y Stripe, además
+del avance CASH/tickets/clientes/favoritos ya existente. Proveedores externos
+simulados en pruebas; Stripe runtime deshabilitado, bases del proyecto intactas.
+Consultar [índice vigente](docs/README.md), [FIN-01](docs/backend-completion.md) y
+[guía frontend](docs/frontend-integration.md). Siguiente trabajo: revisión humana,
+integración frontend, migraciones/configuración autorizadas y validación externa.
+
+## Ruta histórica — 2026-10-26
+
 Actualizado: 26 de octubre de 2026. Esta ruta describe el repositorio activo: `C:\Users\angel\OneDrive\Documentos\ProyectoCafeteria\CafeteriaProyecto-BACKEND`.
 
 ## Estado comprobado
@@ -92,11 +105,11 @@ El backend ya no está en fase inicial. Tiene base de datos migrada, catálogo p
 - Añadir pruebas de integración de cada módulo con PostgreSQL aislado, y actualizar OpenAPI antes de cada endpoint.
 - Mantener CI, documentación de despliegue, secretos, respaldos y restauración. Definir proveedor de correo, hosting y dominio antes de producción.
 
-## Próxima tarea recomendada
+## Próxima tarea recomendada en el corte histórico
 
 Implementar el **módulo de órdenes**, empezando por el contrato OpenAPI y las pruebas. No mezclarlo todavía con caja, Stripe, correo o registro QR: esos flujos dependen de la orden creada y deben añadirse en entregas posteriores y verificables.
 
-## Prompt para OpenCode
+## Prompt histórico para ORD-01 (ya implementado; no reutilizar como encargo vigente)
 
 ```text
 Trabaja en C:\Users\angel\OneDrive\Documentos\ProyectoCafeteria\CafeteriaProyecto-BACKEND.

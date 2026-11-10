@@ -20,6 +20,14 @@ import { TicketsService } from './modules/tickets/tickets.service.js';
 import { ticketCipherConfiguration } from './modules/tickets/tickets.cipher.js';
 import { CustomerRegistrationRepository } from './modules/customer-registration/customer-registration.repository.js';
 import { CustomerRegistrationService } from './modules/customer-registration/customer-registration.service.js';
+import { CustomersRepository } from './modules/customers/customers.repository.js';
+import { CustomersService } from './modules/customers/customers.service.js';
+import { AccountsRepository } from './modules/accounts/accounts.repository.js';
+import { AccountsService } from './modules/accounts/accounts.service.js';
+import { SalesRepository, SalesService } from './modules/sales/sales.service.js';
+import { StripeRepository } from './modules/payments/stripe.repository.js';
+import { StripeService } from './modules/payments/stripe.service.js';
+import { mailConfiguration } from './config/completion.js';
 
 const logger = pino({
   redact: [
@@ -39,6 +47,9 @@ const logger = pino({
     'AUTH_CSRF_SECRET',
     'CLOUDINARY_API_SECRET',
     'TICKET_ENCRYPTION_KEY',
+    'OUTBOX_ENCRYPTION_KEY',
+    'STRIPE_SECRET_KEY',
+    'STRIPE_WEBHOOK_SECRET',
   ],
 });
 async function main() {
@@ -48,6 +59,8 @@ async function main() {
     throw new Error('Producción requiere claves de autenticación y HTTPS.');
   const cloud = cloudinaryConfiguration(process.env);
   const ticketCipher = ticketCipherConfiguration(process.env);
+  const cashQrCipher = ticketCipherConfiguration(process.env, 'cash-payment');
+  const checkoutCipher = ticketCipherConfiguration(process.env, 'stripe-checkout');
   const database = createDatabase(env.DATABASE_URL);
   try {
     await database.$connect();
@@ -57,20 +70,36 @@ async function main() {
   }
   const adminService = new AdminService(new AdminRepository(database));
   const cashRepository = new CashRepository(database);
+  const authService = auth ? new AuthService(new AuthRepository(database), auth) : undefined;
   const app = createApp({
     catalogRepository: new PrismaCatalogRepository(database),
     logger,
     frontendOrigin: env.FRONTEND_ORIGIN,
     catalogRateLimit: env.CATALOG_RATE_LIMIT,
-    authService: auth ? new AuthService(new AuthRepository(database), auth) : undefined,
+    authService,
     adminService,
-    ordersService: new OrdersService(new OrdersRepository(database)),
+    ordersService: new OrdersService(
+      new OrdersRepository(database),
+      undefined,
+      cashQrCipher,
+      checkoutCipher,
+    ),
     cashService: new CashService(cashRepository),
     paymentsService: new PaymentsService(cashRepository, ticketCipher),
     ticketsService: new TicketsService(cashRepository, ticketCipher),
     registrationService: new CustomerRegistrationService(
       new CustomerRegistrationRepository(database),
     ),
+    customersService: new CustomersService(new CustomersRepository(database)),
+    accountsService: authService
+      ? new AccountsService(
+          new AccountsRepository(database),
+          authService,
+          mailConfiguration(process.env, env.FRONTEND_ORIGIN),
+        )
+      : undefined,
+    salesService: new SalesService(new SalesRepository(database)),
+    stripeService: new StripeService(new StripeRepository(database), undefined, ticketCipher),
     imageService: cloud ? new ImageService(adminService, new CloudinaryProvider(cloud)) : undefined,
   });
   const server = app.listen(env.PORT, () =>

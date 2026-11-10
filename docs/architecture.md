@@ -42,8 +42,16 @@ ADR 0009 aceptada: seguridad web, CI, entornos y respaldos.
 ADR 0010 aceptada: Cloudinary Free, carga desde panel y límites de imágenes.
 ADR 0011 y ADR 0012 también están aceptadas. Ya existen los módulos de catálogo,
 auth, admin y orders en `dev`. Entrega local CASH-01/02 añade cash, payments,
-sales (repositorio) y tickets, pendiente revisión/integración; customers y worker
-siguen pendientes. Ver [diseño y límites](cash-implementation.md).
+sales (repositorio) y tickets, pendiente revisión/integración. AUTH-02 añade
+`customer-registration` para alta por QR. CUS-01 añade `customers` para consultar
+perfil e historial de órdenes propios, sin edición/administración de clientes;
+FIN-01 añade `accounts`, lecturas HTTP de `sales`, proveedor Stripe inyectable y
+`src/worker/` como proceso separado con jobs/outbox PostgreSQL, leases con fencing,
+reintentos y payload cifrado. Las llamadas externas quedan fuera de transacciones.
+Server/worker no habilitan Stripe real; pruebas usan simulación. Las consultas propias reusan transacciones y
+revalidación de actor de ORD-01 y paginación común con scope ligado al cliente.
+Ver [estado vigente](README.md), [lecturas propias](customers-implementation.md)
+y [diseño y límites de CASH](cash-implementation.md).
 El esquema y contrato de cada flujo pendiente deben definirse
-antes de implementarlo. Consultar [estado reconciliado](tasks/DOC-01-adr-status-reconciliation.md)
+antes de implementarlo. Consultar [estado reconciliado](README.md)
 y [permisos](permissions.md).

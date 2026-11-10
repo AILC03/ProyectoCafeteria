@@ -1,5 +1,15 @@
 # PostgreSQL local para el equipo
 
+## Continuidad FIN-01 — 2026-11-10
+
+Migraciones recientes `20261026_cash_ticket_delivery`, `20261109_cash_qr_delivery`
+y `20261110_backend_completion` se probaron exclusivamente en bases temporales;
+esta entrega no las aplica a bases del proyecto. Revisarlas y acordar aplicación
+antes de conectar pantallas nuevas. No resetear ni suponer sincronía por haber
+generado Prisma. Para pruebas sin tocar bases existentes:
+`node scripts/verify-isolated.mjs` (Docker PostgreSQL 17 efímero, sin volúmenes).
+Ver [operación y claves externas](backend-completion.md).
+
 ## Arranque reproducible con Docker
 
 Requisitos: Node 22 (mínimo 22.13), npm y Docker Desktop abierto con motor de
@@ -65,9 +75,12 @@ el contenedor o ejecutar `db:check:docker`.
 ## Inicialización y migraciones
 
 La imagen ejecuta `docker/postgres/01-create-databases.sql` solo con un volumen
-vacío. Editar ese SQL no actualiza bases existentes. Las tablas futuras se
-incorporarán mediante migraciones versionadas después de revisar modelo físico
-y SQL con Leonel; el arranque nunca las aplica automáticamente.
+vacío. Editar ese SQL no actualiza bases existentes. Las tablas de negocio se
+incorporan mediante migraciones versionadas y revisadas; el arranque nunca las
+aplica automáticamente. Hay tres migraciones en el árbol actual, pero la entrega
+CASH no acredita aplicación de `20261026_cash_ticket_delivery` a las bases del
+proyecto. Revisar [estado y requisitos operativos](README.md) antes de migrar;
+no ejecutar preparación/migraciones como parte de una revisión documental.
 
 Prisma necesita las URLs Docker al ejecutar sus comandos. Ejemplo de validación,
 sin modificar las bases:
@@ -78,7 +91,7 @@ node --env-file=.env.docker node_modules/prisma/build/index.js validate
 
 `npm run test:integration` usa `cafeteria_test` únicamente como conexión de
 control y crea una base temporal por suite. Actualmente cubre auth/admin,
-catálogo, ORD-01 y CASH-01/02. El runner valida el destino explícitamente y
+catálogo, ORD-01, CASH-01/02 y registro QR AUTH-02. El runner valida el destino explícitamente y
 elimina solo las bases temporales que creó; nunca limpia desarrollo o shadow.
 Puede usar `.env.docker` cuando no se proporciona `TEST_DATABASE_URL`; una URL
 explícita tiene prioridad y evita cargar archivos de entorno.

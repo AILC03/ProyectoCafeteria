@@ -5,6 +5,11 @@
 > están aceptados. Este documento conserva el candidato original y no sustituye
 > esas fuentes.
 
+FIN-01 (2026-11-10) regenera `er-diagram.mmd` desde Prisma, incluidos metadatos
+Stripe/leases y permisos Checkout. `er-diagram.svg` conserva el render histórico
+de la revisión inicial, no representa los campos añadidos después. Para columnas
+vigentes consultar Prisma, [diccionario](../data-dictionary.md) y el Mermaid actual.
+
 ## Convenciones
 
 Corrección técnica 2026-10-18: SQL ya contiene los 21 defaults CURRENT_TIMESTAMP

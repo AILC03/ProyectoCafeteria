@@ -83,7 +83,12 @@ export class AuthService {
       } catch {
         correct = false;
       }
-      if (!validUser(user) || !correct) {
+      const matchesIdentifier =
+        user &&
+        (kind === 'staff'
+          ? user.username === identifier
+          : user.phone === identifier || user.customerNumber === identifier);
+      if (!validUser(user) || !correct || !matchesIdentifier) {
         const count = counter.attemptCount + 1;
         await tx.authAttemptLimit.update({
           where: { id: counter.id },
@@ -283,6 +288,23 @@ export class AuthService {
         where: { userId: user.id, revokedAt: null },
         data: { revokedAt: this.now() },
       });
+      if (kind === 'pin') {
+        await tx.pinRecoveryToken.updateMany({
+          where: { customerId: user.id, usedAt: null },
+          data: { usedAt: now },
+        });
+        await tx.emailVerificationToken.updateMany({
+          where: { customerId: user.id, usedAt: null },
+          data: { usedAt: now },
+        });
+        await tx.outboxMessage.updateMany({
+          where: {
+            reference: { startsWith: `customer:${user.id}:` },
+            encryptedPayload: { not: null },
+          },
+          data: { encryptedPayload: null, keyVersion: null, status: 'FAILED' },
+        });
+      }
       return 'ok' as const;
     });
     if (accepted === 'blocked') throw blocked();

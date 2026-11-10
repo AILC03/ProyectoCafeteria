@@ -7,7 +7,12 @@ import { AuthRepository } from '../src/modules/auth/auth.repository.js';
 import { OrdersService } from '../src/modules/orders/orders.service.js';
 import { OrdersRepository } from '../src/modules/orders/orders.repository.js';
 import { priceOrder, type CatalogProduct } from '../src/modules/orders/orders.pricing.js';
-import { mobileOrder, operationKey } from '../src/modules/orders/orders.validation.js';
+import {
+  mobileOrder,
+  operationKey,
+  cashierOrder,
+  cashQrScan,
+} from '../src/modules/orders/orders.validation.js';
 
 const product = (): CatalogProduct => ({
   id: 9007199254740993n,
@@ -42,6 +47,20 @@ const body = () => ({
   items: [{ productId: '9007199254740993', quantity: 2, optionValueIds: ['2'] }],
 });
 describe('orders: cálculo y validación', () => {
+  it('QR opt-in solo CASH y entrada de escaneo estricta, sin precio ni prefijo', () => {
+    expect(mobileOrder.safeParse({ ...body(), includeCashQr: true }).success).toBe(true);
+    expect(cashierOrder.safeParse({ ...body(), includeCashQr: true }).success).toBe(true);
+    expect(
+      mobileOrder.safeParse({ ...body(), paymentMethod: 'STRIPE', includeCashQr: true }).success,
+    ).toBe(false);
+    expect(mobileOrder.safeParse({ ...body(), includeCashQr: 'true' }).success).toBe(false);
+    for (const payload of [
+      { token: 'bad' },
+      { token: `cafeteria:cash:${'A'.repeat(43)}` },
+      { token: 'A'.repeat(43), totalCents: '1' },
+    ])
+      expect(cashQrScan.safeParse(payload).success).toBe(false);
+  });
   it('centavos/IDs exactos, cantidad multiplica base y recargos', () => {
     const priced = priceOrder(mobileOrder.parse(body()), [product()]);
     expect(priced.totalCents).toBe(300n);

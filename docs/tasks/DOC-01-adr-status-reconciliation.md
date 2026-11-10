@@ -1,5 +1,9 @@
 # DOC-01 — Conciliación documental con ADR
 
+> Corte histórico del 2026-10-26. La lista de pendientes inferior fue superada
+> por CASH-01/02 y AUTH-02. Consultar [estado vigente](../README.md) y
+> [conciliación posterior DOC-02](DOC-02-documentation-reconciliation.md).
+
 ## Estado
 
 Implementada y verificada en `dev` el 2026-10-26; pendiente únicamente de la
@@ -18,7 +22,7 @@ implementación real, sin reescribir los registros históricos de decisiones.
 - Contrato disponible: `docs/api/openapi.yaml`.
 - Implementación: código y pruebas de la rama `dev`.
 
-## Resultado de la conciliación
+## Resultado de la conciliación del 2026-10-26
 
 - ADR 0001–0012: aceptados. El 0011 fue aceptado el 2026-10-20 y el 0012 el
   2026-10-26.

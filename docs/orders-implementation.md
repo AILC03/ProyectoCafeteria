@@ -3,8 +3,9 @@
 Continuidad CASH-01/02 — 2026-10-27: [cobro efectivo y ticket](cash-implementation.md)
 implementados localmente. CASH ahora exige pago SUCCEEDED y venta coherente al
 marcar LISTO, además de estado/paidAt. Las exclusiones inferiores corresponden
-a la entrega histórica ORD-01; OpenAPI vigente 0.5.0. Registro final/Stripe/worker
-siguen pendientes. No se cambió cálculo ni snapshots de órdenes.
+a la entrega histórica ORD-01. AUTH-02 añadió registro final por QR de ticket el
+2026-10-31; OpenAPI vigente 0.6.0. Stripe/worker siguen pendientes. No se cambió
+cálculo ni snapshots de órdenes. Ver [estado reconciliado](README.md).
 
 2026-10-26. Implementado y verificado en `dev`; pendiente de revisión humana y
 fusión hacia `main`.
@@ -91,7 +92,7 @@ y revalida EN_PREPARACION con paidAt no nulo; guarda LISTO, actor y fecha, más
 auditoría. Una carrera tiene un ganador; repetición/otro estado devuelve 409 sin
 sobrescribir fecha/actor. LISTO sale de preparación y permanece en BD.
 
-## Persistencia y límites de alcance
+## Persistencia y límites de alcance al cierre ORD-01 (2026-10-26)
 
 No se necesita migración: esquema actual incluye órdenes, snapshots, idempotencia,
 readyAt y readyByEmployeeId. No se editaron migraciones aplicadas.
@@ -122,8 +123,11 @@ El runner `npm run test:integration` descubre el nuevo archivo automáticamente 
 crea/elimina solo bases propias `cafeteria_catalog_*` sobre PostgreSQL 17.
 `npm test` omite esas integraciones si no se usa el runner dedicado.
 
-El generador `node scripts/update-orders-contract.mjs` solo añade/reemplaza
-operaciones/esquemas ORD-01; revisar diff. Si se regenera auth/admin con
-`npm run api:features`, ejecutar después el generador ORD-01 para conservar
-metadatos 0.4.0, seguido de Prettier y `npm run api:validate`.
+El generador `node scripts/update-orders-contract.mjs` añade/reemplaza operaciones
+y esquemas ORD-01. Para reconstruir el contrato completo actual, ejecutar en orden
+`npm run api:features`, `node scripts/update-orders-contract.mjs`,
+`node scripts/update-cash-contract.mjs` y `node scripts/update-registration-contract.mjs`;
+después, formatear el YAML, revisar el diff y ejecutar `npm run api:validate`.
+No detener la regeneración en metadatos 0.3.0/0.4.0/0.5.0 ni asumir que regenerar
+equivale a verificar compatibilidad de operaciones posteriores.
 Los resultados reales de cierre y cualquier bloqueo están en la tarea ORD-01.

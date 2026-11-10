@@ -1,12 +1,15 @@
 # Cierre de planeación antes de desarrollo
 
-> **Estado vigente — 2026-10-26.** ADR 0001–0012 aceptados. En `dev` existen
-> persistencia/infraestructura, catálogo, auth/admin y ORD-01; faltan caja,
-> pagos, tickets/registro, recuperación, worker, ventas y Cloudinary real.
+> **Estado reconciliado — 2026-11-10.** ADR 0001–0012 aceptados. FIN-01 completa
+> implementación funcional en pruebas sobre el avance previo, incluidos Stripe,
+> recuperación, worker/correo, clientes/favoritos y ventas. Proveedores simulados;
+> Stripe runtime deshabilitado, migraciones recientes no aplicadas a bases del proyecto.
+> Pendientes revisión humana, frontend, configuración y validación externa autorizadas.
+> Ver [índice vigente](README.md) y [operación FIN-01](backend-completion.md).
 > La evidencia inferior corresponde al cierre de planeación de 2026-10-18 y se
 > conserva como historial, no como lista de trabajo actual.
 
-Actualización vigente 2026-10-20: Ángel aprobó candidato corregido y ADR 0011.
+Actualización histórica 2026-10-20: Ángel aprobó candidato corregido y ADR 0011.
 Migración aplicada a desarrollo, seed y catálogo lectura realizados. Ver
 [backend-progress.md](backend-progress.md). Las puertas de salida inferiores
 registran la etapa histórica de revisión; Docker/entorno Leonel sigue externo.
@@ -49,7 +52,7 @@ pago salvo registro QR, respeto de órdenes previas al agotar producto, efectivo
 recibido/cambio, máximo 9999900 centavos, teléfono MX, correo verificado y
 administrador con permisos de cajero/cierre excepcional. Ver [reglas](business-rules.md).
 
-## Preparación pendiente
+## Preparación pendiente al cierre de planeación (historial)
 
 - Consolidar diseño físico y ER: campos, longitudes, enums técnicos, CHECK, FK,
   índices y tablas de soporte; coordinar con base de datos.
@@ -91,7 +94,7 @@ administrador con permisos de cajero/cierre excepcional. Ver [reglas](business-r
 | AC-21 | Repetir pedido                                       | Usa catálogo/precios actuales y advierte diferencias            |
 | AC-22 | Reinicio durante trabajo externo                     | Reintento durable sin duplicar efecto comercial                 |
 
-## Puertas de salida
+## Puertas de salida del 2026-10-18 (historial)
 
 - [x] ADR 0001–0010 aceptadas.
 - [x] Reglas y permisos consolidados con cuestionario vigente.

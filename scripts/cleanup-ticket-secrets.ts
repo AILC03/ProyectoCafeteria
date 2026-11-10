@@ -1,11 +1,14 @@
 import { createDatabase } from '../src/config/database.js';
 import { purgeTicketSecrets } from '../src/modules/tickets/tickets.repository.js';
+import { purgeCashQrSecrets } from '../src/modules/orders/orders.repository.js';
 async function main() {
   if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL explícita requerida');
   const db = createDatabase(process.env.DATABASE_URL);
   try {
     const result = await purgeTicketSecrets(db);
     console.info(`Payloads de ticket retirados: ${result.count}`);
+    const cashQr = await purgeCashQrSecrets(db);
+    console.info(`Payloads de QR CASH retirados: ${cashQr.count}`);
   } finally {
     await db.$disconnect();
   }

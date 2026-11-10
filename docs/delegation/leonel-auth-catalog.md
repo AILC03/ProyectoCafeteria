@@ -1,5 +1,13 @@
 # Guía de implementación para Leonel
 
+> **Encargo histórico — 2026-10-21.** Auth/admin ya tienen implementación.
+> Las propuestas técnicas de esta guía fueron concretadas por
+> [ADR 0012](../adr/0012-auth-admin-implementation.md), aceptado el 2026-10-26,
+> y por [OpenAPI](../api/openapi.yaml). No reinstalar propuestas como `jose`
+> ni tratar login/CSRF como pendientes. Ver [guía auth/admin](../auth-admin-implementation.md)
+> y [estado vigente](../README.md). Las exclusiones y checklist inferiores
+> conservan el alcance original; Cloudinary real sigue sin autorización.
+
 ## 1. Encargo, alcance y forma de entrega
 
 Proyecto: Sistema Web de Gestión de Órdenes para Cafetería, equipo ESMAOS. Fecha: 21 de octubre de 2026. Responsable de estos módulos: Leonel. Revisión e integración: Ángel. Coordinación del contrato/frontend: Enrique.

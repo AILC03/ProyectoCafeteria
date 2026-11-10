@@ -96,6 +96,11 @@ erDiagram
     bigint total_cents
     timestamptz payment_expires_at
     varchar cash_qr_token_hash UK "nullable"
+    varchar cash_qr_encrypted_payload "nullable"
+    varchar cash_qr_key_version "nullable"
+    varchar checkout_token_hash UK "nullable"
+    varchar checkout_encrypted_payload "nullable"
+    varchar checkout_key_version "nullable"
     timestamptz paid_at "nullable"
     timestamptz ready_at "nullable"
     bigint ready_by_employee_id FK "nullable"
@@ -135,6 +140,8 @@ erDiagram
     varchar stripe_creation_key UK "nullable"
     varchar stripe_checkout_session_id UK "nullable"
     varchar stripe_payment_intent_id UK "nullable"
+    varchar stripe_checkout_url "nullable"
+    timestamptz stripe_expires_at "nullable"
     timestamptz confirmed_at "nullable"
     timestamptz provider_paid_at "nullable"
     timestamptz created_at
@@ -168,6 +175,7 @@ erDiagram
     EventStatus processing_status
     timestamptz received_at
     timestamptz processed_at "nullable"
+    varchar checkout_session_id "nullable"
   }
   refunds {
     bigint id PK
@@ -180,6 +188,8 @@ erDiagram
     timestamptz updated_at
   }
   customer_registration_tokens {
+    varchar encrypted_payload "nullable"
+    varchar key_version "nullable"
     bigint id PK
     bigint sale_id FK, UK
     varchar token_hash UK
@@ -243,6 +253,7 @@ erDiagram
     timestamptz locked_until "nullable"
     varchar dedupe_key UK "nullable"
     varchar last_error "nullable"
+    varchar lease_token "nullable"
   }
   outbox_messages {
     bigint id PK
@@ -255,6 +266,7 @@ erDiagram
     timestamptz available_at
     timestamptz locked_until "nullable"
     timestamptz expires_at "nullable"
+    varchar lease_token "nullable"
   }
   payment_incidents {
     bigint id PK

@@ -20,11 +20,13 @@ if (
   throw new Error('Requiere cafeteria_test local aislada.');
 const admin = new pg.Client({ connectionString: url.href, connectionTimeoutMillis: 5000 });
 const owned = [];
+let stage = 'conexión';
 try {
   await admin.connect();
   for (const file of readdirSync('tests/integration')
     .filter((file) => file.endsWith('.test.ts'))
     .sort()) {
+    stage = file;
     const name = `cafeteria_catalog_${randomBytes(6).toString('hex')}`;
     await admin.query(`CREATE DATABASE "${name}"`);
     owned.push(name);
@@ -54,7 +56,7 @@ try {
   console.error(
     error.code
       ? `Integración no disponible (${error.code}).`
-      : 'Integración incompleta; revisar entorno local.',
+      : `Integración incompleta (${stage}); revisar entorno local.`,
   );
   process.exitCode = 1;
 } finally {

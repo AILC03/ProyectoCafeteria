@@ -5,6 +5,7 @@ import { cookie, names } from '../auth/auth.http.js';
 import type { AuthService } from '../auth/auth.service.js';
 import type { OrdersService } from './orders.service.js';
 import { ordersController } from './orders.controller.js';
+import { privateCashResponse } from '../cash/cash.routes.js';
 
 export function ordersRoutes(auth: AuthService, service: OrdersService) {
   const router = Router(),
@@ -35,6 +36,22 @@ export function ordersRoutes(auth: AuthService, service: OrdersService) {
     controller.createCashier,
   );
   router.get('/orders/:id', noStore, signedIn, controller.get);
+  router.post(
+    '/cashier/orders/:id/cash-qr',
+    privateCashResponse,
+    signedIn,
+    authorize('CAJERO'),
+    protect,
+    controller.issueCashQr,
+  );
+  router.post(
+    '/cashier/orders/scan-cash-qr',
+    privateCashResponse,
+    signedIn,
+    authorize('CAJERO'),
+    protect,
+    controller.scanCashQr,
+  );
   router.get(
     '/preparation/orders',
     noStore,

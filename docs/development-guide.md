@@ -22,7 +22,7 @@ npm run lint, npm run format:check, npm test y npm run build.
 
 ## API
 
-Definir primero cada endpoint en `api/openapi.yaml`: acceso, entradas,
+Definir primero cada endpoint en `docs/api/openapi.yaml` (desde la raíz del backend): acceso, entradas,
 respuesta, errores y ejemplos. No alterar respuestas sin coordinar frontend.
 Convenciones aceptadas en ADR 0006; completar cada operación conforme a
 [plan del contrato](api/contract-plan.md) y aprobar antes de implementarla.
@@ -41,8 +41,10 @@ Coordinar esquema/migraciones con Leonel, revisando ADR y criterios de aceptaci�
 coordinar contrato con Enrique.
 ADR 0001–0012 aceptadas; Ángel aceptó explícitamente ADR 0012 el 2026-10-26.
 Cloudinary continúa simulado, también en CI; no se autoriza configurar el proveedor real.
-Modelo físico, catálogo y
-auth/admin implementados; consultar [estado vigente y límites](auth-admin-implementation.md).
-No asumir que órdenes, pagos o cualquier otro módulo estén terminados.
+Modelo físico, catálogo, auth/admin, ORD-01, caja/cobro CASH y registro QR tienen
+implementación presente; consultar [estado vigente y límites](README.md).
+FIN-01 añade implementación en pruebas de Stripe, recuperación, cuentas/empleados,
+ventas y worker. Proveedores simulados; no confundir con integración externa ni
+disponibilidad runtime de Stripe. Ver [operación y límites](backend-completion.md).
 No mezclar aprobaciones documentales con pruebas ejecutadas o infraestructura
 configurada. Implementar únicamente después de definir contrato del módulo.

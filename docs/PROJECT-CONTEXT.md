@@ -1,5 +1,27 @@
 # Contexto y continuidad del proyecto — Backend Cafetería
 
+## Estado vigente — 2026-11-10
+
+FIN-01 completa el backlog funcional en pruebas sobre CASH-03, CUS-01 y FAV-01:
+ventas/resumen, edición/corrección de cuentas y empleados, correo/recuperación/reset,
+worker/expiración y Stripe/conciliación/refund con tickets. OpenAPI **0.11.0**.
+Stripe se verifica con proveedor simulado inyectado; no habilitado en server/worker.
+No se migraron bases del proyecto ni se configuraron proveedores reales. Pendientes
+revisión humana, coordinación frontend y operación/validación externa autorizadas.
+[Estado](README.md), [límites](backend-completion.md), [evidencia](tasks/FIN-01-backend-completion.md).
+
+## Corte documental histórico — 2026-11-09
+
+Consultar [índice vigente](README.md) para implementación, límites y fuentes.
+El árbol revisado incluye CASH-01/02 y alta QR AUTH-02 con contrato 0.6.0;
+preparación/LISTO ya están cubiertos por ORD-01 y comprobaciones CASH posteriores.
+La última evidencia funcional registrada es la de AUTH-02 del 2026-10-31, no
+repetida en esta conciliación. Revisión humana/integración, migración CASH a las
+bases del proyecto, configuración de tickets y proveedores reales no se dan por realizadas.
+
+Las secciones siguientes son cortes históricos: conservar sus versiones, conteos,
+exclusiones y próximos pasos como datos de aquella fecha, no como instrucciones actuales.
+
 ## Entrega local AUTH-02 — 2026-10-31
 
 Registro de cliente solo con QR original de ticket pagado, OpenAPI 0.6.0. Alta,
@@ -24,7 +46,7 @@ requieren configuración operativa antes de uso real. No hubo commit/push/despli
 Ver [implementación](cash-implementation.md) y [evidencia](tasks/CASH-01-02-cash-payments.md).
 Los estados inferiores son historial; esta entrega local aún necesita revisión/integración.
 
-## Estado vigente — `dev`, 2026-10-26
+## Historial ORD-01 — `dev`, 2026-10-26
 
 ADR 0001–0012 aceptados. Primera entrega de orders implementada y verificada en
 `dev`: creación móvil/caja pendiente,
@@ -84,6 +106,12 @@ Las secciones de revisión previas son historial, no el estado actual de módulo
 
 Actualizado: 2026-10-18. ADR 0001–0010 aprobadas en esa fecha; entrega candidata de Leonel integrada.
 Este archivo resume acuerdos e implementación real; no sustituye reglas ni ADR.
+
+## Referencia histórica de la base inicial — 2026-10-18
+
+Las secciones 1–6 siguientes pertenecen a ese corte. No utilizar sus pendientes
+de módulos, variables o comandos como inventario actual; consultar el índice vigente,
+`package.json` y las guías de implementación de las entregas posteriores.
 
 ## 1. Ubicación y responsabilidades
 

@@ -12,6 +12,17 @@ Las protecciones de GitHub requieren activación manual; no basta con estos arch
 
 ## Estado
 
+**FIN-01 — 2026-11-10, OpenAPI 0.11.0:** backend funcional en pruebas: catálogo,
+auth/admin, órdenes/preparación, caja/efectivo/QR, tickets/registro, clientes,
+favoritos/repetición, ventas, cuentas/empleados, recuperación/correo y worker/Stripe.
+Stripe se prueba con proveedor inyectado simulado; server/worker no habilitan
+llamadas reales. Migraciones recientes probadas solo en bases aisladas, no aplicadas
+a bases del proyecto. No equivale a revisión humana, integración en main ni producción.
+Consultar [estado vigente](docs/README.md), [operación y límites FIN-01](docs/backend-completion.md)
+y [guía frontend existente](docs/frontend-integration.md).
+
+## Historial de entregas (conservar versiones y exclusiones de cada fecha)
+
 **CASH-01/CASH-02 local, 2026-10-27:** caja, cobro efectivo por ID, venta y ticket
 JSON protegido. [Guía y límites](docs/cash-implementation.md). La entrega posterior
 AUTH-02 ya consume el QR de registro de invitado; QR de cobro, Stripe y worker siguen
@@ -50,8 +61,8 @@ el alcance actual.
 
 Tecnologías previstas: Node.js, Express, TypeScript, API REST y PostgreSQL.
 Prisma 7, npm, Zod, ESLint 10, Prettier, Vitest 5 y Supertest aprobados en ADR 0002.
-Autenticación implementada conforme ADR 0005; los flujos de recuperación de NIP
-siguen pendientes.
+Autenticación conforme ADR 0005; recuperación y worker añadidos en FIN-01,
+con claves externas y configuración operativa pendientes de cada entorno.
 
 ## Ejecutar localmente
 
@@ -66,7 +77,8 @@ esa alternativa y abrir
 
 Comprobaciones: `npm run typecheck`, `npm run lint`, `npm run format:check`,
 `npm test`, `npm run build`. Formato automático: `npm run format`.
-La base local aprobada ya está migrada. En un entorno nuevo ejecutar db:prepare
+La migración inicial local fue aprobada/aplicada; las migraciones recientes de
+CASH/QR/FIN-01 no se aplicaron a bases del proyecto. En un entorno nuevo ejecutar db:prepare
 solo sobre una base local vacía o con historial de este proyecto, nunca reset.
 `npm run api:validate` comprueba contrato y ejemplos; `npm run db:diagram` regenera
 ER desde Prisma. `npm run db:verify:docker` crea bases desechables propias para
@@ -107,8 +119,9 @@ Los archivos `.gitkeep` mantienen directorios vacíos al versionarlos.
 ## Próximo trabajo
 
 1. Revisar e integrar las entregas locales pendientes según el flujo de PR.
-2. Coordinar con frontend el contrato OpenAPI 0.6.0 vigente.
-3. Continuar preparación, perfil/historial de cliente y ticket digital según backlog.
-4. Implementar worker/correo antes de recuperación de NIP; Stripe conserva su secuencia propia.
+2. Coordinar con frontend OpenAPI 0.11.0 y su [guía de integración](docs/frontend-integration.md).
+3. Autorizar/aplicar migraciones y configurar claves externas/worker en el entorno elegido.
+4. Autorizar pruebas reales de Stripe test, SMTP y Cloudinary antes de habilitarlos.
+5. Completar revisión de seguridad/operación, CI remoto, HTTPS, respaldos y restauración.
 
 Nunca subir `.env`, claves Stripe, credenciales reales ni datos personales.

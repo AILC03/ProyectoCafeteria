@@ -23,8 +23,9 @@ Distinguir fuentes:
 - OpenAPI establece el contrato; debe concordar con esas decisiones.
 - El encargo delimita alcance, no autoriza incumplir seguridad silenciosamente.
 - Código y pruebas muestran lo implementado/verificado, no aprueban decisiones.
-- Estado actual: [auth/admin](../auth-admin-implementation.md) y encabezado de
-  [contexto](../PROJECT-CONTEXT.md). Las secciones históricas no son pendientes actuales.
+- Estado actual: [índice reconciliado](../README.md) y encabezado de
+  [contexto](../PROJECT-CONTEXT.md); consultar además las tareas de cada entrega.
+  Las secciones históricas no son pendientes actuales.
 - ADR 0012 fue **aceptado por Ángel el 2026-10-26**. Cloudinary continúa simulado,
   también en CI; configurar credenciales o probar el proveedor real requiere autorización posterior.
 
