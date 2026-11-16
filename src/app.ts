@@ -83,15 +83,22 @@ export function createApp(options: AppOptions = {}) {
   );
 
   const origin = options.frontendOrigin ?? 'http://localhost:5173';
+  const allowedOrigins = [origin, 'http://localhost:5174'];
   app.use((request, _response, next) => {
-    if (request.headers.origin && request.headers.origin !== origin)
+    if (request.headers.origin && !allowedOrigins.includes(request.headers.origin))
       return next(new HttpProblem(403, 'ORIGIN_NOT_ALLOWED', 'Origen no permitido'));
     next();
   });
 
   app.use(
     cors({
-      origin,
+      origin: (reqOrigin, callback) => {
+        if (!reqOrigin || allowedOrigins.includes(reqOrigin)) {
+          callback(null, reqOrigin || origin);
+        } else {
+          callback(new HttpProblem(403, 'ORIGIN_NOT_ALLOWED', 'Origen no permitido'));
+        }
+      },
       credentials: true,
       methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'HEAD', 'OPTIONS'],
     }),

@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="description" content="Coffee´s Pos - Sistema minimalista de punto de venta y toma de órdenes para tablet y computadora">
+  <meta name="theme-color" content="#ffffff">
+  <title>Coffee´s Pos</title>
+
+  <!-- Google Fonts: Outfit e Inter para estética ultra limpia y moderna -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/style.css?v=2.0.0">
+  <script>
+    function handleDirectStart(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      var welcome = document.getElementById('screen-welcome');
+      var idScreen = document.getElementById('screen-employee-id');
+      if (welcome) welcome.classList.remove('active');
+      if (idScreen) idScreen.classList.add('active');
+      if (typeof window.startCoffeesPos === 'function') {
+        window.startCoffeesPos();
+      } else if (typeof window.startTaffyPos === 'function') {
+        window.startTaffyPos();
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="app-viewport">
+
+    <!-- ====================================================================
+         PANTALLA 1: BIENVENIDA / RELOJ (Réplica de la Maqueta 1)
+         ==================================================================== -->
+    <section id="screen-welcome" class="screen-view active" aria-label="Pantalla de Bienvenida">
+      <div class="welcome-left">
+        <div class="welcome-title-wrap">
+          <h1 class="welcome-app-name" id="main-brand-title">Coffee´s Pos</h1>
+          <p class="welcome-subtitle">Toma de Órdenes</p>
+        </div>
+
+        <button type="button" class="btn-empezar" id="btn-start" onclick="handleDirectStart(event)" aria-label="Empezar turno o iniciar sesión">
+          <span>EMPEZAR</span>
+        </button>
+
+        <button type="button" class="welcome-menu-btn" id="btn-open-menu" aria-label="Abrir menú de configuración y opciones">
+          <div class="hamburger-line"></div>
+          <div class="hamburger-line"></div>
+          <div class="hamburger-line"></div>
+        </button>
+      </div>
+
+      <div class="welcome-right" id="welcome-right-panel">
+        <div class="welcome-clock-box">
+          <div class="welcome-date-text" id="live-date">Cargando fecha...</div>
+          <div class="welcome-time-text" id="live-time">--:-- --</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         PANTALLA 2: NÚMERO DE EMPLEADO (Réplica de la Maqueta 2)
+         ==================================================================== -->
+    <section id="screen-employee-id" class="screen-view" aria-label="Ingreso de Número de Empleado">
+      <div class="numpad-screen-container">
+        
+        <header class="top-action-bar">
+          <button type="button" class="btn-nav-back" id="btn-back-to-welcome" aria-label="Volver a la pantalla de bienvenida">
+            <span>&larr; Volver</span>
+          </button>
+        </header>
+
+        <!-- Kiosco Central Estilizado (inspirado en la maqueta 2) -->
+        <main class="kiosk-chassis">
+          
+          <!-- Pantalla Superior de Entrada -->
+          <div class="kiosk-display-window" id="id-display-window">
+            <div class="display-meta-header">
+              <span class="display-label">Número de Empleado</span>
+              <button type="button" class="display-clear-btn" id="btn-clear-id" aria-label="Borrar número">Limpiar</button>
+            </div>
+            
+            <div class="display-digits-row">
+              <span class="display-digits-text" id="txt-employee-id"></span>
+              <span class="display-cursor"></span>
+            </div>
+          </div>
+
+          <!-- Pad Numérico Central Touch & Físico -->
+          <div class="kiosk-keypad-panel">
+            <div class="keypad-grid" id="grid-employee-id">
+              <button type="button" class="numpad-key" data-key="1">1</button>
+              <button type="button" class="numpad-key" data-key="2">2</button>
+              <button type="button" class="numpad-key" data-key="3">3</button>
+              <button type="button" class="numpad-key" data-key="4">4</button>
+              <button type="button" class="numpad-key" data-key="5">5</button>
+              <button type="button" class="numpad-key" data-key="6">6</button>
+              <button type="button" class="numpad-key" data-key="7">7</button>
+              <button type="button" class="numpad-key" data-key="8">8</button>
+              <button type="button" class="numpad-key" data-key="9">9</button>
+              <button type="button" class="numpad-key key-special key-backspace" data-key="Backspace" title="Borrar dígito">⌫</button>
+              <button type="button" class="numpad-key" data-key="0">0</button>
+              <button type="button" class="numpad-key key-special key-enter" data-key="Enter" title="Aceptar">✓</button>
+            </div>
+          </div>
+
+          <!-- Botón de Aceptar Principal -->
+          <div class="kiosk-actions-bar">
+            <button type="button" class="btn-confirm-action" id="btn-confirm-employee-id">
+              <span>ACEPTAR (ENTER)</span>
+            </button>
+          </div>
+
+          <div class="kiosk-error-feedback" id="id-error-msg"></div>
+
+          <!-- Accesos Rápidos de Empleados -->
+          <div class="demo-quick-chips">
+            <span class="demo-chip-label">Empleados:</span>
+            <button type="button" class="demo-chip-btn" data-demo-id="101">Juan #101 (Cajero)</button>
+            <button type="button" class="demo-chip-btn admin-chip" data-demo-id="2676323">👑 Ulises #2676323 (Admin)</button>
+          </div>
+
+        </main>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         PANTALLA 3: PIN / CONTRASEÑA DEL EMPLEADO (Touch + Teclado)
+         ==================================================================== -->
+    <section id="screen-employee-pin" class="screen-view" aria-label="Ingreso de PIN de Seguridad">
+      <div class="numpad-screen-container">
+        
+        <header class="top-action-bar">
+          <button type="button" class="btn-nav-back" id="btn-back-to-id" aria-label="Cambiar número de empleado">
+            <span>&larr; Cambiar Empleado</span>
+          </button>
+        </header>
+
+        <main class="kiosk-chassis">
+          
+          <!-- Encabezado con Nombre y Rol del Empleado Identificado -->
+          <div class="employee-header-card">
+            <div class="employee-avatar-badge" id="pin-employee-avatar">JP</div>
+            <div class="employee-info-col">
+              <div class="employee-name-text" id="pin-employee-name">Juan Pérez</div>
+              <div class="employee-role-text" id="pin-employee-role">Cajero Principal &bull; ID #101</div>
+            </div>
+          </div>
+
+          <!-- Display Superior para PIN (Círculos Indicadores) -->
+          <div class="kiosk-display-window" id="pin-display-window">
+            <div class="display-meta-header">
+              <span class="display-label">Ingrese Contraseña / PIN</span>
+              <button type="button" class="display-clear-btn" id="btn-clear-pin">Limpiar</button>
+            </div>
+            
+            <div class="pin-slots-container" id="pin-slots-wrapper">
+              <div class="pin-slot-circle" data-slot="0"></div>
+              <div class="pin-slot-circle" data-slot="1"></div>
+              <div class="pin-slot-circle" data-slot="2"></div>
+              <div class="pin-slot-circle" data-slot="3"></div>
+            </div>
+          </div>
+
+          <!-- Pad Numérico para PIN -->
+          <div class="kiosk-keypad-panel">
+            <div class="keypad-grid" id="grid-employee-pin">
+              <button type="button" class="numpad-key" data-key="1">1</button>
+              <button type="button" class="numpad-key" data-key="2">2</button>
+              <button type="button" class="numpad-key" data-key="3">3</button>
+              <button type="button" class="numpad-key" data-key="4">4</button>
+              <button type="button" class="numpad-key" data-key="5">5</button>
+              <button type="button" class="numpad-key" data-key="6">6</button>
+              <button type="button" class="numpad-key" data-key="7">7</button>
+              <button type="button" class="numpad-key" data-key="8">8</button>
+              <button type="button" class="numpad-key" data-key="9">9</button>
+              <button type="button" class="numpad-key key-special key-backspace" data-key="Backspace" title="Borrar dígito">⌫</button>
+              <button type="button" class="numpad-key" data-key="0">0</button>
+              <button type="button" class="numpad-key key-special key-enter" data-key="Enter" title="Confirmar PIN">✓</button>
+            </div>
+          </div>
+
+          <!-- Botón de Confirmación -->
+          <div class="kiosk-actions-bar">
+            <button type="button" class="btn-confirm-action" id="btn-confirm-employee-pin">
+              <span>INGRESAR (ENTER)</span>
+            </button>
+          </div>
+
+          <div class="kiosk-error-feedback" id="pin-error-msg"></div>
+
+        </main>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         PANTALLA 4: TOMA DE ÓRDENES (POS Completo y Minimalista de Restaurante)
+         ==================================================================== -->
+    <section id="screen-pos" class="screen-view" aria-label="Punto de Venta y Toma de Órdenes">
+      <!-- Barra Superior -->
+      <nav class="pos-top-nav">
+        <div class="pos-nav-left">
+          <span class="pos-logo-text">Coffee´s Pos</span>
+          
+          <!-- Pestañas de Navegación de Vistas -->
+          <div class="pos-view-tabs" role="tablist">
+            <button type="button" class="pos-view-tab active" id="tab-nav-order" role="tab">
+              <span>📋 Tomar Orden</span>
+            </button>
+            <button type="button" class="pos-view-tab" id="tab-nav-history" role="tab">
+              <span>📦 Historial Pedidos</span>
+            </button>
+            <button type="button" class="pos-view-tab" id="tab-nav-shift" role="tab">
+              <span>📊 Corte de Turno</span>
+            </button>
+          </div>
+
+          <div class="pos-cashier-badge">
+            <span>👤</span>
+            <span id="pos-cashier-name">Juan Pérez (Cajero)</span>
+          </div>
+        </div>
+
+        <div class="pos-nav-right">
+          <div class="pos-live-clock" id="pos-live-clock">--:--:--</div>
+          <button type="button" class="btn-pos-logout" id="btn-pos-logout" title="Cerrar turno y bloquear terminal">
+            <span>Cerrar Turno &times;</span>
+          </button>
+        </div>
+      </nav>
+
+      <!-- Contenedor Principal de Vistas -->
+      <div class="pos-main-container">
+        
+        <!-- ================================================================
+             VISTA 1: TOMAR ORDEN (Catálogo + Ticket)
+             ================================================================ -->
+        <div class="pos-workspace-view active pos-workspace-grid" id="pos-ordering-workspace">
+          
+          <!-- Catálogo de Productos -->
+          <section class="pos-catalog-panel" aria-label="Catálogo de productos">
+            <!-- Barra de Búsqueda -->
+            <div class="catalog-search-header">
+              <div class="catalog-search-wrap">
+                <span class="search-icon-fixed">🔍</span>
+                <input type="text" class="catalog-search-input" id="pos-search-input" placeholder="Buscar producto por nombre o código (ej. Chilaquiles, CAF-01)..." autocomplete="off">
+              </div>
+              <span class="search-count-badge" id="search-count-badge">24 productos</span>
+            </div>
+
+            <!-- Filtro de Categorías -->
+            <div class="pos-categories-bar" id="pos-categories-container">
+              <!-- Rellenado dinámicamente -->
+            </div>
+
+            <!-- Cuadrícula de Productos -->
+            <div class="pos-products-scroll">
+              <div class="pos-products-grid" id="pos-products-grid">
+                <!-- Rellenado dinámicamente -->
+              </div>
+            </div>
+          </section>
+
+          <!-- Ticket / Carrito de la Orden Actual -->
+          <aside class="pos-ticket-sidebar" aria-label="Ticket de la orden actual">
+            
+            <!-- Selector Comer Aquí / Para Llevar & Mesa -->
+            <div class="order-mode-container">
+              <div class="order-mode-pill-selector">
+                <button type="button" class="btn-order-mode active" id="btn-mode-dine-in" data-mode="dine-in">
+                  <span>🍽️ Comer Aquí</span>
+                </button>
+                <button type="button" class="btn-order-mode" id="btn-mode-takeout" data-mode="takeout">
+                  <span>🛍️ Para Llevar</span>
+                </button>
+              </div>
+
+              <div class="order-meta-input-row">
+                <span id="order-meta-icon">🪑</span>
+                <input type="text" id="input-table-customer" placeholder="Mesa (ej. Mesa 4, Barra)..." maxlength="30">
+              </div>
+            </div>
+
+            <div class="ticket-header" style="padding: 0.85rem 1.25rem;">
+              <div class="ticket-title-row">
+                <span class="ticket-title">Orden Actual</span>
+                <span class="ticket-num" id="pos-ticket-number">Ticket #1001</span>
+              </div>
+              <button type="button" class="btn-ticket-clear" id="btn-ticket-clear" title="Vaciar orden">
+                Vaciar
+              </button>
+            </div>
+
+            <!-- Lista de Artículos -->
+            <div class="ticket-items-scroll" id="ticket-items-container">
+              <!-- Rellenado dinámicamente -->
+            </div>
+
+            <!-- Resumen de Totales y Botón Cobrar -->
+            <div class="ticket-summary-footer">
+              
+              <!-- Descuento y Propina Rápida -->
+              <div class="ticket-modifiers-row">
+                <div class="modifier-selector-box">
+                  <span>Desc:</span>
+                  <select id="select-discount">
+                    <option value="0">0%</option>
+                    <option value="5">5%</option>
+                    <option value="10">10%</option>
+                    <option value="15">15%</option>
+                    <option value="20">20%</option>
+                  </select>
+                </div>
+
+                <div class="modifier-selector-box">
+                  <span>Propina:</span>
+                  <select id="select-tip">
+                    <option value="0">0%</option>
+                    <option value="10">10%</option>
+                    <option value="15">15%</option>
+                    <option value="20">20%</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="summary-calc-row">
+                <span>Subtotal:</span>
+                <span id="txt-subtotal">$0.00</span>
+              </div>
+              <div class="summary-calc-row" id="row-discount" style="display:none; color: #dc2626;">
+                <span>Descuento aplicado:</span>
+                <span id="txt-discount">-$0.00</span>
+              </div>
+              <div class="summary-calc-row">
+                <span>IVA (16%):</span>
+                <span id="txt-tax">$0.00</span>
+              </div>
+              <div class="summary-calc-row" id="row-tip" style="display:none; color: #15803d;">
+                <span>Propina sugerida:</span>
+                <span id="txt-tip">+$0.00</span>
+              </div>
+              <div class="summary-calc-row total-row">
+                <span>Total:</span>
+                <span id="txt-total">$0.00</span>
+              </div>
+
+              <div class="ticket-actions-dual">
+                <button type="button" class="btn-hold-order" id="btn-hold-order" disabled title="Guardar orden pendiente en mesa">
+                  <span>⏳ En Espera</span>
+                </button>
+                <button type="button" class="btn-charge-order" id="btn-open-checkout" disabled style="margin-top: 0;">
+                  <span>COBRAR ORDEN &rarr;</span>
+                </button>
+              </div>
+            </div>
+          </aside>
+
+        </div>
+
+        <!-- ================================================================
+             VISTA 2: HISTORIAL DE PEDIDOS (Guardados en Base de Datos)
+             ================================================================ -->
+        <div class="pos-workspace-view" id="pos-history-workspace">
+          <div class="history-header-bar">
+            <div class="history-title-row">
+              <h2>Historial de Pedidos</h2>
+              <p>Registro completo y persistente en base de datos local (IndexedDB)</p>
+            </div>
+            <div class="history-actions-row">
+              <button type="button" class="btn-backup-action" id="btn-export-backup" title="Descargar copia de respaldo en archivo JSON">
+                <span>💾 Exportar Respaldo JSON</span>
+              </button>
+              <button type="button" class="btn-backup-action" id="btn-import-backup-trigger" title="Restaurar pedidos desde archivo">
+                <span>📥 Importar Respaldo</span>
+              </button>
+              <input type="file" id="input-backup-file" accept=".json" style="display: none;">
+            </div>
+          </div>
+
+          <!-- Filtros de Historial -->
+          <div class="history-filters-bar">
+            <button type="button" class="history-filter-pill active" data-filter="all">Todos los Pedidos</button>
+            <button type="button" class="history-filter-pill" data-filter="today">De Hoy</button>
+            <button type="button" class="history-filter-pill" data-filter="dine-in">🍽️ Comer Aquí</button>
+            <button type="button" class="history-filter-pill" data-filter="takeout">🛍️ Para Llevar</button>
+            <button type="button" class="history-filter-pill" data-filter="completed">✅ Cobrados</button>
+            <button type="button" class="history-filter-pill" data-filter="pending">⏳ En Espera / Mesa</button>
+          </div>
+
+          <!-- Tabla de Pedidos -->
+          <div class="history-orders-table-card">
+            <div style="overflow-x: auto;">
+              <table class="orders-table">
+                <thead>
+                  <tr>
+                    <th>Ticket #</th>
+                    <th>Fecha & Hora</th>
+                    <th>Atendió</th>
+                    <th>Tipo / Ubicación</th>
+                    <th>Artículos</th>
+                    <th>Total</th>
+                    <th>Método</th>
+                    <th>Estatus</th>
+                    <th style="text-align: right;">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="history-orders-tbody">
+                  <!-- Inyectado dinámicamente -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================================================================
+             VISTA 3: CORTE DE CAJA / TURNO
+             ================================================================ -->
+        <div class="pos-workspace-view" id="pos-shift-workspace">
+          <div class="history-header-bar">
+            <div class="history-title-row">
+              <h2>Corte de Turno & Caja</h2>
+              <p>Resumen contable acumulado del día de hoy</p>
+            </div>
+            <button type="button" class="btn-backup-action" id="btn-print-shift" style="background:#0f172a; color:#fff;">
+              <span>🖨️ Imprimir Corte Z</span>
+            </button>
+          </div>
+
+          <div class="shift-metrics-grid">
+            <div class="shift-metric-card">
+              <span class="metric-label">Ventas Totales Cobradas</span>
+              <span class="metric-value" id="shift-total-sales">$0.00</span>
+              <span class="metric-detail" id="shift-completed-orders">0 tickets completados</span>
+            </div>
+
+            <div class="shift-metric-card">
+              <span class="metric-label">Efectivo en Caja</span>
+              <span class="metric-value" style="color: #15803d;" id="shift-cash-sales">$0.00</span>
+              <span class="metric-detail">Pagos recibidos en billetes/monedas</span>
+            </div>
+
+            <div class="shift-metric-card">
+              <span class="metric-label">Tarjeta / Terminal</span>
+              <span class="metric-value" style="color: #2563eb;" id="shift-card-sales">$0.00</span>
+              <span class="metric-detail">Débito y crédito bancario</span>
+            </div>
+
+            <div class="shift-metric-card">
+              <span class="metric-label">Cuentas en Espera (Mesas)</span>
+              <span class="metric-value" style="color: #b45309;" id="shift-pending-sales">$0.00</span>
+              <span class="metric-detail" id="shift-pending-count">0 órdenes por cobrar</span>
+            </div>
+
+            <div class="shift-metric-card">
+              <span class="metric-label">Ticket Promedio</span>
+              <span class="metric-value" id="shift-avg-ticket">$0.00</span>
+              <span class="metric-detail">Gasto promedio por cliente</span>
+            </div>
+
+            <div class="shift-metric-card">
+              <span class="metric-label">Distribución de Servicio</span>
+              <span class="metric-value" style="font-size: 1.4rem;" id="shift-type-ratio">0 Aquí / 0 Llevar</span>
+              <span class="metric-detail">Comer en salón vs Para llevar</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         MODAL 1: MENÚ DE CONFIGURACIÓN & DEMO (Botón hamburguesa)
+         ==================================================================== -->
+    <div class="modal-overlay" id="modal-menu">
+      <div class="modal-window">
+        <div class="modal-header">
+          <h2 class="modal-title">Configuración de Terminal</h2>
+          <button type="button" class="btn-modal-close" id="btn-close-menu">&times;</button>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+          <p style="font-size: 0.95rem; color: #475569;">
+            <strong>Coffee´s Pos</strong> está optimizado para pantallas táctiles (tablets iPad, Android) y computadoras de escritorio con teclado numérico.
+          </p>
+
+          <button type="button" class="btn-confirm-action" id="btn-toggle-fullscreen" style="background:#2563eb;">
+            <span>📺 Activar Pantalla Completa (Modo Kiosco)</span>
+          </button>
+
+          <button type="button" class="btn-confirm-action" id="btn-toggle-audio" style="background:#475569;">
+            <span id="txt-audio-status">🔊 Clic Sonoro: Activado</span>
+          </button>
+
+          <!-- Selector de Color / Estilo para el Panel Derecho -->
+          <div style="background: #ffffff; border: 1px solid #e2e8f0; padding: 1rem; border-radius: 16px;">
+            <div style="font-size: 0.85rem; font-weight: 700; color: #0f172a; margin-bottom: 0.6rem;">
+              🎨 Color / Estilo del Reloj (Panel Derecho):
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem;">
+              <button type="button" class="btn-theme-option" data-theme="theme-nordic" style="cursor:pointer; padding: 0.65rem 0.5rem; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 0.82rem; font-weight: 700; background: #f8fafc; color: #0f172a; transition: all 0.2s;">
+                ⚪ Gris Nórdico (Luz)
+              </button>
+              <button type="button" class="btn-theme-option" data-theme="theme-dark" style="cursor:pointer; padding: 0.65rem 0.5rem; border: 1px solid #334155; border-radius: 10px; font-size: 0.82rem; font-weight: 700; background: #0f172a; color: #ffffff; transition: all 0.2s;">
+                ⚫ Dark Slate (Noche)
+              </button>
+              <button type="button" class="btn-theme-option" data-theme="theme-latte" style="cursor:pointer; padding: 0.65rem 0.5rem; border: 1px solid #d6cebf; border-radius: 10px; font-size: 0.82rem; font-weight: 700; background: #fdfbf7; color: #44403c; transition: all 0.2s;">
+                ☕ Latte Café (Cálido)
+              </button>
+              <button type="button" class="btn-theme-option" data-theme="theme-mint" style="cursor:pointer; padding: 0.65rem 0.5rem; border: 1px solid #86efac; border-radius: 10px; font-size: 0.82rem; font-weight: 700; background: #f0fdf4; color: #065f46; transition: all 0.2s;">
+                🌿 Menta Pastel (Fresco)
+              </button>
+            </div>
+          </div>
+
+          <div style="background:#f1f5f9; padding: 1rem; border-radius: 14px; font-size: 0.85rem; line-height: 1.5;">
+            <strong>Atajos de Teclado Físico:</strong><br>
+            &bull; <code>0-9</code>: Escribir en teclado numérico<br>
+            &bull; <code>Enter</code>: Aceptar / Validar pantalla<br>
+            &bull; <code>Backspace</code>: Borrar último dígito<br>
+            &bull; <code>Escape</code>: Volver / Cancelar
+          </div>
+
+          <div style="background:#f8fafc; border: 1px solid #e2e8f0; padding: 1rem; border-radius: 14px; font-size: 0.85rem;">
+            <strong>Usuarios Registrados:</strong><br>
+            &bull; ID: <code>101</code> &bull; PIN: <code>1234</code> (Juan Pérez - Cajero)<br>
+            &bull; ID: <code>2676323</code> &bull; PIN: <code>6323</code> (Ulises Hernández - Administrador)<br>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         MODAL 2: COBRO PROFESIONAL (Efectivo con billetes, tarjeta, cambio)
+         ==================================================================== -->
+    <div class="modal-overlay" id="modal-checkout">
+      <div class="modal-window" style="max-width: 520px;">
+        <div class="modal-header">
+          <h2 class="modal-title">Cobro de Orden</h2>
+          <button type="button" class="btn-modal-close" id="btn-close-checkout">&times;</button>
+        </div>
+
+        <div style="text-align: center; margin-bottom: 1.25rem;">
+          <div style="font-size: 0.85rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Total a Cobrar</div>
+          <div style="font-size: 2.75rem; font-weight: 900; color: #000000;" id="modal-checkout-total">$0.00</div>
+          <div style="font-size: 0.85rem; color: #64748b;" id="modal-checkout-meta">🍽️ Comer Aquí &bull; Ticket #1001</div>
+        </div>
+
+        <!-- Métodos de Pago -->
+        <div class="checkout-payment-methods">
+          <button type="button" class="btn-method-tab active" data-method="cash">
+            <span>💵 Efectivo</span>
+          </button>
+          <button type="button" class="btn-method-tab" data-method="card">
+            <span>💳 Tarjeta</span>
+          </button>
+          <button type="button" class="btn-method-tab" data-method="transfer">
+            <span>📲 Transferencia</span>
+          </button>
+        </div>
+
+        <!-- Sección de Pago en Efectivo con Billetes y Cálculo de Cambio -->
+        <div id="checkout-cash-section">
+          <div class="cash-bills-row">
+            <button type="button" class="btn-cash-bill" data-amount="exact">Exacto</button>
+            <button type="button" class="btn-cash-bill" data-amount="50">$50</button>
+            <button type="button" class="btn-cash-bill" data-amount="100">$100</button>
+            <button type="button" class="btn-cash-bill" data-amount="200">$200</button>
+            <button type="button" class="btn-cash-bill" data-amount="500">$500</button>
+            <button type="button" class="btn-cash-bill" data-amount="1000">$1000</button>
+          </div>
+
+          <div class="cash-calc-box">
+            <div class="cash-calc-row">
+              <span>Monto recibido del cliente:</span>
+              <input type="number" class="cash-input-field" id="input-cash-received" placeholder="0.00" step="any">
+            </div>
+            <div class="cash-calc-row" style="border-top: 1px dashed #cbd5e1; padding-top: 0.5rem;">
+              <span>Cambio a devolver:</span>
+              <span class="change-amount-display" id="display-cash-change">$0.00</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sección de Pago en Tarjeta -->
+        <div id="checkout-card-section" style="display:none; background:#f8fafc; border:1px solid #e2e8f0; border-radius:16px; padding:1.25rem; text-align:center; margin-bottom:1.25rem;">
+          <div style="font-size:2rem; margin-bottom:0.4rem;">💳</div>
+          <div style="font-weight:700; color:#0f172a;">Inserte o acerque la tarjeta a la terminal</div>
+          <div style="font-size:0.85rem; color:#64748b; margin-top:0.25rem;">Compatible con Chip, Contactless (NFC) y Apple/Google Pay</div>
+        </div>
+
+        <!-- Sección de Pago en Transferencia -->
+        <div id="checkout-transfer-section" style="display:none; background:#f8fafc; border:1px solid #e2e8f0; border-radius:16px; padding:1.25rem; text-align:center; margin-bottom:1.25rem;">
+          <div style="font-size:2rem; margin-bottom:0.4rem;">📲</div>
+          <div style="font-weight:700; color:#0f172a;">Código QR / Transferencia SPEI</div>
+          <div style="font-size:0.85rem; color:#64748b; margin-top:0.25rem;">Verifique la recepción en la app bancaria antes de confirmar</div>
+        </div>
+
+        <button type="button" class="btn-confirm-action" id="btn-confirm-payment" style="background:#15803d; width: 100%; padding: 1.15rem;">
+          <span>✅ Confirmar Pago & Emitir Ticket</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         MODAL 3: TICKET DE VENTA IMPRESO / RECIBO TÉRMICO
+         ==================================================================== -->
+    <div class="modal-overlay" id="modal-receipt">
+      <div class="modal-window" style="max-width: 420px; padding: 1.5rem;">
+        <div class="modal-header" style="margin-bottom: 1rem;">
+          <h2 class="modal-title" style="font-size: 1.15rem;">Ticket Emitido</h2>
+          <button type="button" class="btn-modal-close" id="btn-close-receipt">&times;</button>
+        </div>
+
+        <div id="receipt-printable-container">
+          <!-- Vista del Ticket Térmico -->
+          <div class="receipt-paper" id="receipt-paper">
+            <!-- Rellenado dinámicamente -->
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 1.25rem;">
+          <button type="button" class="btn-confirm-action" id="btn-print-receipt" style="background:#2563eb; font-size: 0.95rem; padding: 0.85rem;">
+            <span>🖨️ Imprimir</span>
+          </button>
+          <button type="button" class="btn-confirm-action" id="btn-new-order-after-receipt" style="background:#0f172a; font-size: 0.95rem; padding: 0.85rem;">
+            <span>➕ Nueva Orden</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         MODAL 4: NOTA / PERSONALIZACIÓN DE PRODUCTO
+         ==================================================================== -->
+    <div class="modal-overlay" id="modal-item-note">
+      <div class="modal-window" style="max-width: 440px;">
+        <div class="modal-header">
+          <h2 class="modal-title" id="note-modal-title">Instrucciones de Cocina</h2>
+          <button type="button" class="btn-modal-close" id="btn-close-note">&times;</button>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+          <div style="display: flex; flex-wrap: wrap; gap: 0.4rem;" id="quick-notes-chips">
+            <button type="button" class="demo-chip-btn quick-note-btn" data-text="Sin cebolla">Sin cebolla</button>
+            <button type="button" class="demo-chip-btn quick-note-btn" data-text="Extra salsa">Extra salsa</button>
+            <button type="button" class="demo-chip-btn quick-note-btn" data-text="Bien cocido">Bien cocido</button>
+            <button type="button" class="demo-chip-btn quick-note-btn" data-text="Término medio">Término medio</button>
+            <button type="button" class="demo-chip-btn quick-note-btn" data-text="Leche deslactosada">Leche deslactosada</button>
+            <button type="button" class="demo-chip-btn quick-note-btn" data-text="Leche de avena">Leche de avena</button>
+            <button type="button" class="demo-chip-btn quick-note-btn" data-text="Para después">Para después</button>
+          </div>
+
+          <textarea id="textarea-item-note" rows="3" placeholder="Escriba especificaciones especiales (ej. salsa aparte, sin sal)..." style="width: 100%; border: 1px solid #cbd5e1; border-radius: 12px; padding: 0.75rem; font-family: inherit; font-size: 0.92rem; outline: none; resize: none;"></textarea>
+
+          <button type="button" class="btn-confirm-action" id="btn-save-item-note" style="background:#0f172a; width: 100%;">
+            <span>Guardar Nota en Producto</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script type="module" src="js/app.js?v=2.0.0"></script>
+</body>
+</html>
