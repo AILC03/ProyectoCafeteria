@@ -17,7 +17,10 @@ export function authenticate(service: AuthService, allowPinChange = false): Requ
 export function authorize(...roles: RoleName[]): RequestHandler {
   return (_request, response, next) => {
     const user = principal(response);
-    if (!roles.includes(user.role) && !(user.role === 'ADMINISTRADOR' && roles.includes('CAJERO')))
+    if (
+      !roles.includes(user.role) &&
+      !(user.role === 'ADMINISTRADOR' && (roles.includes('CAJERO') || roles.includes('GERENTE')))
+    )
       throw forbidden();
     next();
   };

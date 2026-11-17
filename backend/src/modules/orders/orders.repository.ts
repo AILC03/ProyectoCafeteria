@@ -104,7 +104,7 @@ export class OrdersTransaction {
     if (
       user.accountType === 'CUSTOMER'
         ? user.role.name !== 'CLIENTE'
-        : !['CAJERO', 'PREPARACION', 'ADMINISTRADOR'].includes(user.role.name)
+        : !['CAJERO', 'PREPARACION', 'ADMINISTRADOR', 'GERENTE'].includes(user.role.name)
     )
       throw forbidden();
     return user.role.name as RoleName;

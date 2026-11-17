@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getEmployees, saveEmployees, findEmployee } from '../data/employees.js';
+import { findEmployee } from '../data/employees.js';
 import { playHapticSound } from '../utils/audio.js';
-import { getAdminEmployees } from '../api/employees.js';
 
 export default function EmployeeIdScreen({ onBack, onEmployeeIdentified, audioEnabled }) {
   const [username, setUsername] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [shake, setShake] = useState(false);
-  const [employeesList, setEmployeesList] = useState(getEmployees);
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -15,39 +13,6 @@ export default function EmployeeIdScreen({ onBack, onEmployeeIdentified, audioEn
     if (inputRef.current) {
       inputRef.current.focus();
     }
-
-    // Intentar sincronizar lista de empleados del backend si es posible
-    let isMounted = true;
-    getAdminEmployees()
-      .then((apiList) => {
-        if (isMounted && apiList && Array.isArray(apiList) && apiList.length > 0) {
-          const mapped = apiList.map((e) => ({
-            id: String(e.id),
-            name: e.name,
-            username: e.username,
-            role: e.role,
-            avatar: e.name
-              ? e.name.slice(0, 2).toUpperCase()
-              : e.username
-              ? e.username.slice(0, 2).toUpperCase()
-              : 'EM',
-            color: e.role === 'ADMINISTRADOR' ? '#0f172a' : '#2563eb',
-            isAdmin: e.role === 'ADMINISTRADOR',
-            isActive: e.isActive !== false,
-            isSyncedWithDb: true,
-          }));
-          saveEmployees(mapped);
-          setEmployeesList(mapped);
-        }
-      })
-      .catch(() => {
-        // Fallback a los datos locales
-        setEmployeesList(getEmployees());
-      });
-
-    return () => {
-      isMounted = false;
-    };
   }, []);
 
   function triggerError(msg) {
@@ -60,39 +25,46 @@ export default function EmployeeIdScreen({ onBack, onEmployeeIdentified, audioEn
     }
   }
 
-  function handleSelectEmployee(emp) {
-    playHapticSound('success', audioEnabled);
-    onEmployeeIdentified(emp);
-  }
-
   function handleSubmit(e) {
     if (e) e.preventDefault();
-    const clean = username.trim().toLowerCase().replace(/^@/, '');
+    const raw = username.trim();
+    const clean = raw.toLowerCase().replace(/^@/, '');
 
     if (!clean) {
-      triggerError('Por favor ingresa tu nombre de usuario (Username)');
+      triggerError('Por favor ingresa tu nombre de usuario (Username).');
       return;
     }
 
     if (clean.length < 3) {
-      triggerError('El nombre de usuario debe contener al menos 3 caracteres');
+      triggerError('El nombre de usuario debe contener al menos 3 caracteres.');
       return;
     }
 
-    // Buscar si existe en la lista local o registrada
+    if (clean.length > 24) {
+      triggerError('El nombre de usuario no puede exceder 24 caracteres.');
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9_]+$/.test(clean)) {
+      triggerError('Formato inválido: solo se permiten letras, números y guión bajo (sin espacios ni símbolos especiales).');
+      return;
+    }
+
+    // Buscar si el usuario existe en los registros del sistema
     const found = findEmployee(clean);
-    const employeeToIdentify = found || {
-      id: clean,
-      username: clean,
-      name: clean,
-      role: 'PERSONAL',
-      avatar: clean.slice(0, 2).toUpperCase(),
-      color: '#2563eb',
-      isAdmin: false,
-    };
+
+    if (!found) {
+      triggerError(`El usuario "@${clean}" no se encuentra registrado en el sistema. Verifica tu usuario o solicita tu registro al administrador.`);
+      return;
+    }
+
+    if (found.isActive === false) {
+      triggerError(`La cuenta del usuario "@${clean}" ha sido dada de baja o se encuentra inactiva.`);
+      return;
+    }
 
     playHapticSound('success', audioEnabled);
-    onEmployeeIdentified(employeeToIdentify);
+    onEmployeeIdentified(found);
   }
 
   return (
@@ -221,12 +193,13 @@ export default function EmployeeIdScreen({ onBack, onEmployeeIdentified, audioEn
                   ref={inputRef}
                   id="employee-username-input"
                   type="text"
+                  maxLength={24}
                   value={username}
                   onChange={(e) => {
                     setErrorMsg('');
                     setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ''));
                   }}
-                  placeholder="ej. cajero_marvin o AngelAdmin"
+                  placeholder="ej. admin o usuario"
                   autoComplete="username"
                   autoCapitalize="none"
                   spellCheck="false"
@@ -273,6 +246,22 @@ export default function EmployeeIdScreen({ onBack, onEmployeeIdentified, audioEn
                   </button>
                 )}
               </div>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  fontSize: '0.75rem',
+                  color: '#64748b',
+                  marginTop: '0.4rem',
+                  padding: '0 0.25rem'
+                }}
+              >
+                <span>3 a 24 caracteres (letras, números y guión bajo)</span>
+                <span style={{ fontWeight: 600, color: username.length >= 24 ? '#ef4444' : '#64748b' }}>
+                  {username.length}/24
+                </span>
+              </div>
             </div>
 
             {errorMsg && (
@@ -318,131 +307,13 @@ export default function EmployeeIdScreen({ onBack, onEmployeeIdentified, audioEn
                 gap: '0.6rem',
                 boxShadow: username.trim().length >= 3 ? '0 10px 25px -5px rgba(15, 23, 42, 0.25)' : 'none',
                 transition: 'all 0.2s ease',
-                marginBottom: '1.5rem'
+                marginBottom: '0'
               }}
             >
               <span>CONTINUAR (ENTER)</span>
               <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>&rarr;</span>
             </button>
           </form>
-
-          {/* Separador */}
-          <div
-            style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              margin: '0.5rem 0 1.25rem',
-              color: '#94a3b8',
-              fontSize: '0.78rem',
-              fontWeight: 700,
-              textTransform: 'uppercase',
-              letterSpacing: '0.06em'
-            }}
-          >
-            <div style={{ flex: 1, height: '1px', backgroundColor: '#e2e8f0' }}></div>
-            <span style={{ padding: '0 0.85rem' }}>o selecciona tu perfil</span>
-            <div style={{ flex: 1, height: '1px', backgroundColor: '#e2e8f0' }}></div>
-          </div>
-
-          {/* Lista de perfiles registrados para clic rápido */}
-          <div
-            className="quick-employees-list"
-            style={{
-              width: '100%',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.6rem',
-              maxHeight: '220px',
-              overflowY: 'auto',
-              paddingRight: '0.2rem'
-            }}
-          >
-            {employeesList.map((emp) => {
-              const displayHandle = emp.username || emp.name;
-              return (
-                <button
-                  key={emp.id || emp.username}
-                  type="button"
-                  onClick={() => handleSelectEmployee(emp)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.85rem',
-                    padding: '0.65rem 0.95rem',
-                    borderRadius: '16px',
-                    border: '1px solid #e2e8f0',
-                    backgroundColor: '#ffffff',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    transition: 'all 0.15s ease',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#f1f5f9';
-                    e.currentTarget.style.borderColor = '#cbd5e1';
-                    e.currentTarget.style.transform = 'translateY(-1px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#ffffff';
-                    e.currentTarget.style.borderColor = '#e2e8f0';
-                    e.currentTarget.style.transform = 'none';
-                  }}
-                >
-                  <div
-                    style={{
-                      width: '38px',
-                      height: '38px',
-                      borderRadius: '50%',
-                      backgroundColor: emp.color || (emp.role === 'ADMINISTRADOR' ? '#0f172a' : '#2563eb'),
-                      color: '#ffffff',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '0.9rem',
-                      fontWeight: 800,
-                      flexShrink: 0
-                    }}
-                  >
-                    {emp.avatar || (emp.name ? emp.name.slice(0, 2).toUpperCase() : 'EM')}
-                  </div>
-
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div
-                      style={{
-                        fontSize: '0.92rem',
-                        fontWeight: 700,
-                        color: '#0f172a',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
-                      }}
-                    >
-                      {emp.name || displayHandle}
-                    </div>
-                    <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>
-                      @{displayHandle}
-                    </div>
-                  </div>
-
-                  <span
-                    style={{
-                      fontSize: '0.7rem',
-                      fontWeight: 700,
-                      padding: '0.25rem 0.55rem',
-                      borderRadius: '9999px',
-                      backgroundColor: emp.role === 'ADMINISTRADOR' ? '#0f172a' : '#e0e7ff',
-                      color: emp.role === 'ADMINISTRADOR' ? '#ffffff' : '#3730a3',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.04em'
-                    }}
-                  >
-                    {emp.role || 'EMPLEADO'}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
         </main>
       </div>
     </section>

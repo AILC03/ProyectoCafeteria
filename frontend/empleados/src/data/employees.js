@@ -11,11 +11,12 @@ const LEGACY_STORAGE_EMPLOYEES_KEY = 'taffy_employees_local';
 export const DEFAULT_EMPLOYEES = [
   {
     id: '1',
-    name: 'AngelAdmin',
-    username: 'AngelAdmin',
+    name: 'admin',
+    username: 'admin',
     role: 'ADMINISTRADOR',
     pin: 'Admin1234',
-    avatar: 'AA',
+    password: 'Admin1234',
+    avatar: 'AD',
     color: '#0f172a',
     isAdmin: true,
     createdAt: new Date().toISOString()
@@ -24,6 +25,12 @@ export const DEFAULT_EMPLOYEES = [
 
 export function getEmployees() {
   try {
+    // Purgar claves legacy residuales
+    localStorage.removeItem('coffees_employees_v1');
+    localStorage.removeItem('taffy_employees_v1');
+    localStorage.removeItem('coffees_employees_admin@coffeespos.com');
+    localStorage.removeItem('taffy_employees_admin@taffypos.com');
+
     const raw = localStorage.getItem(STORAGE_EMPLOYEES_KEY) || localStorage.getItem(LEGACY_STORAGE_EMPLOYEES_KEY);
     if (!raw) {
       localStorage.setItem(STORAGE_EMPLOYEES_KEY, JSON.stringify(DEFAULT_EMPLOYEES));
@@ -31,28 +38,52 @@ export function getEmployees() {
       return [...DEFAULT_EMPLOYEES];
     }
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      // Conservar cuentas reales activas
+    if (Array.isArray(parsed)) {
+      // Limpia de cuentas legacy de prueba
       const cleaned = parsed.filter(
         (e) =>
           Boolean(e && (e.username || e.name || e.id)) &&
-          (
-            e.username === 'AngelAdmin' ||
-            e.name === 'AngelAdmin' ||
-            e.id === '1' ||
-            e.isSyncedWithDb === true ||
-            Boolean(e.role && (e.username || e.name))
-          )
+          e.username !== 'AngelAdmin' &&
+          e.name !== 'AngelAdmin' &&
+          !(String(e.id) === '2' && e.username === 'preparacion' && e.demo)
       );
-      if (cleaned.length === 0 || !cleaned.some((e) => e.username === 'AngelAdmin' || e.id === '1')) {
-        const finalEmployees = [...DEFAULT_EMPLOYEES];
-        saveEmployees(finalEmployees);
-        return finalEmployees;
+
+      // Garantizar que la cuenta oficial de administrador (@admin) siempre exista
+      const adminIdx = cleaned.findIndex(
+        (e) =>
+          String(e.id) === '1' ||
+          (e.username && e.username.toLowerCase() === 'admin') ||
+          (e.name && e.name.toLowerCase() === 'admin')
+      );
+
+      if (adminIdx >= 0) {
+        cleaned[adminIdx] = {
+          ...cleaned[adminIdx],
+          id: '1',
+          name: 'admin',
+          username: 'admin',
+          role: 'ADMINISTRADOR',
+          isAdmin: true,
+          avatar: 'AD',
+          color: '#0f172a'
+        };
+      } else {
+        cleaned.unshift({ ...DEFAULT_EMPLOYEES[0] });
       }
-      if (cleaned.length !== parsed.length) {
-        saveEmployees(cleaned);
-        return cleaned;
+
+      // Guardar silenciosamente en localStorage solo si la lista cambió,
+      // SIN disparar eventos que provoquen bucles infinitos de re-renderizado
+      const needsSilentSave =
+        cleaned.length !== parsed.length ||
+        adminIdx === -1 ||
+        parsed[adminIdx]?.username !== 'admin' ||
+        parsed[adminIdx]?.role !== 'ADMINISTRADOR';
+
+      if (needsSilentSave) {
+        localStorage.setItem(STORAGE_EMPLOYEES_KEY, JSON.stringify(cleaned));
+        localStorage.setItem(LEGACY_STORAGE_EMPLOYEES_KEY, JSON.stringify(cleaned));
       }
+
       return cleaned;
     }
     return [...DEFAULT_EMPLOYEES];
@@ -97,9 +128,8 @@ export function addEmployee({ id, name, username, role, pin, isAdmin, isActive, 
   );
 
   const roleLower = cleanRole.toLowerCase();
-  const adminFlag = Boolean(
-    isAdmin === true || roleLower.includes('admin') || roleLower.includes('gerente')
-  );
+  const adminFlag = Boolean(isAdmin === true || roleLower.includes('admin'));
+  const isGerenteRole = roleLower.includes('gerente');
 
   const initials =
     cleanName
@@ -133,7 +163,7 @@ export function addEmployee({ id, name, username, role, pin, isAdmin, isActive, 
     role: cleanRole,
     pin: cleanPin,
     avatar: initials,
-    color: adminFlag ? '#0f172a' : '#2563eb',
+    color: adminFlag ? '#0f172a' : isGerenteRole ? '#7c3aed' : '#2563eb',
     isAdmin: adminFlag,
     isActive: isActive !== false,
     isSyncedWithDb: true,
@@ -166,6 +196,9 @@ export function updateEmployee(id, updatedFields) {
   if (updatedFields.isAdmin !== undefined) {
     list[index].isAdmin = Boolean(updatedFields.isAdmin);
   }
+  if (updatedFields.isActive !== undefined) {
+    list[index].isActive = Boolean(updatedFields.isActive);
+  }
 
   saveEmployees(list);
   return { success: true, employee: list[index] };
@@ -190,9 +223,14 @@ export function isEmployeeAdmin(employee) {
   return Boolean(
     employee.isAdmin === true ||
     role === 'ADMINISTRADOR' ||
-    role.includes('ADMIN') ||
-    role.includes('GERENTE')
+    role.includes('ADMIN')
   );
+}
+
+export function isEmployeeGerente(employee) {
+  if (!employee) return false;
+  const role = String(employee.role || '').toUpperCase();
+  return role === 'GERENTE' || role.includes('GERENTE');
 }
 
 export function isEmployeeCashier(employee) {
@@ -213,14 +251,23 @@ export function getAdminById(employeeId) {
   return emp && isEmployeeAdmin(emp) ? emp : null;
 }
 
-export function verifyEmployeeCredentials(employee, pinInput) {
-  if (!employee || !pinInput) return false;
-  const input = String(pinInput).trim();
-  const stored = String(employee.pin || '').trim();
+export function verifyEmployeeCredentials(employee, passwordInput) {
+  if (!employee || !passwordInput) return false;
+  if (employee.isActive === false) return false;
+  const input = String(passwordInput).trim();
+  const stored = String(employee.password || employee.pin || '').trim();
 
-  // Verificación directa en texto plano (modo frontend rápido)
+  // Verificación directa de contraseña de personal (8 a 24 caracteres)
   if (stored === input) return true;
-  if ((employee.username === 'AngelAdmin' || employee.id === '1') && (input === '1234' || input === 'Admin1234')) return true;
+  if (
+    (employee.username === 'admin' ||
+      employee.username === 'AngelAdmin' ||
+      employee.name === 'admin' ||
+      employee.id === '1') &&
+    input === 'Admin1234'
+  ) {
+    return true;
+  }
 
   // Verificación con hash si aplica
   if (isHashed(stored)) {
@@ -233,9 +280,9 @@ export function verifyEmployeeCredentials(employee, pinInput) {
   return false;
 }
 
-export function validateAdminCredentials(employeeId, pin) {
+export function validateAdminCredentials(employeeId, password) {
   const cleanId = String(employeeId).trim();
-  const cleanPin = String(pin).trim();
+  const cleanPassword = String(password).trim();
 
   const emp = findEmployee(cleanId);
   if (!emp) {
@@ -246,8 +293,8 @@ export function validateAdminCredentials(employeeId, pin) {
     return { success: false, reason: 'notAdmin', message: 'El usuario no tiene permisos de administrador' };
   }
 
-  if (!verifyEmployeeCredentials(emp, cleanPin)) {
-    return { success: false, reason: 'invalidPin', message: 'PIN de seguridad incorrecto' };
+  if (!verifyEmployeeCredentials(emp, cleanPassword)) {
+    return { success: false, reason: 'invalidPassword', message: 'Contraseña de seguridad incorrecta' };
   }
 
   return { success: true, admin: emp };
@@ -257,14 +304,22 @@ export function findEmployee(identifier) {
   const clean = String(identifier || '').trim().toLowerCase().replace(/^@/, '');
   if (!clean) return null;
   const list = getEmployees();
-  return (
-    list.find(
-      (e) =>
-        String(e.id).trim().toLowerCase() === clean ||
-        String(e.username || '').trim().toLowerCase().replace(/^@/, '') === clean ||
-        String(e.name || '').trim().toLowerCase() === clean
-    ) || null
+  const found = list.find(
+    (e) =>
+      String(e.id).trim().toLowerCase() === clean ||
+      String(e.username || '').trim().toLowerCase().replace(/^@/, '') === clean ||
+      String(e.name || '').trim().toLowerCase() === clean
   );
+  if (found) return found;
+
+  // Respaldo inmediato con cuentas por defecto
+  const def = DEFAULT_EMPLOYEES.find(
+    (e) =>
+      String(e.id).trim().toLowerCase() === clean ||
+      String(e.username || '').trim().toLowerCase().replace(/^@/, '') === clean ||
+      String(e.name || '').trim().toLowerCase() === clean
+  );
+  return def || null;
 }
 
 // Sincronización simulada para compatibilidad de frontend

@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ShiftWorkspace from './ShiftWorkspace.jsx';
 import MenuManagementWorkspace from './MenuManagementWorkspace.jsx';
 import UserManagementWorkspace from './UserManagementWorkspace.jsx';
 import HistoryWorkspace from './HistoryWorkspace.jsx';
-import KitchenWorkspace from './KitchenWorkspace.jsx';
 import { isEmployeeAdmin } from '../data/employees.js';
 
 export default function AdminDashboardWorkspace({
@@ -14,9 +13,10 @@ export default function AdminDashboardWorkspace({
   onLogout,
   onUnlinkAccount
 }) {
+  const isAdmin = isEmployeeAdmin(currentEmployee);
   const [activeAdminTab, setActiveAdminTab] = useState('shift');
 
-  const menuItems = [
+  const allMenuItems = [
     {
       id: 'shift',
       label: 'Corte de Caja',
@@ -29,21 +29,9 @@ export default function AdminDashboardWorkspace({
       )
     },
     {
-      id: 'kitchen',
-      label: 'Cocina / Barista (KDS)',
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M18 8h1a4 4 0 0 1 0 8h-1" />
-          <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z" />
-          <line x1="6" y1="2" x2="6" y2="4" />
-          <line x1="10" y1="2" x2="10" y2="4" />
-          <line x1="14" y1="2" x2="14" y2="4" />
-        </svg>
-      )
-    },
-    {
       id: 'menu-admin',
       label: 'Editar Menú',
+      adminOnly: true,
       icon: (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <line x1="8" y1="6" x2="21" y2="6" />
@@ -58,6 +46,7 @@ export default function AdminDashboardWorkspace({
     {
       id: 'users-admin',
       label: 'Personal y Usuarios',
+      adminOnly: true,
       icon: (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -79,13 +68,15 @@ export default function AdminDashboardWorkspace({
     }
   ];
 
-  if (!isEmployeeAdmin(currentEmployee)) {
+  const menuItems = allMenuItems.filter((m) => !m.adminOnly || isAdmin);
+
+  if (!isAdmin) {
     return (
       <div style={{ padding: '4rem 1.5rem', textAlign: 'center', color: '#64748b' }}>
         <div style={{ fontSize: '3rem', marginBottom: '0.75rem' }}>🔒</div>
         <h3 style={{ fontSize: '1.4rem', color: '#0f172a', fontWeight: 800 }}>Acceso Restringido</h3>
         <p style={{ marginTop: '0.5rem', fontSize: '1rem' }}>
-          El Panel de Administración es de uso exclusivo para Administradores.
+          Este panel es de uso exclusivo para Administradores.
         </p>
         <button
           type="button"
@@ -358,7 +349,7 @@ export default function AdminDashboardWorkspace({
                 border: '1px solid #e2e8f0'
               }}
             >
-              Administrador: {currentEmployee?.name || 'Gerencia'}
+              Administrador: {currentEmployee?.name || 'Administrador'}
             </div>
           </div>
         </header>
@@ -366,17 +357,34 @@ export default function AdminDashboardWorkspace({
         {/* Vista del Contenido Activo */}
         <div style={{ flex: 1, padding: '1.75rem 2rem', boxSizing: 'border-box' }}>
           {activeAdminTab === 'shift' && (
-            <ShiftWorkspace cashierName={currentEmployee?.name} />
+            <ShiftWorkspace
+              cashierName={currentEmployee?.name}
+              currentEmployee={currentEmployee}
+            />
           )}
 
-          {activeAdminTab === 'kitchen' && (
-            <KitchenWorkspace />
+          {activeAdminTab === 'menu-admin' && (
+            isAdmin ? (
+              <MenuManagementWorkspace />
+            ) : (
+              <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
+                <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🔒</div>
+                <h3>Acceso Restringido</h3>
+                <p>La edición de catálogo está reservada exclusivamente para Administradores.</p>
+              </div>
+            )
           )}
-
-          {activeAdminTab === 'menu-admin' && <MenuManagementWorkspace />}
 
           {activeAdminTab === 'users-admin' && (
-            <UserManagementWorkspace currentEmployee={currentEmployee} />
+            isAdmin ? (
+              <UserManagementWorkspace currentEmployee={currentEmployee} />
+            ) : (
+              <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
+                <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🔒</div>
+                <h3>Acceso Restringido</h3>
+                <p>La gestión de usuarios y personal está reservada exclusivamente para Administradores.</p>
+              </div>
+            )
           )}
 
           {activeAdminTab === 'history' && (

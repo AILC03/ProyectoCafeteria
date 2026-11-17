@@ -71,18 +71,23 @@ export default function AdminAuthModal({
   function submitId(idToUse = managerId) {
     const cleanId = String(idToUse).trim();
     if (!cleanId) {
-      triggerError('Ingrese el número de empleado del gerente');
+      triggerError('Ingrese el número o usuario del administrador');
       return;
     }
 
     const emp = findEmployee(cleanId);
     if (!emp) {
-      triggerError('Número de empleado no encontrado');
+      triggerError('Número o usuario de administrador no encontrado en el sistema');
+      return;
+    }
+
+    if (emp.isActive === false) {
+      triggerError('Esta cuenta de administrador ha sido dada de baja en el sistema');
       return;
     }
 
     if (!isEmployeeAdmin(emp)) {
-      triggerError('El empleado no cuenta con permisos de administrador');
+      triggerError('El usuario no cuenta con permisos de administrador');
       return;
     }
 
@@ -113,7 +118,7 @@ export default function AdminAuthModal({
     setIsLoading(true);
     setErrorMsg('');
 
-    const username = selectedAdmin?.username || selectedAdmin?.name || 'AngelAdmin';
+    const username = selectedAdmin?.username || selectedAdmin?.name || 'admin';
 
     try {
       const user = await loginStaff(username, cleanPassword);
@@ -245,7 +250,7 @@ export default function AdminAuthModal({
                       submitId();
                     }
                   }}
-                  placeholder="ej. AngelAdmin o 1"
+                  placeholder="ej. admin o 1"
                   autoFocus
                   style={{
                     flex: 1,
@@ -299,8 +304,8 @@ export default function AdminAuthModal({
               <button
                 type="button"
                 onClick={() => {
-                  setManagerId('AngelAdmin');
-                  submitId('AngelAdmin');
+                  setManagerId('admin');
+                  submitId('admin');
                 }}
                 style={{
                   padding: '0.4rem 0.85rem',
@@ -313,7 +318,7 @@ export default function AdminAuthModal({
                   cursor: 'pointer'
                 }}
               >
-                Admin (@AngelAdmin)
+                Admin (@admin)
               </button>
             </div>
 

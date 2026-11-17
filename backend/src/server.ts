@@ -64,6 +64,14 @@ async function main() {
   const database = createDatabase(env.DATABASE_URL);
   try {
     await database.$connect();
+    // Asegurar roles fundamentales en la base de datos para prevenir errores de clave foránea
+    for (const name of ['CLIENTE', 'CAJERO', 'PREPARACION', 'ADMINISTRADOR', 'GERENTE']) {
+      await database.role.upsert({
+        where: { name },
+        create: { name },
+        update: {},
+      });
+    }
   } catch {
     await database.$disconnect();
     throw new Error('PostgreSQL no disponible; no se inició la API.');

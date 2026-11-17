@@ -7,7 +7,7 @@ export const phone = z
   .transform(normalizeMxPhone)
   .pipe(z.string().regex(/^\+52\d{10}$/));
 export const reason = z.string().trim().min(1).max(500);
-export const role = z.enum(['CAJERO', 'PREPARACION', 'ADMINISTRADOR']);
+export const role = z.enum(['CAJERO', 'PREPARACION', 'ADMINISTRADOR', 'GERENTE']);
 export const ownProfile = z
   .object({ name: name.optional(), phone: phone.optional(), currentPin: pinSchema.optional() })
   .strict()

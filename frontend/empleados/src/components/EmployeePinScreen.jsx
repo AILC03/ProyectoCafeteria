@@ -12,11 +12,15 @@ export default function EmployeePinScreen({ employee, onBack, onLoginSuccess, au
   const inputRef = useRef(null);
 
   useEffect(() => {
+    if (!employee) {
+      onBack();
+      return;
+    }
     // Foco automático en el campo de contraseña al montar la pantalla
     if (inputRef.current) {
       inputRef.current.focus();
     }
-  }, []);
+  }, [employee, onBack]);
 
   function triggerError(msg) {
     setErrorMsg(msg);
@@ -28,6 +32,12 @@ export default function EmployeePinScreen({ employee, onBack, onLoginSuccess, au
   async function handleSubmit(e) {
     if (e) e.preventDefault();
     const cleanPassword = password.trim();
+
+    if (employee && employee.isActive === false) {
+      triggerError('Esta cuenta de empleado ha sido dada de baja en el sistema.');
+      if (inputRef.current) inputRef.current.focus();
+      return;
+    }
 
     if (!cleanPassword) {
       triggerError('Por favor ingrese su contraseña de empleado');
@@ -51,7 +61,7 @@ export default function EmployeePinScreen({ employee, onBack, onLoginSuccess, au
     setErrorMsg('');
 
     try {
-      const username = employee?.username || employee?.name || 'AngelAdmin';
+      const username = employee?.username || employee?.name || 'admin';
       const user = await loginStaff(username, cleanPassword);
 
       playHapticSound('success', audioEnabled);
@@ -62,14 +72,28 @@ export default function EmployeePinScreen({ employee, onBack, onLoginSuccess, au
         role: user.role,
         isAdmin: user.role === 'ADMINISTRADOR',
         pin: cleanPassword,
+        password: cleanPassword,
       });
     } catch (err) {
       console.warn('Error de autenticación staff:', err);
-      if (verifyEmployeeCredentials(employee, cleanPassword)) {
+      if (err.status === 401) {
+        triggerError('Credenciales incorrectas o la cuenta ha sido dada de baja.');
+        if (inputRef.current) inputRef.current.focus();
+        return;
+      }
+      if (employee?.isActive !== false && verifyEmployeeCredentials(employee, cleanPassword)) {
         playHapticSound('success', audioEnabled);
+        const resolvedRole =
+          employee?.role && employee.role !== 'PERSONAL'
+            ? employee.role
+            : employee?.username?.toLowerCase().includes('admin')
+            ? 'ADMINISTRADOR'
+            : 'CAJERO';
         onLoginSuccess({
           ...employee,
+          role: resolvedRole,
           pin: cleanPassword,
+          password: cleanPassword,
         });
       } else {
         const errorDetail =
@@ -160,7 +184,14 @@ export default function EmployeePinScreen({ employee, onBack, onLoginSuccess, au
             <div
               className="employee-avatar-badge"
               style={{
-                backgroundColor: employee?.color || '#0f172a',
+                backgroundColor:
+                  employee?.color && employee.color !== '#2563eb'
+                    ? employee.color
+                    : employee?.username?.includes('gerente')
+                    ? '#7c3aed'
+                    : employee?.username?.includes('admin')
+                    ? '#0f172a'
+                    : '#2563eb',
                 width: '46px',
                 height: '46px',
                 borderRadius: '50%',
@@ -173,20 +204,30 @@ export default function EmployeePinScreen({ employee, onBack, onLoginSuccess, au
                 flexShrink: 0
               }}
             >
-              {employee?.avatar || (employee?.name ? employee.name.slice(0, 2).toUpperCase() : 'EP')}
+              {employee?.avatar || (employee?.username?.toLowerCase().includes('admin') ? 'AD' : employee?.name ? employee.name.slice(0, 2).toUpperCase() : 'EP')}
             </div>
             <div className="employee-info-col" style={{ flex: 1, textAlign: 'left' }}>
               <div
                 className="employee-name-text"
                 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', lineHeight: 1.2 }}
               >
-                {employee?.name || employee?.username || 'Empleado'}
+                {employee?.name || (employee?.username?.toLowerCase().includes('admin') ? 'admin' : employee?.username) || 'Empleado'}
               </div>
               <div
                 className="employee-role-text"
                 style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600, marginTop: '2px' }}
               >
-                {employee?.role ? `ROL: ${employee.role}` : `ID: #${employee?.id || '1'}`}
+                {employee?.role && employee.role !== 'PERSONAL'
+                  ? `ROL: ${employee.role}`
+                  : employee?.username?.toLowerCase().includes('admin')
+                  ? 'ROL: ADMINISTRADOR'
+                  : employee?.username?.toLowerCase().includes('gerente')
+                  ? 'ROL: GERENTE'
+                  : employee?.username?.toLowerCase().includes('cajero')
+                  ? 'ROL: CAJERO'
+                  : employee?.username?.toLowerCase().includes('cocina') || employee?.username?.toLowerCase().includes('prep')
+                  ? 'ROL: PREPARACION'
+                  : `ID: #${employee?.id || '1'}`}
               </div>
             </div>
           </div>

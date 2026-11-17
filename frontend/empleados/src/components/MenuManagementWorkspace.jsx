@@ -14,6 +14,7 @@ import {
   getProducts,
   setProductAvailability,
   createAdminProduct,
+  updateAdminProduct,
   deleteAdminProduct,
   createAdminCategory,
   deleteAdminCategory
@@ -186,8 +187,21 @@ export default function MenuManagementWorkspace({ currentEmployee }) {
       setCatErrorMessage('El nombre de la categoría es obligatorio.');
       return;
     }
-    if (cleanName.length > 120) {
-      setCatErrorMessage('El nombre no puede exceder 120 caracteres.');
+    if (cleanName.length < 2 || cleanName.length > 50) {
+      setCatErrorMessage('El nombre de la categoría debe tener entre 2 y 50 caracteres.');
+      return;
+    }
+    if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ0-9\s'-]+$/.test(cleanName)) {
+      setCatErrorMessage('El nombre solo puede contener letras, números y espacios.');
+      return;
+    }
+
+    // Verificar si la categoría ya existe
+    const catAlreadyExists = categories.some(
+      (c) => c.name && c.name.trim().toLowerCase() === cleanName.toLowerCase()
+    );
+    if (catAlreadyExists) {
+      setCatErrorMessage(`La categoría "${cleanName}" ya se encuentra registrada.`);
       return;
     }
 
@@ -245,18 +259,78 @@ export default function MenuManagementWorkspace({ currentEmployee }) {
     setErrorMessage('');
     setSuccessMessage('');
 
+    const cleanName = formName.trim();
+    if (!cleanName) {
+      setErrorMessage('El nombre del platillo o producto es obligatorio.');
+      return;
+    }
+    if (cleanName.length < 2 || cleanName.length > 80) {
+      setErrorMessage('El nombre del producto debe tener entre 2 y 80 caracteres.');
+      return;
+    }
+
     if (!formCategory || formCategory === 'all') {
       setErrorMessage('Debes seleccionar o crear una categoría válida antes de guardar el producto.');
       return;
     }
 
+    const catExists = categories.some((c) => c.id !== 'all' && String(c.id) === String(formCategory));
+    if (!catExists) {
+      setErrorMessage('La categoría seleccionada no existe o no es válida.');
+      return;
+    }
+
+    const cleanPrice = String(formPrice).trim();
+    if (!cleanPrice) {
+      setErrorMessage('El precio del producto es obligatorio.');
+      return;
+    }
+    if (!/^\d+(\.\d{1,2})?$/.test(cleanPrice)) {
+      setErrorMessage('El precio debe ser un número positivo válido con máximo 2 decimales (ej. 45.00).');
+      return;
+    }
+    const numPrice = parseFloat(cleanPrice);
+    if (isNaN(numPrice) || numPrice <= 0) {
+      setErrorMessage('El precio del producto debe ser mayor a $0.00.');
+      return;
+    }
+    if (numPrice > 99999) {
+      setErrorMessage('El precio del producto no puede exceder los $99,999.00.');
+      return;
+    }
+
+    // Verificar que no exista ya un producto con el mismo nombre en la misma categoría o globalmente
+    const duplicate = products.some(
+      (p) => (!editingProduct || String(p.id) !== String(editingProduct.id)) &&
+             p.name && p.name.trim().toLowerCase() === cleanName.toLowerCase()
+    );
+    if (duplicate) {
+      setErrorMessage(`Ya existe un producto registrado con el nombre "${cleanName}". Por favor elija un nombre diferente.`);
+      return;
+    }
+
     if (editingProduct) {
+      if (/^\d+$/.test(String(editingProduct.id))) {
+        try {
+          await updateAdminProduct(editingProduct.id, {
+            name: cleanName,
+            categoryId: formCategory,
+            basePriceCents: numberToCents(cleanPrice),
+            description: formDesc.trim(),
+          });
+          showToast(`Producto "${cleanName}" actualizado en la base de datos PostgreSQL`, 'success');
+        } catch (err) {
+          setErrorMessage(err.message || 'Error al actualizar producto en la base de datos');
+          return;
+        }
+      }
+
       const res = updateProduct(editingProduct.id, {
-        name: formName,
+        name: cleanName,
         categoryId: formCategory,
-        price: parseFloat(formPrice),
-        desc: formDesc,
-        sku: formSku
+        price: numPrice,
+        desc: formDesc.trim(),
+        sku: formSku.trim()
       });
       if (!res.success) {
         setErrorMessage(res.message);
@@ -266,6 +340,7 @@ export default function MenuManagementWorkspace({ currentEmployee }) {
       setIsModalOpen(false);
       resetForm();
       setSuccessMessage('Producto actualizado exitosamente.');
+      await refreshAllCatalog();
     } else {
       let targetCategoryId = formCategory;
 
@@ -295,24 +370,25 @@ export default function MenuManagementWorkspace({ currentEmployee }) {
         try {
           backendCreated = await createAdminProduct({
             categoryId: targetCategoryId,
-            name: formName,
-            description: formDesc,
-            basePriceCents: numberToCents(formPrice),
+            name: cleanName,
+            description: formDesc.trim(),
+            basePriceCents: numberToCents(cleanPrice),
           });
-          showToast(`Producto "${formName}" guardado en la base de datos PostgreSQL`, 'success');
+          showToast(`Producto "${cleanName}" guardado en la base de datos PostgreSQL`, 'success');
         } catch (err) {
-          console.warn('Backend create product aviso:', err);
-          showToast(`Guardado en catálogo local. Backend: ${err.message}`, 'info');
+          console.warn('Backend create product error:', err);
+          setErrorMessage(err.message || 'Error al guardar el producto en la base de datos');
+          return;
         }
       }
 
       const res = addProduct({
         id: backendCreated?.id ? String(backendCreated.id) : undefined,
-        name: formName,
+        name: cleanName,
         categoryId: targetCategoryId,
-        price: parseFloat(formPrice),
-        desc: formDesc,
-        sku: formSku,
+        price: numPrice,
+        desc: formDesc.trim(),
+        sku: formSku.trim(),
         isAvailable: true,
       });
       if (!res.success) {
@@ -323,22 +399,26 @@ export default function MenuManagementWorkspace({ currentEmployee }) {
       setIsModalOpen(false);
       resetForm();
       setSuccessMessage('Producto agregado al menú exitosamente.');
+      await refreshAllCatalog();
     }
   }
 
   function handleDelete(prod) {
     showConfirm({
       title: 'Eliminar Producto',
-      message: `¿Confirmas que deseas eliminar el producto "${prod.name}" del menú?`,
+      message: `¿Confirmas que deseas dar de baja y eliminar el producto "${prod.name}" del menú y la base de datos?`,
       confirmText: 'Eliminar',
       cancelText: 'Cancelar',
       isDestructive: true,
       onConfirm: async () => {
-        try {
-          await deleteAdminProduct(prod.id);
-          showToast(`Producto "${prod.name}" eliminado de la base de datos.`, 'success');
-        } catch (err) {
-          console.warn('Aviso delete backend:', err);
+        if (/^\d+$/.test(String(prod.id))) {
+          try {
+            await deleteAdminProduct(prod.id);
+            showToast(`Producto "${prod.name}" eliminado de la base de datos.`, 'success');
+          } catch (err) {
+            showToast(err.message || 'Error al eliminar producto en backend', 'error');
+            return;
+          }
         }
         deleteProduct(prod.id);
         await refreshAllCatalog();

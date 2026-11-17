@@ -8,12 +8,14 @@ import {
   isEmployeeAdmin
 } from '../data/employees.js';
 import { showToast, showConfirm } from '../utils/notify.js';
-import { getAdminEmployees, createAdminEmployee, updateAdminEmployee } from '../api/employees.js';
+import { getAdminEmployees, createAdminEmployee, updateAdminEmployee, deleteAdminEmployee } from '../api/employees.js';
+import { loginStaff } from '../api/auth.js';
 
 export default function UserManagementWorkspace({ currentEmployee }) {
   const [employees, setEmployees] = useState(getEmployees);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Formulario de alta / edición
   const [formName, setFormName] = useState('');
@@ -40,7 +42,8 @@ export default function UserManagementWorkspace({ currentEmployee }) {
             isSyncedWithDb: true,
           }));
           setEmployees(mapped);
-          saveEmployees(mapped);
+          localStorage.setItem('coffees_employees_local', JSON.stringify(mapped));
+          localStorage.setItem('taffy_employees_local', JSON.stringify(mapped));
         }
       } catch {
         // Fallback local
@@ -48,8 +51,12 @@ export default function UserManagementWorkspace({ currentEmployee }) {
     }
     loadApiEmployees();
 
-    function handleUpdate() {
-      setEmployees(getEmployees());
+    function handleUpdate(e) {
+      if (e?.detail && Array.isArray(e.detail)) {
+        setEmployees(e.detail);
+      } else {
+        setEmployees(getEmployees());
+      }
     }
     window.addEventListener('coffees:employees_updated', handleUpdate);
     window.addEventListener('taffy:employees_updated', handleUpdate);
@@ -90,97 +97,127 @@ export default function UserManagementWorkspace({ currentEmployee }) {
 
   async function handleSave(e) {
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     setErrorMessage('');
     setSuccessMessage('');
 
-    const cleanName = formName.trim();
-    if (!cleanName) {
-      setErrorMessage('El nombre completo es obligatorio.');
-      return;
-    }
+    try {
+      const cleanName = formName.trim();
+      if (!cleanName) {
+        setErrorMessage('El nombre completo es obligatorio.');
+        return;
+      }
+      if (cleanName.length < 3 || cleanName.length > 50) {
+        setErrorMessage('El nombre completo debe tener entre 3 y 50 caracteres.');
+        return;
+      }
+      if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s'-]+$/.test(cleanName)) {
+        setErrorMessage('El nombre completo solo puede contener letras y espacios.');
+        return;
+      }
 
-    if (editingEmployee) {
-      try {
-        await updateAdminEmployee(editingEmployee.id, {
+      if (editingEmployee) {
+        if (/^\d+$/.test(String(editingEmployee.id))) {
+          try {
+            await updateAdminEmployee(editingEmployee.id, {
+              name: cleanName,
+              role: formRole,
+              isActive: formIsActive,
+              reason: 'Modificación desde panel administrativo POS',
+            });
+            showToast('Empleado actualizado en la base de datos PostgreSQL', 'success');
+          } catch (err) {
+            setErrorMessage(err.message || 'Error al actualizar empleado en la base de datos');
+            return;
+          }
+        }
+
+        // Actualizar empleado existente localmente
+        const res = updateEmployee(editingEmployee.id, {
           name: cleanName,
           role: formRole,
           isActive: formIsActive,
-          reason: 'Modificación desde panel administrativo POS',
+          isAdmin: formRole === 'ADMINISTRADOR',
         });
-        showToast('Empleado actualizado en la base de datos', 'success');
-      } catch (err) {
-        console.warn('API update aviso:', err);
-      }
-
-      // Actualizar empleado existente localmente
-      const res = updateEmployee(editingEmployee.id, {
-        name: cleanName,
-        role: formRole,
-        isActive: formIsActive,
-        isAdmin: formRole === 'ADMINISTRADOR',
-      });
-      if (!res.success) {
-        setErrorMessage(res.message);
-        return;
-      }
-      setEmployees(getEmployees());
-      setShowAddForm(false);
-      resetForm();
-      setSuccessMessage('Usuario actualizado con éxito.');
-    } else {
-      // Alta de nuevo empleado
-      const cleanUser = formUsername.trim().toLowerCase();
-      if (!/^[a-z0-9_]{3,24}$/.test(cleanUser)) {
-        setErrorMessage('El nombre de usuario debe tener entre 3 y 24 caracteres (solo letras, números y guión bajo).');
-        return;
-      }
-
-      if (formPassword.length < 8 || formPassword.length > 24) {
-        setErrorMessage('La contraseña debe tener entre 8 y 24 caracteres (requerido por Argon2id para la base de datos).');
-        return;
-      }
-
-      let backendUser = null;
-      try {
-        backendUser = await createAdminEmployee({
-          name: cleanName,
-          username: cleanUser,
-          password: formPassword,
-          role: formRole,
-        });
-        showToast(`Empleado "${cleanName}" creado y guardado en la base de datos PostgreSQL`, 'success');
-      } catch (err) {
-        console.warn('API create aviso:', err);
-        if (err.message && !err.message.includes('Failed to fetch') && !err.message.includes('NetworkError')) {
-          setErrorMessage(err.message || 'Error al guardar en la base de datos.');
+        if (!res.success) {
+          setErrorMessage(res.message);
           return;
         }
-      }
+        setEmployees(getEmployees());
+        setShowAddForm(false);
+        resetForm();
+        setSuccessMessage('Usuario actualizado con éxito.');
+      } else {
+        // Alta de nuevo empleado
+        const cleanUser = formUsername.trim().toLowerCase();
+        if (!/^[a-z0-9_]{3,24}$/.test(cleanUser)) {
+          setErrorMessage('El nombre de usuario debe tener entre 3 y 24 caracteres (solo letras minúsculas, números y guión bajo).');
+          return;
+        }
 
-      // Alta en almacenamiento local
-      const newEmployee = {
-        id: backendUser?.id ? String(backendUser.id) : String(Date.now()).slice(-4),
-        name: cleanName,
-        username: cleanUser,
-        role: formRole,
-        pin: formPassword,
-        isAdmin: formRole === 'ADMINISTRADOR',
-        isActive: true,
-      };
+        // Validación de existencia previa (no permitir usernames duplicados)
+        const alreadyExists = employees.some(
+          (e) => (e.username && e.username.toLowerCase() === cleanUser) ||
+                 String(e.id).toLowerCase() === cleanUser
+        );
+        if (alreadyExists) {
+          setErrorMessage(`El nombre de usuario "@${cleanUser}" ya se encuentra registrado. Por favor elija un nombre diferente.`);
+          return;
+        }
 
-      const res = addEmployee(newEmployee);
-      if (!res.success) {
-        setErrorMessage(res.message);
-        return;
+        if (formPassword.length < 8 || formPassword.length > 24) {
+          setErrorMessage('La contraseña debe tener entre 8 y 24 caracteres (requerido por Argon2id para la base de datos).');
+          return;
+        }
+
+        let backendUser = null;
+        try {
+          backendUser = await createAdminEmployee({
+            name: cleanName,
+            username: cleanUser,
+            password: formPassword,
+            role: formRole,
+          });
+          showToast(`Empleado "${cleanName}" creado y guardado en la base de datos PostgreSQL`, 'success');
+        } catch (err) {
+          console.warn('API create error:', err);
+          setErrorMessage(err.message || 'No se pudo crear el empleado en la base de datos. Verifica credenciales y username.');
+          return;
+        }
+
+        // Alta en almacenamiento local garantizada con el ID real de la base de datos
+        const newEmployee = {
+          id: backendUser?.id ? String(backendUser.id) : String(Date.now()).slice(-4),
+          name: cleanName,
+          username: cleanUser,
+          role: formRole,
+          pin: formPassword,
+          isAdmin: formRole === 'ADMINISTRADOR',
+          isActive: true,
+          isSyncedWithDb: true,
+        };
+
+        const res = addEmployee(newEmployee);
+        if (!res.success) {
+          setErrorMessage(res.message);
+          return;
+        }
+        setEmployees(getEmployees());
+        setShowAddForm(false);
+        resetForm();
+        setSuccessMessage(`Usuario ${newEmployee.name} (@${cleanUser}) registrado con éxito en la base de datos.`);
       }
-      setEmployees(getEmployees());
-      setShowAddForm(false);
-      resetForm();
-      setSuccessMessage(`Usuario ${newEmployee.name} (@${cleanUser}) registrado con éxito.`);
+    } catch (unexpectedErr) {
+      console.error('Error inesperado al guardar usuario:', unexpectedErr);
+      setErrorMessage('Ocurrió un error al procesar el guardado.');
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
-  function handleDelete(emp) {
+  // Dar de baja (desactivar usuario en base de datos)
+  function handleDeactivate(emp) {
     const currentId = currentEmployee?.id;
     if (String(emp.id).trim() === String(currentId).trim()) {
       showToast('No puedes dar de baja tu propio usuario mientras tienes la sesión iniciada.', 'error');
@@ -188,29 +225,97 @@ export default function UserManagementWorkspace({ currentEmployee }) {
     }
 
     showConfirm({
-      title: 'Dar de Baja Usuario',
-      message: `¿Confirmas que deseas dar de baja al usuario ${emp.name} (${emp.id})?`,
+      title: 'Dar de Baja Empleado',
+      message: `¿Confirmas que deseas dar de baja al usuario ${emp.name} (@${emp.username || emp.id})? Su acceso al sistema será revocado y pasará a estado Inactivo en la base de datos.`,
       confirmText: 'Dar de Baja',
       cancelText: 'Cancelar',
       isDestructive: true,
       onConfirm: async () => {
         try {
-          await updateAdminEmployee(emp.id, {
-            isActive: false,
-            reason: 'Baja solicitada en panel gerencial POS',
-          });
-          showToast(`Usuario ${emp.name} dado de baja en backend.`, 'success');
+          if (/^\d+$/.test(String(emp.id))) {
+            await updateAdminEmployee(emp.id, {
+              isActive: false,
+              reason: 'Baja solicitada en panel gerencial POS',
+            });
+          }
+          // Actualizar estado local y en pantalla
+          updateEmployee(emp.id, { isActive: false });
+          setEmployees((prev) =>
+            prev.map((e) => (String(e.id).trim() === String(emp.id).trim() ? { ...e, isActive: false } : e))
+          );
+          showToast(`Usuario ${emp.name} dado de baja exitosamente en la base de datos.`, 'success');
         } catch (err) {
-          console.warn('API delete aviso:', err);
+          showToast(err.message || 'Error al dar de baja al usuario en la base de datos', 'error');
         }
+      }
+    });
+  }
 
-        const res = deleteEmployee(emp.id, currentId);
-        if (!res.success) {
-          showToast(res.message, 'error');
-          return;
+  // Dar de alta / Reactivar (activar usuario en base de datos)
+  function handleReactivate(emp) {
+    showConfirm({
+      title: 'Dar de Alta / Reactivar Empleado',
+      message: `¿Deseas reactivar al usuario ${emp.name} (@${emp.username || emp.id}) para que vuelva a tener acceso al sistema?`,
+      confirmText: 'Reactivar',
+      cancelText: 'Cancelar',
+      isDestructive: false,
+      onConfirm: async () => {
+        try {
+          if (/^\d+$/.test(String(emp.id))) {
+            await updateAdminEmployee(emp.id, {
+              isActive: true,
+              reason: 'Reactivación solicitada en panel gerencial POS',
+            });
+          }
+          updateEmployee(emp.id, { isActive: true });
+          setEmployees((prev) =>
+            prev.map((e) => (String(e.id).trim() === String(emp.id).trim() ? { ...e, isActive: true } : e))
+          );
+          showToast(`Usuario ${emp.name} reactivado con éxito en la base de datos.`, 'success');
+        } catch (err) {
+          showToast(err.message || 'Error al reactivar usuario en la base de datos', 'error');
         }
-        setEmployees(getEmployees());
-        showToast(`Usuario ${emp.name} dado de baja.`, 'success');
+      }
+    });
+  }
+
+  // Eliminar definitivamente de la base de datos
+  function handlePermanentDelete(emp) {
+    const currentId = currentEmployee?.id;
+    if (String(emp.id).trim() === String(currentId).trim()) {
+      showToast('No puedes eliminar tu propio usuario mientras tienes la sesión iniciada.', 'error');
+      return;
+    }
+
+    showConfirm({
+      title: 'Eliminar Empleado Definitivamente',
+      message: `¿Estás seguro de eliminar a ${emp.name}? Si el empleado no tiene turnos ni órdenes asociadas se borrará completamente; si tiene transacciones se mantendrá dado de baja para preservar la auditoría.`,
+      confirmText: 'Eliminar',
+      cancelText: 'Cancelar',
+      isDestructive: true,
+      onConfirm: async () => {
+        try {
+          if (/^\d+$/.test(String(emp.id))) {
+            const res = await deleteAdminEmployee(emp.id);
+            if (res?.deleted) {
+              deleteEmployee(emp.id);
+              setEmployees((prev) => prev.filter((e) => String(e.id).trim() !== String(emp.id).trim()));
+              showToast(res.message || `Usuario ${emp.name} eliminado de la base de datos.`, 'success');
+            } else {
+              updateEmployee(emp.id, { isActive: false });
+              setEmployees((prev) =>
+                prev.map((e) => (String(e.id).trim() === String(emp.id).trim() ? { ...e, isActive: false } : e))
+              );
+              showToast(res?.message || `Usuario ${emp.name} dado de baja (historial preservado).`, 'info');
+            }
+          } else {
+            deleteEmployee(emp.id);
+            setEmployees((prev) => prev.filter((e) => String(e.id).trim() !== String(emp.id).trim()));
+            showToast(`Usuario ${emp.name} eliminado.`, 'success');
+          }
+        } catch (err) {
+          showToast(err.message || 'Error al eliminar usuario en la base de datos', 'error');
+        }
       }
     });
   }
@@ -286,6 +391,7 @@ export default function UserManagementWorkspace({ currentEmployee }) {
               <input
                 type="text"
                 placeholder="Ej. Ana Martínez"
+                maxLength={50}
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
                 required
@@ -300,8 +406,9 @@ export default function UserManagementWorkspace({ currentEmployee }) {
               <input
                 type="text"
                 placeholder="Ej. cajero_ana"
+                maxLength={24}
                 value={formUsername}
-                onChange={(e) => setFormUsername(e.target.value)}
+                onChange={(e) => setFormUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
                 disabled={Boolean(editingEmployee)}
                 required={!editingEmployee}
                 style={{
@@ -330,18 +437,19 @@ export default function UserManagementWorkspace({ currentEmployee }) {
               >
                 <option value="CAJERO">CAJERO — Mostrador, Cobro y Turnos</option>
                 <option value="PREPARACION">PREPARACION — Cocina / Barista (KDS)</option>
-                <option value="ADMINISTRADOR">ADMINISTRADOR — Control Total y Gerencia</option>
+                <option value="GERENTE">GERENTE — Supervisión y Reportes (Solo Lectura)</option>
+                <option value="ADMINISTRADOR">ADMINISTRADOR — Control Total y Administración</option>
               </select>
             </div>
 
             {!editingEmployee && (
               <div>
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
-                  Contraseña / PIN de Acceso
+                  Contraseña de Acceso (Personal)
                 </label>
                 <input
                   type="password"
-                  placeholder="Mínimo 8 caracteres"
+                  placeholder="Mínimo 8 caracteres (8 a 24)"
                   minLength={8}
                   maxLength={24}
                   value={formPassword}
@@ -350,7 +458,7 @@ export default function UserManagementWorkspace({ currentEmployee }) {
                   style={{ width: '100%', padding: '0.65rem 0.9rem', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem', boxSizing: 'border-box' }}
                 />
                 <span style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '0.2rem', display: 'block' }}>
-                  8 a 24 caracteres (seguridad Argon2id en PostgreSQL)
+                  8 a 24 caracteres (política de seguridad para empleados con Argon2id)
                 </span>
               </div>
             )}
@@ -392,18 +500,21 @@ export default function UserManagementWorkspace({ currentEmployee }) {
               </button>
               <button
                 type="submit"
+                disabled={isSubmitting}
                 style={{
                   padding: '0.6rem 1.5rem',
-                  background: '#0f172a',
+                  background: isSubmitting ? '#94a3b8' : '#0f172a',
                   color: '#ffffff',
                   border: 'none',
                   borderRadius: '8px',
                   fontWeight: 700,
                   fontSize: '0.88rem',
-                  cursor: 'pointer'
+                  cursor: isSubmitting ? 'not-allowed' : 'pointer'
                 }}
               >
-                {editingEmployee ? 'Guardar Cambios' : 'Registrar en Base de Datos'}
+                {isSubmitting
+                  ? 'Guardando...'
+                  : (editingEmployee ? 'Guardar Cambios' : 'Registrar en Base de Datos')}
               </button>
             </div>
           </form>
@@ -426,6 +537,7 @@ export default function UserManagementWorkspace({ currentEmployee }) {
           <tbody>
             {employees.map((emp) => {
               const admin = isEmployeeAdmin(emp);
+              const isGerente = emp.role === 'GERENTE' || String(emp.role).toUpperCase().includes('GERENTE');
               const isKitchen = emp.role === 'PREPARACION' || String(emp.role).toUpperCase().includes('COCINA');
               const isCurrent = String(emp.id).trim() === String(currentEmployee?.id).trim() ||
                                 String(emp.username || '').toLowerCase() === String(currentEmployee?.username || '').toLowerCase();
@@ -455,29 +567,30 @@ export default function UserManagementWorkspace({ currentEmployee }) {
                         fontSize: '0.76rem',
                         fontWeight: 700,
                         textTransform: 'uppercase',
-                        background: admin ? '#0f172a' : isKitchen ? '#059669' : '#2563eb',
+                        background: admin ? '#0f172a' : isGerente ? '#7c3aed' : isKitchen ? '#059669' : '#2563eb',
                         color: '#ffffff'
                       }}
                     >
-                      {admin ? 'Administrador' : isKitchen ? 'Cocina / Barista' : 'Cajero'}
+                      {admin ? 'Administrador' : isGerente ? 'Gerente' : isKitchen ? 'Cocina / Barista' : 'Cajero'}
                     </span>
                   </td>
                   <td style={{ padding: '0.9rem 1.25rem' }}>
                     <span
                       style={{
-                        padding: '0.15rem 0.5rem',
+                        padding: '0.2rem 0.6rem',
                         borderRadius: '9999px',
                         fontSize: '0.75rem',
                         fontWeight: 700,
-                        background: active ? '#dcfce7' : '#f1f5f9',
-                        color: active ? '#166534' : '#64748b'
+                        background: active ? '#dcfce7' : '#fef2f2',
+                        color: active ? '#166534' : '#991b1b',
+                        border: active ? '1px solid #bbf7d0' : '1px solid #fecaca',
                       }}
                     >
-                      {active ? 'Activo' : 'Inactivo'}
+                      {active ? 'Activo' : 'Dado de baja'}
                     </span>
                   </td>
                   <td style={{ padding: '0.9rem 1.25rem', textAlign: 'right' }}>
-                    <div style={{ display: 'inline-flex', gap: '0.5rem' }}>
+                    <div style={{ display: 'inline-flex', gap: '0.4rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                       <button
                         type="button"
                         onClick={() => handleOpenEdit(emp)}
@@ -494,22 +607,61 @@ export default function UserManagementWorkspace({ currentEmployee }) {
                       >
                         Editar
                       </button>
+                      {active ? (
+                        <button
+                          type="button"
+                          onClick={() => handleDeactivate(emp)}
+                          disabled={isCurrent}
+                          title={isCurrent ? 'No puedes darte de baja a ti mismo' : 'Dar de baja en la base de datos'}
+                          style={{
+                            padding: '0.35rem 0.75rem',
+                            background: isCurrent ? '#f1f5f9' : '#fff1f2',
+                            border: isCurrent ? '1px solid #e2e8f0' : '1px solid #fecdd3',
+                            borderRadius: '6px',
+                            fontSize: '0.8rem',
+                            fontWeight: 600,
+                            cursor: isCurrent ? 'not-allowed' : 'pointer',
+                            color: isCurrent ? '#94a3b8' : '#be123c'
+                          }}
+                        >
+                          Dar de baja
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleReactivate(emp)}
+                          title="Dar de alta / Reactivar acceso en la base de datos"
+                          style={{
+                            padding: '0.35rem 0.75rem',
+                            background: '#f0fdf4',
+                            border: '1px solid #bbf7d0',
+                            borderRadius: '6px',
+                            fontSize: '0.8rem',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            color: '#166534'
+                          }}
+                        >
+                          Dar de alta
+                        </button>
+                      )}
                       <button
                         type="button"
-                        onClick={() => handleDelete(emp)}
+                        onClick={() => handlePermanentDelete(emp)}
                         disabled={isCurrent}
+                        title={isCurrent ? 'No puedes eliminar tu propia cuenta' : 'Eliminar permanentemente de la base de datos'}
                         style={{
-                          padding: '0.35rem 0.75rem',
-                          background: isCurrent ? '#f1f5f9' : '#fff1f2',
-                          border: isCurrent ? '1px solid #e2e8f0' : '1px solid #fecdd3',
+                          padding: '0.35rem 0.65rem',
+                          background: isCurrent ? '#f1f5f9' : '#ffffff',
+                          border: '1px solid #e2e8f0',
                           borderRadius: '6px',
                           fontSize: '0.8rem',
                           fontWeight: 600,
                           cursor: isCurrent ? 'not-allowed' : 'pointer',
-                          color: isCurrent ? '#94a3b8' : '#be123c'
+                          color: isCurrent ? '#94a3b8' : '#64748b'
                         }}
                       >
-                        Dar de baja
+                        Eliminar
                       </button>
                     </div>
                   </td>

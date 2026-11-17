@@ -53,7 +53,7 @@ const schemas = api.components.schemas;
 schemas.AuthUser = object({
   id,
   name: text(120),
-  role: { type: 'string', enum: ['CLIENTE', 'CAJERO', 'PREPARACION', 'ADMINISTRADOR'] },
+  role: { type: 'string', enum: ['CLIENTE', 'CAJERO', 'PREPARACION', 'ADMINISTRADOR', 'GERENTE'] },
   accountType: { type: 'string', enum: ['STAFF', 'CUSTOMER'] },
   mustChangePin: bool,
 });
@@ -454,7 +454,7 @@ api.paths['/api/v1/auth/login/staff'].post.responses['200'].content['application
   data: { user: exampleUser, csrfToken: 'example-only-not-a-real-token' },
 };
 api.paths['/api/v1/auth/login/staff'].post.requestBody.content['application/json'].example = {
-  username: 'AngelAdmin',
+  username: 'admin',
   password: 'ExampleOnly42',
 };
 api.paths['/api/v1/auth/login/customer'].post.responses['200'].content['application/json'].example =

@@ -19,7 +19,7 @@ import ScanQrModal from './components/ScanQrModal.jsx';
 import KitchenWorkspace from './components/KitchenWorkspace.jsx';
 
 import * as db from './data/db.js';
-import { isEmployeeAdmin, isEmployeeCashier, isEmployeeKitchen } from './data/employees.js';
+import { isEmployeeAdmin, isEmployeeCashier, isEmployeeKitchen, isEmployeeGerente } from './data/employees.js';
 import { playHapticSound } from './utils/audio.js';
 import { showToast, showConfirm } from './utils/notify.js';
 import { createCashierOrder, chargeCashOrder, issueTicketAccess } from './api/cash.js';
@@ -149,6 +149,18 @@ export default function App() {
       if (activePosTab !== 'kitchen') {
         setActivePosTab('kitchen');
       }
+    } else if (isEmployeeGerente(currentEmployee)) {
+      // Es Gerente: solo puede acceder a vistas de supervisión directa (Historial y Corte de Caja)
+      const allowedGerenteTabs = ['history', 'shift'];
+      if (!allowedGerenteTabs.includes(activePosTab)) {
+        setActivePosTab('history');
+      }
+    } else if (isEmployeeAdmin(currentEmployee)) {
+      // Es Administrador: las herramientas de gestión interna (menú, personal, historial, corte) se consultan dentro de 'admin-dashboard'
+      const adminInternalTabs = ['menu-admin', 'users-admin', 'history', 'shift'];
+      if (adminInternalTabs.includes(activePosTab)) {
+        setActivePosTab('admin-dashboard');
+      }
     } else if (!isEmployeeAdmin(currentEmployee)) {
       // Es Cajero: bloquear acceso a vistas exclusivas de administrador
       const adminOnlyTabs = ['admin-dashboard', 'menu-admin', 'users-admin'];
@@ -231,6 +243,8 @@ export default function App() {
     setActiveScreen('pos');
     if (isEmployeeKitchen(emp)) {
       setActivePosTab('kitchen');
+    } else if (isEmployeeGerente(emp)) {
+      setActivePosTab('history');
     } else {
       setActivePosTab('order');
     }
@@ -240,6 +254,18 @@ export default function App() {
     if (isEmployeeKitchen(currentEmployee)) {
       if (targetTab !== 'kitchen') {
         showToast('Acceso exclusivo a pantalla de Cocina / Barista.', 'warning');
+        return;
+      }
+    } else if (isEmployeeGerente(currentEmployee)) {
+      const allowedGerenteTabs = ['history', 'shift'];
+      if (!allowedGerenteTabs.includes(targetTab)) {
+        if (targetTab === 'kitchen') {
+          showToast('Acceso restringido: El perfil de Gerente no tiene acceso a Cocina / Barista.', 'warning');
+        } else if (targetTab === 'order') {
+          showToast('Acceso restringido: El perfil de Gerente es de supervisión y no realiza cobros en caja.', 'warning');
+        } else {
+          showToast('Acceso restringido: El perfil de Gerente no tiene acceso a esta sección.', 'warning');
+        }
         return;
       }
     } else if (!isEmployeeAdmin(currentEmployee)) {
@@ -359,39 +385,41 @@ export default function App() {
     let registrationToken = null;
 
     try {
-      if (method === 'cash') {
-        const orderItems = cart.map((item) => ({
-          productId: item.id.toString(),
-          quantity: item.qty,
-          optionValueIds: [],
-        }));
+      const orderItems = cart.map((item) => ({
+        productId: item.id.toString(),
+        quantity: item.qty,
+        optionValueIds: [],
+      }));
 
-        const cashierOrderRes = await createCashierOrder({
-          items: orderItems,
-          guestName: tableOrCustomer.trim() || (orderType === 'dine-in' ? 'Mostrador' : 'Para Llevar'),
-        });
+      const guestLabel = tableOrCustomer.trim() || (orderType === 'dine-in' ? 'Mostrador' : 'Para Llevar');
+      const methodLabel = method === 'card' ? ' (Tarjeta)' : method === 'transfer' ? ' (Transferencia)' : '';
 
-        if (cashierOrderRes && cashierOrderRes.data) {
-          const backendOrder = cashierOrderRes.data;
-          backendFolio = backendOrder.folio;
+      const cashierOrderRes = await createCashierOrder({
+        items: orderItems,
+        guestName: `${guestLabel}${methodLabel}`.slice(0, 120),
+      });
 
-          // Cobrar con cargo a sesión de caja en backend
-          const paymentRes = await chargeCashOrder(
-            backendOrder.id,
-            numberToCents(cashReceived)
-          );
-          backendSaleId = paymentRes?.sale?.id || paymentRes?.saleId;
-          changeDue = centsToNumber(paymentRes?.payment?.changeCents || paymentRes?.changeCents || '0');
+      if (cashierOrderRes && cashierOrderRes.data) {
+        const backendOrder = cashierOrderRes.data;
+        backendFolio = backendOrder.folio;
 
-          if (backendSaleId) {
-            try {
-              const ticketRes = await issueTicketAccess(backendSaleId);
-              if (ticketRes?.token) {
-                registrationToken = ticketRes.token;
-              }
-            } catch (ticketErr) {
-              console.warn('Aviso emisión ticket registration token:', ticketErr);
+        // Cobrar con cargo a sesión de caja en backend
+        const amountToCharge = method === 'cash' ? cashReceived : total;
+        const paymentRes = await chargeCashOrder(
+          backendOrder.id,
+          numberToCents(amountToCharge)
+        );
+        backendSaleId = paymentRes?.sale?.id || paymentRes?.saleId;
+        changeDue = centsToNumber(paymentRes?.payment?.changeCents || paymentRes?.changeCents || '0');
+
+        if (backendSaleId) {
+          try {
+            const ticketRes = await issueTicketAccess(backendSaleId);
+            if (ticketRes?.token) {
+              registrationToken = ticketRes.token;
             }
+          } catch (ticketErr) {
+            console.warn('Aviso emisión ticket registration token:', ticketErr);
           }
         }
       }
@@ -514,14 +542,20 @@ export default function App() {
               employee={currentEmployee}
               onLogout={handleLogout}
               audioEnabled={audioEnabled}
-              onOpenSettings={() => setIsMenuOpen(true)}
+              onOpenSettings={() => {
+                if (isEmployeeGerente(currentEmployee)) {
+                  showToast('Acceso restringido: El perfil de Gerente no tiene acceso a ajustes del sistema.', 'warning');
+                  return;
+                }
+                setIsMenuOpen(true);
+              }}
               onReprintLastTicket={handleReprintLastOrder}
               businessName={account?.businessName}
             />
           )}
 
           {/* VISTA: TOMA DE ÓRDENES Y COBRO RÁPIDO */}
-          {activePosTab === 'order' && !isEmployeeKitchen(currentEmployee) && (
+          {activePosTab === 'order' && !isEmployeeKitchen(currentEmployee) && !isEmployeeGerente(currentEmployee) && (
             <OrderingWorkspace
               orderType={orderType}
               setOrderType={setOrderType}
@@ -539,7 +573,7 @@ export default function App() {
             />
           )}
 
-          {/* VISTA: DASHBOARD INTEGRAL DE ADMINISTRACIÓN (SOLO GERENCIA / ADMIN) */}
+          {/* VISTA: DASHBOARD INTEGRAL DE ADMINISTRACIÓN */}
           {activePosTab === 'admin-dashboard' && isEmployeeAdmin(currentEmployee) && (
             <AdminDashboardWorkspace
               currentEmployee={currentEmployee}
@@ -562,11 +596,12 @@ export default function App() {
           {activePosTab === 'shift' && !isEmployeeKitchen(currentEmployee) && (
             <ShiftWorkspace
               cashierName={currentEmployee?.name}
+              currentEmployee={currentEmployee}
             />
           )}
 
           {/* VISTA: COCINA / BARISTA (KDS) */}
-          {activePosTab === 'kitchen' && (
+          {activePosTab === 'kitchen' && !isEmployeeGerente(currentEmployee) && (
             <KitchenWorkspace
               audioEnabled={audioEnabled}
             />
@@ -615,7 +650,7 @@ export default function App() {
 
       {/* MODAL MENÚ / CONFIGURACIÓN DEL SISTEMA */}
       <MenuModal
-        isOpen={isMenuOpen}
+        isOpen={isMenuOpen && !isEmployeeGerente(currentEmployee)}
         onClose={() => setIsMenuOpen(false)}
         theme={theme}
         setTheme={setTheme}

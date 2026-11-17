@@ -10,7 +10,7 @@ import type { SalesService } from './sales.service.js';
 export function salesRoutes(auth: AuthService, service: SalesService) {
   const router = Router();
   router.use('/sales', privateCashResponse);
-  const access = [authenticate(auth), authorize('CAJERO')];
+  const access = [authenticate(auth), authorize('CAJERO', 'GERENTE')];
   router.get('/sales', ...access, async (req, res) => {
     if (req.headers['transfer-encoding'] || Number(req.headers['content-length'] ?? 0))
       throw invalidInput();

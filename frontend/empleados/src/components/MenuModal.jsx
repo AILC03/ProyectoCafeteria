@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { playHapticSound } from '../utils/audio.js';
 import { getAllOrders } from '../data/db.js';
+import { isEmployeeGerente } from '../data/employees.js';
 
 export default function MenuModal({
   isOpen,
@@ -76,7 +77,7 @@ export default function MenuModal({
     };
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  if (!isOpen || isEmployeeGerente(currentEmployee)) return null;
 
   const themes = [
     { id: 'theme-nordic', name: 'Nordic Mint', color: '#c7edd9' },

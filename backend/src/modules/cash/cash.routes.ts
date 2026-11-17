@@ -12,10 +12,11 @@ export const privateCashResponse: RequestHandler = (_request, response, next) =>
 export function cashRoutes(auth: AuthService, service: CashService) {
   const router = Router(),
     c = cashController(service),
-    access = [privateCashResponse, authenticate(auth), authorize('CAJERO')];
-  router.post('/cash-sessions', ...access, csrf(auth), c.open);
-  router.get('/cash-sessions/current', ...access, c.current);
-  router.get('/cash-sessions/:id', ...access, c.get);
-  router.post('/cash-sessions/:id/close', ...access, csrf(auth), c.close);
+    writeAccess = [privateCashResponse, authenticate(auth), authorize('CAJERO')],
+    readAccess = [privateCashResponse, authenticate(auth), authorize('CAJERO', 'GERENTE')];
+  router.post('/cash-sessions', ...writeAccess, csrf(auth), c.open);
+  router.get('/cash-sessions/current', ...readAccess, c.current);
+  router.get('/cash-sessions/:id', ...readAccess, c.get);
+  router.post('/cash-sessions/:id/close', ...writeAccess, csrf(auth), c.close);
   return router;
 }

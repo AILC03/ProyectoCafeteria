@@ -111,10 +111,13 @@ export async function apiFetch(endpoint, options = {}) {
         storedUser = {};
       }
 
-      const username = storedUser?.username || storedUser?.name || 'AngelAdmin';
-      const rawPassword = storedUser?.pin || storedUser?.password || 'Admin1234';
+      const username = storedUser?.username || storedUser?.name || 'admin';
+      const rawPassword =
+        storedUser?.password ||
+        storedUser?.pin ||
+        'Admin1234';
       const password =
-        username === 'AngelAdmin' && (rawPassword === '1234' || rawPassword === 'Admin1234')
+        (username === 'admin' || username === 'AngelAdmin') && (rawPassword === '1234' || rawPassword === 'Admin1234')
           ? 'Admin1234'
           : rawPassword;
 

@@ -4,8 +4,43 @@ import type { PrismaClient } from '../../src/generated/prisma/client.js';
 export async function seedDemo(database: PrismaClient) {
   return database.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(2026, 1)`;
-    for (const name of ['CLIENTE', 'CAJERO', 'PREPARACION', 'ADMINISTRADOR']) {
+    for (const name of ['CLIENTE', 'CAJERO', 'PREPARACION', 'ADMINISTRADOR', 'GERENTE']) {
       await tx.role.upsert({ where: { name }, create: { name }, update: {} });
+    }
+    const adminRole = await tx.role.findUnique({ where: { name: 'ADMINISTRADOR' } });
+    if (adminRole) {
+      const existingAdmin = await tx.user.findFirst({
+        where: {
+          roleId: adminRole.id,
+          username: { in: ['admin', 'AngelAdmin'] },
+        },
+      });
+      if (existingAdmin) {
+        if (existingAdmin.username !== 'admin') {
+          await tx.user.update({
+            where: { id: existingAdmin.id },
+            data: { username: 'admin', name: 'admin' },
+          });
+        }
+      } else {
+        const { hash, argon2id } = await import('argon2');
+        const passwordHash = await hash('Admin1234', {
+          type: argon2id,
+          memoryCost: 19456,
+          timeCost: 2,
+          parallelism: 1,
+        });
+        await tx.user.create({
+          data: {
+            accountType: 'STAFF',
+            roleId: adminRole.id,
+            name: 'admin',
+            username: 'admin',
+            passwordHash,
+            isActive: true,
+          },
+        });
+      }
     }
     const category = async (name: string) => {
       const found = await tx.category.findMany({ where: { name } });
@@ -103,6 +138,6 @@ export async function seedDemo(database: PrismaClient) {
       await attach(product.id, extras.id, 0, 1, [[espresso.id, null]]);
     }
     await attach(crepe.id, extras.id, 0, 1, [[strawberry.id, null]]);
-    return { roles: 4, categories: 3, products: 4 };
+    return { roles: 5, categories: 3, products: 4 };
   });
 }

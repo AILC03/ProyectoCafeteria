@@ -1,6 +1,6 @@
 import type { Prisma } from '../../generated/prisma/client.js';
 
-export type RoleName = 'CLIENTE' | 'CAJERO' | 'PREPARACION' | 'ADMINISTRADOR';
+export type RoleName = 'CLIENTE' | 'CAJERO' | 'PREPARACION' | 'ADMINISTRADOR' | 'GERENTE';
 export type AuthUser = Prisma.UserGetPayload<{ include: { role: true } }>;
 export type SessionUser = Prisma.AuthSessionGetPayload<{
   include: { user: { include: { role: true } } };

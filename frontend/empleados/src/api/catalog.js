@@ -37,6 +37,21 @@ export async function createAdminProduct({ categoryId, name, description, basePr
   return res.data;
 }
 
+export async function updateAdminProduct(id, { categoryId, name, description, basePriceCents, isAvailable }) {
+  const body = {};
+  if (categoryId !== undefined) body.categoryId = categoryId.toString();
+  if (name !== undefined) body.name = name.trim();
+  if (description !== undefined) body.description = description ? description.trim() : null;
+  if (basePriceCents !== undefined) body.basePriceCents = basePriceCents.toString();
+  if (isAvailable !== undefined) body.isAvailable = isAvailable;
+
+  const res = await apiFetch(`/admin/products/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
+  return res.data;
+}
+
 export async function createAdminCategory({ name, isActive = true }) {
   const res = await apiFetch('/admin/categories', {
     method: 'POST',

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { isEmployeeAdmin, isEmployeeCashier, isEmployeeKitchen } from '../data/employees.js';
+import { isEmployeeAdmin, isEmployeeCashier, isEmployeeKitchen, isEmployeeGerente } from '../data/employees.js';
 
 export default function PosHeader({
   activeTab,
@@ -16,8 +16,9 @@ export default function PosHeader({
   const dropdownRef = useRef(null);
 
   const isAdmin = isEmployeeAdmin(employee);
+  const isGerente = isEmployeeGerente(employee);
   const isKitchen = isEmployeeKitchen(employee);
-  const isCashier = isEmployeeCashier(employee) && !isAdmin;
+  const isCashier = isEmployeeCashier(employee) && !isAdmin && !isGerente;
 
   // Reloj en tiempo real
   useEffect(() => {
@@ -60,6 +61,7 @@ export default function PosHeader({
 
   function handleOpenConfig() {
     setIsDropdownOpen(false);
+    if (isGerente) return;
     if (onOpenSettings) {
       onOpenSettings();
     }
@@ -81,7 +83,7 @@ export default function PosHeader({
             >
               <span>Cocina / Barista (KDS)</span>
             </div>
-          ) : (
+          ) : isGerente ? null : (
             <>
               {activeTab === 'order' ? (
                 <div
@@ -109,24 +111,6 @@ export default function PosHeader({
                 </button>
               )}
 
-              {activeTab === 'admin-dashboard' && (
-                <span
-                  className="pos-view-tab active"
-                  style={{ cursor: 'default', pointerEvents: 'none' }}
-                >
-                  <span>Administración</span>
-                </span>
-              )}
-
-              {activeTab === 'history' && (
-                <span
-                  className="pos-view-tab active"
-                  style={{ cursor: 'default', pointerEvents: 'none' }}
-                >
-                  <span>Historial de Pedidos</span>
-                </span>
-              )}
-
               {activeTab === 'kitchen' && (
                 <span
                   className="pos-view-tab active"
@@ -136,30 +120,22 @@ export default function PosHeader({
                 </span>
               )}
 
-              {activeTab === 'shift' && (
+              {/* Badges de vista activa para cajero (no admin) */}
+              {!isAdmin && activeTab === 'history' && (
+                <span
+                  className="pos-view-tab active"
+                  style={{ cursor: 'default', pointerEvents: 'none' }}
+                >
+                  <span>Historial de Pedidos</span>
+                </span>
+              )}
+
+              {!isAdmin && activeTab === 'shift' && (
                 <span
                   className="pos-view-tab active"
                   style={{ cursor: 'default', pointerEvents: 'none' }}
                 >
                   <span>Corte de Caja</span>
-                </span>
-              )}
-
-              {activeTab === 'menu-admin' && (
-                <span
-                  className="pos-view-tab active"
-                  style={{ cursor: 'default', pointerEvents: 'none' }}
-                >
-                  <span>Editar Menú</span>
-                </span>
-              )}
-
-              {activeTab === 'users-admin' && (
-                <span
-                  className="pos-view-tab active"
-                  style={{ cursor: 'default', pointerEvents: 'none' }}
-                >
-                  <span>Personal</span>
                 </span>
               )}
             </>
@@ -257,8 +233,8 @@ export default function PosHeader({
                   </button>
                 )}
 
-                {/* Opción: Tomar Orden (Cajero y Admin) */}
-                {!isKitchen && activeTab !== 'order' && (
+                {/* Opción: Tomar Orden (Cajero y Admin - No Gerente) */}
+                {!isKitchen && !isGerente && activeTab !== 'order' && (
                   <button
                     type="button"
                     className="admin-menu-item"
@@ -286,8 +262,8 @@ export default function PosHeader({
                   </button>
                 )}
 
-                {/* Historial de Pedidos (Cajero y Admin) */}
-                {!isKitchen && (
+                {/* Historial de Pedidos (Solo roles sin Panel de Administración: Cajero y Gerente) */}
+                {!isKitchen && !isAdmin && (
                   <button
                     type="button"
                     className="admin-menu-item"
@@ -315,35 +291,37 @@ export default function PosHeader({
                   </button>
                 )}
 
-                {/* Cocina / Barista (KDS) (Todos los roles) */}
-                <button
-                  type="button"
-                  className="admin-menu-item"
-                  onClick={() => {
-                    setIsDropdownOpen(false);
-                    onTabChange('kitchen');
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    minHeight: '40px',
-                    padding: '0.6rem 0.9rem',
-                    borderRadius: '10px',
-                    border: 'none',
-                    background: activeTab === 'kitchen' ? '#0f172a' : 'transparent',
-                    color: activeTab === 'kitchen' ? '#ffffff' : '#334155',
-                    fontSize: '0.88rem',
-                    fontWeight: 600,
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    width: '100%'
-                  }}
-                >
-                  Cocina / Barista (KDS)
-                </button>
+                {/* Cocina / Barista (KDS) (Disponible en el menú de opciones para Admin y Personal) */}
+                {!isGerente && (
+                  <button
+                    type="button"
+                    className="admin-menu-item"
+                    onClick={() => {
+                      setIsDropdownOpen(false);
+                      onTabChange('kitchen');
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      minHeight: '40px',
+                      padding: '0.6rem 0.9rem',
+                      borderRadius: '10px',
+                      border: 'none',
+                      background: activeTab === 'kitchen' ? '#0f172a' : 'transparent',
+                      color: activeTab === 'kitchen' ? '#ffffff' : '#334155',
+                      fontSize: '0.88rem',
+                      fontWeight: 600,
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      width: '100%'
+                    }}
+                  >
+                    Cocina / Barista (KDS)
+                  </button>
+                )}
 
-                {/* Corte de Caja (Cajero y Admin) */}
-                {!isKitchen && (
+                {/* Corte de Caja (Solo roles sin Panel de Administración) */}
+                {!isKitchen && !isAdmin && (
                   <button
                     type="button"
                     className="admin-menu-item"
@@ -371,98 +349,42 @@ export default function PosHeader({
                   </button>
                 )}
 
-                {/* Editar Menú (Solo Admin) */}
-                {isAdmin && (
+                {/* Opción 2: Configuración (Todos excepto Gerente) */}
+                {!isGerente && (
                   <button
                     type="button"
                     className="admin-menu-item"
-                    onClick={() => {
-                      setIsDropdownOpen(false);
-                      onTabChange('menu-admin');
-                    }}
+                    onClick={handleOpenConfig}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      minHeight: '40px',
-                      padding: '0.6rem 0.9rem',
+                      minHeight: '46px',
+                      padding: '0.75rem 1rem',
                       borderRadius: '10px',
                       border: 'none',
-                      background: activeTab === 'menu-admin' ? '#0f172a' : 'transparent',
-                      color: activeTab === 'menu-admin' ? '#ffffff' : '#334155',
-                      fontSize: '0.88rem',
+                      background: 'transparent',
+                      color: '#0f172a',
+                      fontSize: '0.92rem',
                       fontWeight: 600,
                       textAlign: 'left',
                       cursor: 'pointer',
-                      width: '100%'
+                      width: '100%',
+                      touchAction: 'manipulation',
+                      transition: 'background 0.15s'
                     }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.background = '#f8fafc')
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.background = 'transparent')
+                    }
                   >
-                    Editar Menú
+                    Configuración
                   </button>
                 )}
-
-                {/* Personal y Usuarios (Solo Admin) */}
-                {isAdmin && (
-                  <button
-                    type="button"
-                    className="admin-menu-item"
-                    onClick={() => {
-                      setIsDropdownOpen(false);
-                      onTabChange('users-admin');
-                    }}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      minHeight: '40px',
-                      padding: '0.6rem 0.9rem',
-                      borderRadius: '10px',
-                      border: 'none',
-                      background: activeTab === 'users-admin' ? '#0f172a' : 'transparent',
-                      color: activeTab === 'users-admin' ? '#ffffff' : '#334155',
-                      fontSize: '0.88rem',
-                      fontWeight: 600,
-                      textAlign: 'left',
-                      cursor: 'pointer',
-                      width: '100%'
-                    }}
-                  >
-                    Personal y Usuarios
-                  </button>
-                )}
-
-                {/* Opción 2: Configuración (Todos) */}
-                <button
-                  type="button"
-                  className="admin-menu-item"
-                  onClick={handleOpenConfig}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    minHeight: '46px',
-                    padding: '0.75rem 1rem',
-                    borderRadius: '10px',
-                    border: 'none',
-                    background: 'transparent',
-                    color: '#0f172a',
-                    fontSize: '0.92rem',
-                    fontWeight: 600,
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    width: '100%',
-                    touchAction: 'manipulation',
-                    transition: 'background 0.15s'
-                  }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.background = '#f8fafc')
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.background = 'transparent')
-                  }
-                >
-                  Configuración
-                </button>
 
                 {/* Opción 3: Reimprimir Último Ticket (Cajero y Admin) */}
-                {!isKitchen && (
+                {!isKitchen && !isGerente && (
                   <button
                     type="button"
                     className="admin-menu-item"
@@ -569,13 +491,15 @@ export default function PosHeader({
               letterSpacing: '0.04em',
               background: isAdmin
                 ? '#0f172a'
+                : isGerente
+                ? '#7c3aed'
                 : isKitchen
                 ? '#059669'
                 : '#2563eb',
               color: '#ffffff'
             }}
           >
-            {isAdmin ? 'Admin' : isKitchen ? 'Cocina' : 'Cajero'}
+            {isAdmin ? 'Admin' : isGerente ? 'Gerente' : isKitchen ? 'Cocina' : 'Cajero'}
           </span>
         </div>
 
