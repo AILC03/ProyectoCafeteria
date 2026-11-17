@@ -142,12 +142,12 @@ export const DEFAULT_TEST_ACCOUNT = {
 export const DEFAULT_TEST_EMPLOYEES = [
   {
     id: '1',
-    name: 'admin',
-    username: 'admin',
+    name: 'AngelAdmin',
+    username: 'AngelAdmin',
     role: 'ADMINISTRADOR',
     pin: 'Admin1234',
     password: 'Admin1234',
-    avatar: 'AD',
+    avatar: 'AA',
     color: '#0f172a',
     isAdmin: true,
     createdAt: new Date().toISOString()

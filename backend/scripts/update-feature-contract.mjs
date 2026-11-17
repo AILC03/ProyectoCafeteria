@@ -454,7 +454,7 @@ api.paths['/api/v1/auth/login/staff'].post.responses['200'].content['application
   data: { user: exampleUser, csrfToken: 'example-only-not-a-real-token' },
 };
 api.paths['/api/v1/auth/login/staff'].post.requestBody.content['application/json'].example = {
-  username: 'admin',
+  username: 'AngelAdmin',
   password: 'ExampleOnly42',
 };
 api.paths['/api/v1/auth/login/customer'].post.responses['200'].content['application/json'].example =

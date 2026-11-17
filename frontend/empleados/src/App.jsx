@@ -385,41 +385,39 @@ export default function App() {
     let registrationToken = null;
 
     try {
-      const orderItems = cart.map((item) => ({
-        productId: item.id.toString(),
-        quantity: item.qty,
-        optionValueIds: [],
-      }));
+      if (method === 'cash') {
+        const orderItems = cart.map((item) => ({
+          productId: item.id.toString(),
+          quantity: item.qty,
+          optionValueIds: [],
+        }));
 
-      const guestLabel = tableOrCustomer.trim() || (orderType === 'dine-in' ? 'Mostrador' : 'Para Llevar');
-      const methodLabel = method === 'card' ? ' (Tarjeta)' : method === 'transfer' ? ' (Transferencia)' : '';
+        const cashierOrderRes = await createCashierOrder({
+          items: orderItems,
+          guestName: tableOrCustomer.trim() || (orderType === 'dine-in' ? 'Mostrador' : 'Para Llevar'),
+        });
 
-      const cashierOrderRes = await createCashierOrder({
-        items: orderItems,
-        guestName: `${guestLabel}${methodLabel}`.slice(0, 120),
-      });
+        if (cashierOrderRes && cashierOrderRes.data) {
+          const backendOrder = cashierOrderRes.data;
+          backendFolio = backendOrder.folio;
 
-      if (cashierOrderRes && cashierOrderRes.data) {
-        const backendOrder = cashierOrderRes.data;
-        backendFolio = backendOrder.folio;
+          // Cobrar con cargo a sesión de caja en backend
+          const paymentRes = await chargeCashOrder(
+            backendOrder.id,
+            numberToCents(cashReceived)
+          );
+          backendSaleId = paymentRes?.sale?.id || paymentRes?.saleId;
+          changeDue = centsToNumber(paymentRes?.payment?.changeCents || paymentRes?.changeCents || '0');
 
-        // Cobrar con cargo a sesión de caja en backend
-        const amountToCharge = method === 'cash' ? cashReceived : total;
-        const paymentRes = await chargeCashOrder(
-          backendOrder.id,
-          numberToCents(amountToCharge)
-        );
-        backendSaleId = paymentRes?.sale?.id || paymentRes?.saleId;
-        changeDue = centsToNumber(paymentRes?.payment?.changeCents || paymentRes?.changeCents || '0');
-
-        if (backendSaleId) {
-          try {
-            const ticketRes = await issueTicketAccess(backendSaleId);
-            if (ticketRes?.token) {
-              registrationToken = ticketRes.token;
+          if (backendSaleId) {
+            try {
+              const ticketRes = await issueTicketAccess(backendSaleId);
+              if (ticketRes?.token) {
+                registrationToken = ticketRes.token;
+              }
+            } catch (ticketErr) {
+              console.warn('Aviso emisión ticket registration token:', ticketErr);
             }
-          } catch (ticketErr) {
-            console.warn('Aviso emisión ticket registration token:', ticketErr);
           }
         }
       }

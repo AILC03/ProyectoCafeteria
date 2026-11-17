@@ -61,7 +61,7 @@ export default function EmployeePinScreen({ employee, onBack, onLoginSuccess, au
     setErrorMsg('');
 
     try {
-      const username = employee?.username || employee?.name || 'admin';
+      const username = employee?.username || employee?.name || 'AngelAdmin';
       const user = await loginStaff(username, cleanPassword);
 
       playHapticSound('success', audioEnabled);
@@ -204,14 +204,14 @@ export default function EmployeePinScreen({ employee, onBack, onLoginSuccess, au
                 flexShrink: 0
               }}
             >
-              {employee?.avatar || (employee?.username?.toLowerCase().includes('admin') ? 'AD' : employee?.name ? employee.name.slice(0, 2).toUpperCase() : 'EP')}
+              {employee?.avatar || (employee?.name ? employee.name.slice(0, 2).toUpperCase() : 'EP')}
             </div>
             <div className="employee-info-col" style={{ flex: 1, textAlign: 'left' }}>
               <div
                 className="employee-name-text"
                 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', lineHeight: 1.2 }}
               >
-                {employee?.name || (employee?.username?.toLowerCase().includes('admin') ? 'admin' : employee?.username) || 'Empleado'}
+                {employee?.name || employee?.username || 'Empleado'}
               </div>
               <div
                 className="employee-role-text"

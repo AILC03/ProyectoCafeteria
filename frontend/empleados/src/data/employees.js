@@ -11,12 +11,12 @@ const LEGACY_STORAGE_EMPLOYEES_KEY = 'taffy_employees_local';
 export const DEFAULT_EMPLOYEES = [
   {
     id: '1',
-    name: 'admin',
-    username: 'admin',
+    name: 'AngelAdmin',
+    username: 'AngelAdmin',
     role: 'ADMINISTRADOR',
     pin: 'Admin1234',
     password: 'Admin1234',
-    avatar: 'AD',
+    avatar: 'AA',
     color: '#0f172a',
     isAdmin: true,
     createdAt: new Date().toISOString()
@@ -43,31 +43,18 @@ export function getEmployees() {
       const cleaned = parsed.filter(
         (e) =>
           Boolean(e && (e.username || e.name || e.id)) &&
-          e.username !== 'AngelAdmin' &&
-          e.name !== 'AngelAdmin' &&
           !(String(e.id) === '2' && e.username === 'preparacion' && e.demo)
       );
 
-      // Garantizar que la cuenta oficial de administrador (@admin) siempre exista
+      // Garantizar que la cuenta oficial de administrador siempre exista
       const adminIdx = cleaned.findIndex(
         (e) =>
           String(e.id) === '1' ||
-          (e.username && e.username.toLowerCase() === 'admin') ||
-          (e.name && e.name.toLowerCase() === 'admin')
+          (e.username && (e.username.toLowerCase() === 'angeladmin' || e.username.toLowerCase() === 'admin')) ||
+          (e.name && (e.name.toLowerCase() === 'angeladmin' || e.name.toLowerCase() === 'admin'))
       );
 
-      if (adminIdx >= 0) {
-        cleaned[adminIdx] = {
-          ...cleaned[adminIdx],
-          id: '1',
-          name: 'admin',
-          username: 'admin',
-          role: 'ADMINISTRADOR',
-          isAdmin: true,
-          avatar: 'AD',
-          color: '#0f172a'
-        };
-      } else {
+      if (adminIdx < 0) {
         cleaned.unshift({ ...DEFAULT_EMPLOYEES[0] });
       }
 

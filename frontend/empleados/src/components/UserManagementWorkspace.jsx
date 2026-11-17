@@ -8,7 +8,7 @@ import {
   isEmployeeAdmin
 } from '../data/employees.js';
 import { showToast, showConfirm } from '../utils/notify.js';
-import { getAdminEmployees, createAdminEmployee, updateAdminEmployee, deleteAdminEmployee } from '../api/employees.js';
+import { getAdminEmployees, createAdminEmployee, updateAdminEmployee } from '../api/employees.js';
 import { loginStaff } from '../api/auth.js';
 
 export default function UserManagementWorkspace({ currentEmployee }) {
@@ -274,47 +274,6 @@ export default function UserManagementWorkspace({ currentEmployee }) {
           showToast(`Usuario ${emp.name} reactivado con éxito en la base de datos.`, 'success');
         } catch (err) {
           showToast(err.message || 'Error al reactivar usuario en la base de datos', 'error');
-        }
-      }
-    });
-  }
-
-  // Eliminar definitivamente de la base de datos
-  function handlePermanentDelete(emp) {
-    const currentId = currentEmployee?.id;
-    if (String(emp.id).trim() === String(currentId).trim()) {
-      showToast('No puedes eliminar tu propio usuario mientras tienes la sesión iniciada.', 'error');
-      return;
-    }
-
-    showConfirm({
-      title: 'Eliminar Empleado Definitivamente',
-      message: `¿Estás seguro de eliminar a ${emp.name}? Si el empleado no tiene turnos ni órdenes asociadas se borrará completamente; si tiene transacciones se mantendrá dado de baja para preservar la auditoría.`,
-      confirmText: 'Eliminar',
-      cancelText: 'Cancelar',
-      isDestructive: true,
-      onConfirm: async () => {
-        try {
-          if (/^\d+$/.test(String(emp.id))) {
-            const res = await deleteAdminEmployee(emp.id);
-            if (res?.deleted) {
-              deleteEmployee(emp.id);
-              setEmployees((prev) => prev.filter((e) => String(e.id).trim() !== String(emp.id).trim()));
-              showToast(res.message || `Usuario ${emp.name} eliminado de la base de datos.`, 'success');
-            } else {
-              updateEmployee(emp.id, { isActive: false });
-              setEmployees((prev) =>
-                prev.map((e) => (String(e.id).trim() === String(emp.id).trim() ? { ...e, isActive: false } : e))
-              );
-              showToast(res?.message || `Usuario ${emp.name} dado de baja (historial preservado).`, 'info');
-            }
-          } else {
-            deleteEmployee(emp.id);
-            setEmployees((prev) => prev.filter((e) => String(e.id).trim() !== String(emp.id).trim()));
-            showToast(`Usuario ${emp.name} eliminado.`, 'success');
-          }
-        } catch (err) {
-          showToast(err.message || 'Error al eliminar usuario en la base de datos', 'error');
         }
       }
     });
@@ -645,24 +604,6 @@ export default function UserManagementWorkspace({ currentEmployee }) {
                           Dar de alta
                         </button>
                       )}
-                      <button
-                        type="button"
-                        onClick={() => handlePermanentDelete(emp)}
-                        disabled={isCurrent}
-                        title={isCurrent ? 'No puedes eliminar tu propia cuenta' : 'Eliminar permanentemente de la base de datos'}
-                        style={{
-                          padding: '0.35rem 0.65rem',
-                          background: isCurrent ? '#f1f5f9' : '#ffffff',
-                          border: '1px solid #e2e8f0',
-                          borderRadius: '6px',
-                          fontSize: '0.8rem',
-                          fontWeight: 600,
-                          cursor: isCurrent ? 'not-allowed' : 'pointer',
-                          color: isCurrent ? '#94a3b8' : '#64748b'
-                        }}
-                      >
-                        Eliminar
-                      </button>
                     </div>
                   </td>
                 </tr>

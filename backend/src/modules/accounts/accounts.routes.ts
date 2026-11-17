@@ -48,13 +48,6 @@ export function accountsRoutes(auth: AuthService, service: AccountsService) {
       ),
     );
   });
-  router.delete('/admin/employees/:id', ...admin, protect, async (req, res) => {
-    res.json(
-      jsonValue(
-        await service.deleteEmployee(principal(res), BigInt(idSchema.parse(req.params.id))),
-      ),
-    );
-  });
   router.patch('/admin/customers/:id', ...admin, protect, async (req, res) => {
     res.json(
       jsonValue(

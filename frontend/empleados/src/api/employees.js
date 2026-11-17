@@ -30,11 +30,3 @@ export async function updateAdminEmployee(id, { name, role, isActive, reason }) 
   });
   return res.data;
 }
-
-export async function deleteAdminEmployee(id) {
-  const res = await apiFetch(`/admin/employees/${id}`, {
-    method: 'DELETE',
-    body: JSON.stringify({}),
-  });
-  return res.data || res;
-}

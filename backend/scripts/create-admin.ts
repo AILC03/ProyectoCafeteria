@@ -40,7 +40,7 @@ async function main() {
     !['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)
   )
     throw new Error('Solo desarrollo local.');
-  const password = await readSecret('Contraseña de admin (8–24 caracteres, oculta): ');
+  const password = await readSecret('Contraseña de AngelAdmin (8–24 caracteres, oculta): ');
   if (password.length < 8 || password.length > 24)
     throw new Error('La contraseña debe tener entre 8 y 24 caracteres.');
   const confirmation = await readSecret('Confirma contraseña (oculta): ');
@@ -55,27 +55,19 @@ async function main() {
   try {
     const role = await db.role.findUnique({ where: { name: 'ADMINISTRADOR' } });
     if (!role) throw new Error('Ejecuta primero db:seed.');
-    const existing = await db.user.findFirst({
-      where: { username: { in: ['admin', 'AngelAdmin'] } },
-    });
-    if (existing) {
-      await db.user.update({
-        where: { id: existing.id },
-        data: { name: 'admin', username: 'admin', passwordHash },
-      });
-      console.info('Usuario administrador actualizado a "admin" con Argon2id.');
-      return;
-    }
+    const existing = await db.user.findUnique({ where: { username: 'AngelAdmin' } });
+    if (existing)
+      throw new Error('AngelAdmin ya existe; no se modificó ni restableció su contraseña.');
     await db.user.create({
       data: {
         accountType: 'STAFF',
         roleId: role.id,
-        name: 'admin',
-        username: 'admin',
+        name: 'AngelAdmin',
+        username: 'AngelAdmin',
         passwordHash,
       },
     });
-    console.info('admin creado con Argon2id. No hay contraseña guardada en archivos.');
+    console.info('AngelAdmin creado con Argon2id. No hay contraseña guardada en archivos.');
   } finally {
     await db.$disconnect();
   }
@@ -88,7 +80,7 @@ main().catch((error: unknown) => {
       'La contraseña debe tener entre 8 y 24 caracteres.',
       'Las contraseñas no coinciden.',
       'Ejecuta primero db:seed.',
-      'admin ya existe; no se modificó ni restableció su contraseña.',
+      'AngelAdmin ya existe; no se modificó ni restableció su contraseña.',
       'Ejecuta este comando en tu terminal local interactiva.',
     ].includes(error.message);
   console.error(

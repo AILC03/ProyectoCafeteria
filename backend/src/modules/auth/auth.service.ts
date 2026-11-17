@@ -83,15 +83,10 @@ export class AuthService {
       } catch {
         correct = false;
       }
-      const isStaffAdmin =
-        kind === 'staff' &&
-        user &&
-        ['admin', 'angeladmin'].includes(identifier.trim().toLowerCase()) &&
-        ['admin', 'angeladmin'].includes((user.username || '').trim().toLowerCase());
       const matchesIdentifier =
         user &&
         (kind === 'staff'
-          ? user.username === identifier || isStaffAdmin
+          ? user.username === identifier
           : user.phone === identifier || user.customerNumber === identifier);
       if (!validUser(user) || !correct || !matchesIdentifier) {
         const count = counter.attemptCount + 1;
@@ -103,18 +98,6 @@ export class AuthService {
           },
         });
         return { status: count >= 5 ? 'blocked' : 'invalid' } as const;
-      }
-      if (user && kind === 'staff' && user.username === 'AngelAdmin') {
-        try {
-          await tx.user.update({
-            where: { id: user.id },
-            data: { username: 'admin', name: 'admin' },
-          });
-          user.username = 'admin';
-          user.name = 'admin';
-        } catch {
-          // Ignorar si el usuario ya fue actualizado previamente o existe conflicto de alias
-        }
       }
       await tx.authAttemptLimit.update({
         where: { id: counter.id },

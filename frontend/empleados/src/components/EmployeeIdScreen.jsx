@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { findEmployee } from '../data/employees.js';
+import { getEmployees, saveEmployees, findEmployee } from '../data/employees.js';
 import { playHapticSound } from '../utils/audio.js';
+import { getAdminEmployees } from '../api/employees.js';
 
 export default function EmployeeIdScreen({ onBack, onEmployeeIdentified, audioEnabled }) {
   const [username, setUsername] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [shake, setShake] = useState(false);
+  const [employeesList, setEmployeesList] = useState(getEmployees);
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -13,6 +15,39 @@ export default function EmployeeIdScreen({ onBack, onEmployeeIdentified, audioEn
     if (inputRef.current) {
       inputRef.current.focus();
     }
+
+    // Intentar sincronizar lista de empleados del backend si es posible
+    let isMounted = true;
+    getAdminEmployees()
+      .then((apiList) => {
+        if (isMounted && apiList && Array.isArray(apiList) && apiList.length > 0) {
+          const mapped = apiList.map((e) => ({
+            id: String(e.id),
+            name: e.name,
+            username: e.username,
+            role: e.role,
+            avatar: e.name
+              ? e.name.slice(0, 2).toUpperCase()
+              : e.username
+              ? e.username.slice(0, 2).toUpperCase()
+              : 'EM',
+            color: e.role === 'ADMINISTRADOR' ? '#0f172a' : '#2563eb',
+            isAdmin: e.role === 'ADMINISTRADOR',
+            isActive: e.isActive !== false,
+            isSyncedWithDb: true,
+          }));
+          saveEmployees(mapped);
+          setEmployeesList(mapped);
+        }
+      })
+      .catch(() => {
+        // Fallback a los datos locales
+        setEmployeesList(getEmployees());
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   function triggerError(msg) {
@@ -23,6 +58,15 @@ export default function EmployeeIdScreen({ onBack, onEmployeeIdentified, audioEn
     if (inputRef.current) {
       inputRef.current.focus();
     }
+  }
+
+  function handleSelectEmployee(emp) {
+    if (emp.isActive === false) {
+      triggerError(`La cuenta del usuario "@${emp.username || emp.name}" ha sido dada de baja o se encuentra inactiva.`);
+      return;
+    }
+    playHapticSound('success', audioEnabled);
+    onEmployeeIdentified(emp);
   }
 
   function handleSubmit(e) {
@@ -314,6 +358,124 @@ export default function EmployeeIdScreen({ onBack, onEmployeeIdentified, audioEn
               <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>&rarr;</span>
             </button>
           </form>
+
+          {/* Separador */}
+          <div
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              margin: '1.25rem 0 1rem',
+              color: '#94a3b8',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em'
+            }}
+          >
+            <div style={{ flex: 1, height: '1px', backgroundColor: '#e2e8f0' }}></div>
+            <span style={{ padding: '0 0.85rem' }}>o selecciona tu perfil</span>
+            <div style={{ flex: 1, height: '1px', backgroundColor: '#e2e8f0' }}></div>
+          </div>
+
+          {/* Lista de perfiles registrados para clic rápido */}
+          <div
+            className="quick-employees-list"
+            style={{
+              width: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.6rem',
+              maxHeight: '220px',
+              overflowY: 'auto',
+              paddingRight: '0.2rem'
+            }}
+          >
+            {employeesList.map((emp) => {
+              const displayHandle = emp.username || emp.name;
+              return (
+                <button
+                  key={emp.id || emp.username}
+                  type="button"
+                  onClick={() => handleSelectEmployee(emp)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.85rem',
+                    padding: '0.65rem 0.95rem',
+                    borderRadius: '16px',
+                    border: '1px solid #e2e8f0',
+                    backgroundColor: '#ffffff',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'all 0.15s ease',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#f1f5f9';
+                    e.currentTarget.style.borderColor = '#cbd5e1';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#ffffff';
+                    e.currentTarget.style.borderColor = '#e2e8f0';
+                    e.currentTarget.style.transform = 'none';
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '38px',
+                      height: '38px',
+                      borderRadius: '50%',
+                      backgroundColor: emp.color || (emp.role === 'ADMINISTRADOR' ? '#0f172a' : emp.role === 'GERENTE' ? '#7c3aed' : '#2563eb'),
+                      color: '#ffffff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '0.9rem',
+                      fontWeight: 800,
+                      flexShrink: 0
+                    }}
+                  >
+                    {emp.avatar || (emp.name ? emp.name.slice(0, 2).toUpperCase() : 'EM')}
+                  </div>
+
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
+                      style={{
+                        fontSize: '0.92rem',
+                        fontWeight: 700,
+                        color: '#0f172a',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}
+                    >
+                      {emp.name || displayHandle}
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>
+                      @{displayHandle}
+                    </div>
+                  </div>
+
+                  <span
+                    style={{
+                      fontSize: '0.7rem',
+                      fontWeight: 700,
+                      padding: '0.25rem 0.55rem',
+                      borderRadius: '9999px',
+                      backgroundColor: emp.role === 'ADMINISTRADOR' ? '#0f172a' : emp.role === 'GERENTE' ? '#ede9fe' : '#e0e7ff',
+                      color: emp.role === 'ADMINISTRADOR' ? '#ffffff' : emp.role === 'GERENTE' ? '#6d28d9' : '#3730a3',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em'
+                    }}
+                  >
+                    {emp.role || 'EMPLEADO'}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </main>
       </div>
     </section>
