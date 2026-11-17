@@ -7,8 +7,16 @@ export function csrf(service: AuthService): RequestHandler {
   return async (request, _response, next) => {
     const header = request.headers['x-csrf-token'];
     const stored = cookie(request, names(service).csrf);
-    const allowedOrigins = [service.config.origin, 'http://localhost:5173', 'http://localhost:5174'];
-    if (!allowedOrigins.includes(request.headers.origin ?? '') || typeof header !== 'string' || !stored)
+    const allowedOrigins = [
+      service.config.origin,
+      'http://localhost:5173',
+      'http://localhost:5174',
+    ];
+    if (
+      !allowedOrigins.includes(request.headers.origin ?? '') ||
+      typeof header !== 'string' ||
+      !stored
+    )
       throw new HttpProblem(403, 'CSRF_INVALID', 'Protección CSRF inválida');
     const binding = await service.binding(cookie(request, names(service).refresh));
     service.tokens.verifyCsrf(stored, header, binding);
