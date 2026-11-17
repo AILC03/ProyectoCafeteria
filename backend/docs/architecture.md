@@ -1,9 +1,10 @@
 # Arquitectura
 
-## Base acordada
+## Base acordada — ADR 0013
 
-Frontend y backend en repositorios separados. Backend implementado con Node.js,
-Express, TypeScript y PostgreSQL; comunicación HTTP/JSON mediante API REST.
+Backend y dos aplicaciones frontend en un mismo repositorio, organizados en
+`backend/` y `frontend/clientes/` y `frontend/empleados/`. El backend usa Node.js,
+Express, TypeScript y PostgreSQL; la comunicación es HTTP/JSON mediante API REST.
 
 ## Organización aceptada — ADR 0003
 
@@ -48,6 +49,8 @@ perfil e historial de órdenes propios, sin edición/administración de clientes
 FIN-01 añade `accounts`, lecturas HTTP de `sales`, proveedor Stripe inyectable y
 `src/worker/` como proceso separado con jobs/outbox PostgreSQL, leases con fencing,
 reintentos y payload cifrado. Las llamadas externas quedan fuera de transacciones.
+ADR 0013 acepta el repositorio común con backend y aplicaciones frontend separadas
+por directorio; el contrato HTTP se conserva.
 Server/worker no habilitan Stripe real; pruebas usan simulación. Las consultas propias reusan transacciones y
 revalidación de actor de ORD-01 y paginación común con scope ligado al cliente.
 Ver [estado vigente](README.md), [lecturas propias](customers-implementation.md)

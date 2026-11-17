@@ -16,13 +16,13 @@ la decisión técnica aceptada.
 
 ## Decisiones de negocio ya aprobadas
 
-Repositorios separados; backend Node/Express/TypeScript/PostgreSQL; orders común
+Repositorio monolítico de aplicaciones por ADR 0013; backend Node/Express/TypeScript/PostgreSQL; orders común
 para Stripe y efectivo; dinero en centavos, históricos y bajas lógicas;
 recargos globales excepto tamaños por producto. Ver reglas y diccionario.
 
 ## Estado actual
 
-ADR 0001–0012 están aceptadas. En entregas locales pendientes de revisión/integración
+ADR 0001–0013 están aceptadas. En entregas locales pendientes de revisión/integración
 ya se implementaron infraestructura y persistencia, catálogo, auth/admin, `ORD-01`,
 `CASH-01/02` y registro QR `AUTH-02`; que una ADR esté aceptada no convierte
 automáticamente el resto de sus flujos en funcionalidad disponible.
@@ -36,6 +36,8 @@ No se cambia la aceptación de ADR ni se afirma despliegue. Consultar el
 [contrato](../api/contract-plan.md) y las tareas de desarrollo.
 
 ## ADR registrados
+
+- [0013 — Organización del repositorio de aplicaciones](0013-application-repository-layout.md): Aceptada explícitamente por Ángel el 2026-11-16.
 
 - [0009 — Seguridad web, imágenes y operación](0009-web-security-operation.md): Aceptado por el responsable del backend.
 

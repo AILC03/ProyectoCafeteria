@@ -39,7 +39,8 @@ Convenciones aceptadas en ADR 0006; completar cada operación conforme a
 
 Coordinar esquema/migraciones con Leonel, revisando ADR y criterios de aceptación;
 coordinar contrato con Enrique.
-ADR 0001–0012 aceptadas; Ángel aceptó explícitamente ADR 0012 el 2026-10-26.
+ADR 0001–0013 aceptadas; Ángel aceptó explícitamente ADR 0012 el 2026-10-26
+y ADR 0013 el 2026-11-16.
 Cloudinary continúa simulado, también en CI; no se autoriza configurar el proveedor real.
 Modelo físico, catálogo, auth/admin, ORD-01, caja/cobro CASH y registro QR tienen
 implementación presente; consultar [estado vigente y límites](README.md).

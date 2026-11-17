@@ -52,10 +52,10 @@ echo [2/4] Iniciando Backend API (Puerto 3000)...
 start "Backend API (Puerto 3000)" cmd /k "title Backend API && npm.cmd run dev"
 
 echo [3/4] Iniciando Frontend Clientes (Puerto 5173)...
-start "Frontend Clientes (Puerto 5173)" cmd /k "title Frontend Clientes && cd frontend-clientes && npm.cmd run dev"
+start "Frontend Clientes (Puerto 5173)" cmd /k "title Frontend Clientes && cd ..\frontend\clientes && npm.cmd run dev"
 
 echo [4/4] Iniciando Frontend Empleados / POS (Puerto 5174)...
-start "Frontend Empleados / POS (Puerto 5174)" cmd /k "title Frontend Empleados && cd frontend-empleados && npm.cmd run dev"
+start "Frontend Empleados / POS (Puerto 5174)" cmd /k "title Frontend Empleados && cd ..\frontend\empleados && npm.cmd run dev"
 
 echo.
 echo ======================================================

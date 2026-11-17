@@ -43,13 +43,24 @@ jobs:
         with:
           node-version: '22'
           cache: npm
+          cache-dependency-path: backend/package-lock.json
       - run: npm ci
+        working-directory: backend
       - run: npm run format:check
+        working-directory: backend
       - run: npm run db:validate
+        working-directory: backend
       - run: npm run typecheck
+        working-directory: backend
       - run: npm run lint
+        working-directory: backend
       - run: npm run api:validate
+        working-directory: backend
       - run: npm test
+        working-directory: backend
       - run: npm run test:integration
+        working-directory: backend
       - run: npm run db:verify
+        working-directory: backend
       - run: npm run build
+        working-directory: backend

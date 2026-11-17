@@ -1,7 +1,8 @@
 # Backend — Proyecto Cafetería
 
 API del Sistema Web de Gestión de Órdenes para Cafetería, equipo ESMAOS.
-El frontend tendrá un repositorio separado.
+Las aplicaciones frontend de clientes y empleados están en `../frontend/clientes`
+y `../frontend/empleados`, respectivamente.
 
 ## Desarrollo con IA y contribuciones
 
@@ -66,7 +67,8 @@ con claves externas y configuración operativa pendientes de cada entorno.
 
 ## Ejecutar localmente
 
-Node 22 (mínimo 22.13). Instalar dependencias con `npm ci`.
+Node 22 (mínimo 22.13). Ejecutar los comandos desde `backend/` e instalar
+dependencias con `npm ci`.
 Con Docker Desktop abierto, `npm run db:up` prepara PostgreSQL y tres bases locales;
 `npm run db:check:docker` verifica conexión y `npm run dev:docker` inicia la API
 con ese entorno. No modifica el `.env` existente ni aplica migraciones.
@@ -93,6 +95,7 @@ regresión solo cuando Docker esté disponible. Ver guía de verificación.
 
 ## Organización
 
+- `../frontend/clientes/` y `../frontend/empleados/`: aplicaciones web.
 - `src/modules/`: funcionalidades de negocio.
 - `src/middleware/`: autenticación, permisos y tratamiento HTTP transversal.
 - `src/config/`: configuración validada desde variables de entorno.

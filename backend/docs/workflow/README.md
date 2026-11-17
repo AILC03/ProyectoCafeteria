@@ -105,7 +105,7 @@ Si no hay entorno o credenciales, informar **no ejecutado/bloqueado**, causa e i
 
 ## 6. Entregar y obtener revisión
 
-Usar la [plantilla de PR](../../.github/pull_request_template.md). Entregar:
+Usar la [plantilla de PR](../../../.github/pull_request_template.md). Entregar:
 resumen, criterios con evidencia, comandos realmente ejecutados, fallos/omitidos,
 impacto en API/BD, instrucciones operativas y pendientes. Diferenciar siempre:
 **propuesto**, **aprobado**, **implementado**, **verificado** y **pendiente**.
@@ -118,8 +118,9 @@ explícita del responsable para pendientes realmente fuera del alcance.
 
 ### Configuración manual de GitHub
 
-Se incluye `.github/workflows/backend-ci.yml`, sin usar secretos reales. Solo se
-ejecutará al publicarse y habilitar Actions. Después de una primera ejecución:
+El workflow `../.github/workflows/backend-ci.yml` permanece en la raíz del
+repositorio, sin usar secretos reales. Solo se ejecutará al publicarse y habilitar
+Actions. Después de una primera ejecución:
 
 1. Proteger `dev` y `main` con rulesets/branch protection según el plan de GitHub.
 2. Exigir PR, al menos una aprobación ajena al autor y resolución de conversaciones.

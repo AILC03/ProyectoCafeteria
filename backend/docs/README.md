@@ -20,7 +20,7 @@ evidencia histórica de cada entrega. Stripe real no habilitado en server/worker
 | FAV-01                | Favoritos propios de producto y preview revisable de repetición con precios actuales/avisos                                  | Revisión/integración y UI de confirmación pendientes; confirmar usa POST orders existente.        |
 | FIN-01                | Ventas/resumen; worker con leases/reintentos/outbox cifrada; Stripe Checkout/eventos/reconciliación/refund; tickets Stripe   | Proveedores simulados en pruebas; sin Stripe runtime ni servicios remotos configurados.           |
 
-Contrato actual: [OpenAPI 0.11.0](api/openapi.yaml). ADR 0001–0012 aceptados;
+Contrato actual: [OpenAPI 0.11.0](api/openapi.yaml). ADR 0001–0013 aceptados;
 aceptación, implementación, evidencia de pruebas e integración son estados distintos.
 No se deduce integración/publicación por un árbol limpio o por la rama local.
 CUS-01 no añade migraciones, secretos ni dependencias; se limita a consultas propias.

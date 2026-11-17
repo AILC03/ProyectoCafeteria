@@ -11,7 +11,8 @@ Usar la [plantilla de tarea](docs/workflow/task-template.md) y la plantilla de P
 4. Abrir pull request con resumen, comprobaciones y cambios de API o esquema.
 5. Obtener revisión de otro integrante antes de integrar a `dev`; promover a `main` mediante PR revisado.
 
-`main` debe permanecer estable. CI está definida en `.github/workflows/backend-ci.yml`;
+`main` debe permanecer estable. CI está definida en
+`../.github/workflows/backend-ci.yml`;
 su ejecución remota y las protecciones de ramas deben habilitarse/verificarse en
 GitHub según el flujo. Un archivo local no demuestra que estén activas.
 
