@@ -13,11 +13,12 @@ import { PayloadCipher } from '../../worker/payload-cipher.js';
 import { AccountsRepository, customerFields, staffFields } from './accounts.repository.js';
 import type * as input from './accounts.validation.js';
 
-const conflict = () =>
+const conflict = (detail?: string) =>
   new HttpProblem(
     409,
     'ACCOUNT_CONFLICT',
-    'La operación entra en conflicto con el estado de la cuenta',
+    detail || 'La operación entra en conflicto con el estado de la cuenta',
+    detail || 'La operación entra en conflicto con el estado de la cuenta',
   );
 const accepted = { data: { accepted: true } };
 export class AccountsService {
@@ -132,12 +133,27 @@ export class AccountsService {
       );
     });
   }
+  private async getOrEnsureRole(tx: Prisma.TransactionClient, roleName: string) {
+    let role = await tx.role.findUnique({ where: { name: roleName } });
+    if (
+      !role &&
+      ['CLIENTE', 'CAJERO', 'PREPARACION', 'ADMINISTRADOR', 'GERENTE'].includes(roleName)
+    ) {
+      role = await tx.role.upsert({
+        where: { name: roleName },
+        create: { name: roleName },
+        update: {},
+      });
+    }
+    if (!role) throw notFound();
+    return role;
+  }
   async createEmployee(actor: Principal, body: z.infer<typeof input.employeeCreate>) {
     const passwordHash = await hashCredential(body.password);
     return this.unique(() =>
       this.repository.transaction(async (tx) => {
         await this.actor(tx, actor, 'ADMINISTRADOR');
-        const role = await tx.role.findUniqueOrThrow({ where: { name: body.role } });
+        const role = await this.getOrEnsureRole(tx, body.role);
         const user = await tx.user.create({
           data: {
             accountType: 'STAFF',
@@ -162,15 +178,20 @@ export class AccountsService {
       const changesAccess =
         (body.role !== undefined && body.role !== user.role.name) ||
         (body.isActive !== undefined && body.isActive !== user.isActive);
+      if (id === actor.userId && changesAccess) {
+        throw conflict(
+          'No puedes modificar tu propio rol o darte de baja mientras tienes la sesión iniciada',
+        );
+      }
       if (
-        (id === actor.userId && changesAccess) ||
-        ((body.isActive === false || body.role === 'PREPARACION') &&
-          (await tx.cashSession.findFirst({ where: { employeeId: id, closedAt: null } })))
-      )
-        throw conflict();
-      const role = body.role
-        ? await tx.role.findUniqueOrThrow({ where: { name: body.role } })
-        : undefined;
+        (body.isActive === false || body.role === 'PREPARACION' || body.role === 'GERENTE') &&
+        (await tx.cashSession.findFirst({ where: { employeeId: id, closedAt: null } }))
+      ) {
+        throw conflict(
+          'No se puede dar de baja o cambiar rol a un empleado con un turno de caja abierto. Debe cerrarse la caja primero.',
+        );
+      }
+      const role = body.role ? await this.getOrEnsureRole(tx, body.role) : undefined;
       const data = await tx.user.update({
         where: { id },
         data: { name: body.name, isActive: body.isActive, roleId: role?.id },

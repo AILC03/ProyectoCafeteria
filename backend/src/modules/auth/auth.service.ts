@@ -21,7 +21,7 @@ function validUser(user: AuthUser | null): user is AuthUser {
     user.isActive &&
     (user.accountType === 'CUSTOMER'
       ? user.role.name === 'CLIENTE'
-      : ['CAJERO', 'PREPARACION', 'ADMINISTRADOR'].includes(user.role.name))
+      : ['CAJERO', 'PREPARACION', 'ADMINISTRADOR', 'GERENTE'].includes(user.role.name))
   );
 }
 export class AuthService {

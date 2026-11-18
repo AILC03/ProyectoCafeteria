@@ -27,24 +27,45 @@ export const AuthPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!identifier.trim()) {
+    const cleanIdent = identifier.trim().replace(/^@/, '');
+    if (!cleanIdent) {
       showToast('Por favor introduce tu teléfono o número de cliente.', 'warning');
       return;
     }
 
-    if (pin.length !== 4) {
-      showToast('El PIN debe tener 4 dígitos exactos.', 'warning');
+    // Validar formato de entrada
+    const isPhone = /^(\+?52\s?)?\d{10}$/.test(cleanIdent) || /^\d{10}$/.test(cleanIdent);
+    const isCustNum = /^C\d{1,19}$/i.test(cleanIdent);
+
+    if (!isPhone && !isCustNum) {
+      showToast('Formato de entrada no válido. Debe ser tu celular a 10 dígitos (ej. 5512345678) o tu número de cliente (ej. C000105).', 'error');
+      return;
+    }
+
+    if (!/^\d{4}$/.test(pin)) {
+      showToast('El PIN debe tener exactamente 4 dígitos numéricos.', 'warning');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const res = await login(identifier, pin);
+      const res = await login(cleanIdent, pin);
       if (res.success) {
         showToast('¡Sesión iniciada con éxito! Bienvenido de vuelta. ☕', 'success');
         navigate('/menu');
       } else {
-        showToast(res.message || 'Credenciales incorrectas.', 'error');
+        const isNotFoundOrWrong =
+          !res.message ||
+          res.message.includes('401') ||
+          res.message.includes('Credenciales') ||
+          res.message.includes('UNAUTHORIZED') ||
+          res.message.includes('inválido');
+
+        const msg: string = isNotFoundOrWrong
+          ? 'Usuario no registrado o credenciales incorrectas. Verifica tus datos o ingresa como invitado.'
+          : (res.message || 'Error al iniciar sesión.');
+
+        showToast(msg, 'error');
       }
     } finally {
       setIsSubmitting(false);
@@ -54,32 +75,49 @@ export const AuthPage: React.FC = () => {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!regName.trim()) {
+    const cleanName = regName.trim();
+    if (!cleanName) {
       showToast('Por favor introduce tu nombre completo.', 'warning');
+      return;
+    }
+
+    if (cleanName.length < 3 || cleanName.length > 60) {
+      showToast('El nombre completo debe tener entre 3 y 60 caracteres.', 'warning');
+      return;
+    }
+
+    if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s'-]+$/.test(cleanName)) {
+      showToast('El nombre solo debe contener letras y espacios.', 'warning');
       return;
     }
 
     const cleanPhone = regPhone.replace(/\D/g, '');
     if (cleanPhone.length !== 10) {
-      showToast('Introduce un número celular de 10 dígitos (ej. 5512345678).', 'warning');
+      showToast('Introduce un número celular válido de 10 dígitos (ej. 5512345678).', 'warning');
       return;
     }
 
-    if (regPin.length !== 4) {
+    if (!/^\d{4}$/.test(regPin)) {
       showToast('El PIN debe tener 4 dígitos exactos.', 'warning');
       return;
     }
 
-    if (!regToken.trim()) {
-      showToast('Ingresa el código de 43 caracteres que aparece al final de tu ticket de compra.', 'warning');
+    const cleanToken = regToken.trim();
+    if (!cleanToken) {
+      showToast('Ingresa el código que aparece al final de tu ticket de compra.', 'warning');
+      return;
+    }
+
+    if (cleanToken.length < 40 || cleanToken.length > 50) {
+      showToast('El código de registro del ticket debe tener 43 caracteres exactos.', 'warning');
       return;
     }
 
     setIsRegistering(true);
     try {
       const customer = await registerWithTicket({
-        token: regToken.trim(),
-        name: regName.trim(),
+        token: cleanToken,
+        name: cleanName,
         phone: cleanPhone,
         pin: regPin,
       });
@@ -236,8 +274,9 @@ export const AuthPage: React.FC = () => {
                       id="identifier"
                       type="text"
                       required
+                      maxLength={20}
                       value={identifier}
-                      onChange={(e) => setIdentifier(e.target.value)}
+                      onChange={(e) => setIdentifier(e.target.value.trim())}
                       placeholder="Ej. 5512345678 o C000105"
                       className="w-full h-12 px-4 rounded-DEFAULT bg-surface-container-low text-on-surface font-body-md text-sm placeholder:text-outline/70 focus:outline-none focus:bg-surface-container transition-all border border-outline-variant/40"
                     />
@@ -302,6 +341,7 @@ export const AuthPage: React.FC = () => {
                     id="regName"
                     type="text"
                     required
+                    maxLength={60}
                     value={regName}
                     onChange={(e) => setRegName(e.target.value)}
                     placeholder="Ej. Mariana López"
@@ -355,8 +395,9 @@ export const AuthPage: React.FC = () => {
                     id="regToken"
                     type="text"
                     required
+                    maxLength={43}
                     value={regToken}
-                    onChange={(e) => setRegToken(e.target.value)}
+                    onChange={(e) => setRegToken(e.target.value.trim())}
                     placeholder="Token impreso al pie de tu ticket"
                     className="w-full h-11 px-3 rounded-DEFAULT bg-surface-container-low text-on-surface font-mono text-xs placeholder:text-outline/70 focus:outline-none focus:bg-surface-container transition-all border border-outline-variant/40"
                   />

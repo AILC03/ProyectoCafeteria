@@ -10,6 +10,12 @@ cd /d "%~dp0"
 :: Asegurar que Node.js y Docker esten en el PATH de la sesion
 set "PATH=C:\Program Files\nodejs;C:\Program Files\Docker\Docker\resources\bin;%PATH%"
 
+:: Deteccion de IP Local
+set "IP_LOCAL=localhost"
+for /f "tokens=2 delims=:" %%a in ('ipconfig ^| findstr /c:"IPv4" ^| findstr /v "192.168.56." ^| findstr /v "172."') do (
+    for /f "tokens=1" %%b in ("%%a") do set "IP_LOCAL=%%b"
+)
+
 echo [1/4] Verificando Docker y PostgreSQL...
 docker ps >nul 2>&1
 if %errorlevel% equ 0 goto docker_listo
@@ -61,9 +67,10 @@ echo.
 echo ======================================================
 echo  Todos los servicios han sido lanzados con exito:
 echo.
-echo  - Backend API:       http://localhost:3000/api/v1/health
-echo  - Frontend Clientes: http://localhost:5173
-echo  - POS Empleados:     http://localhost:5174
+echo  - Backend API:        http://localhost:3000/api/v1/health
+echo  - Frontend Clientes:  http://localhost:5173
+echo  - Acceso Celular/Red: http://%IP_LOCAL%:5173
+echo  - POS Empleados:      http://localhost:5174
 echo ======================================================
 echo.
 if /i "%~1" equ "/no-pause" goto fin

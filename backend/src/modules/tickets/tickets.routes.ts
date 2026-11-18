@@ -42,7 +42,7 @@ export function ticketsRoutes(auth: AuthService, service: TicketsService) {
     '/sales/:id/ticket',
     privateCashResponse,
     authenticate(auth),
-    authorize('CAJERO'),
+    authorize('CAJERO', 'GERENTE'),
     ticketsController(service).get,
   );
   return router;

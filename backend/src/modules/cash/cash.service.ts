@@ -8,7 +8,7 @@ import { cashConflict, checkedCents } from './cash.rules.js';
 import type { CloseInput } from './cash.validation.js';
 
 export function requireCashRole(role: RoleName) {
-  if (!['CAJERO', 'ADMINISTRADOR'].includes(role)) throw forbidden();
+  if (!['CAJERO', 'ADMINISTRADOR', 'GERENTE'].includes(role)) throw forbidden();
 }
 function canonical(value: unknown): string {
   if (value && typeof value === 'object' && !Array.isArray(value))
@@ -84,7 +84,8 @@ export class CashService {
       key,
       { openingAmountCents: amount },
       this.now,
-      async (tx) => {
+      async (tx, role) => {
+        if (role !== 'CAJERO' && role !== 'ADMINISTRADOR') throw forbidden();
         await tx.lockCash();
         if (await tx.active()) throw cashConflict('Ya existe una caja abierta');
         const opened = await tx.open(actor.userId, checkedCents(amount), this.now());
@@ -120,6 +121,7 @@ export class CashService {
       this.now,
       async (tx, role) => {
         await tx.lockCash();
+        if (role !== 'CAJERO' && role !== 'ADMINISTRADOR') throw forbidden();
         const session = await tx.session(id);
         if (!session) throw notFound();
         if (session.employeeId !== actor.userId && role !== 'ADMINISTRADOR') throw forbidden();

@@ -61,38 +61,54 @@ export default function EmployeeIdScreen({ onBack, onEmployeeIdentified, audioEn
   }
 
   function handleSelectEmployee(emp) {
+    if (emp.isActive === false) {
+      triggerError(`La cuenta del usuario "@${emp.username || emp.name}" ha sido dada de baja o se encuentra inactiva.`);
+      return;
+    }
     playHapticSound('success', audioEnabled);
     onEmployeeIdentified(emp);
   }
 
   function handleSubmit(e) {
     if (e) e.preventDefault();
-    const clean = username.trim().toLowerCase().replace(/^@/, '');
+    const raw = username.trim();
+    const clean = raw.toLowerCase().replace(/^@/, '');
 
     if (!clean) {
-      triggerError('Por favor ingresa tu nombre de usuario (Username)');
+      triggerError('Por favor ingresa tu nombre de usuario (Username).');
       return;
     }
 
     if (clean.length < 3) {
-      triggerError('El nombre de usuario debe contener al menos 3 caracteres');
+      triggerError('El nombre de usuario debe contener al menos 3 caracteres.');
       return;
     }
 
-    // Buscar si existe en la lista local o registrada
+    if (clean.length > 24) {
+      triggerError('El nombre de usuario no puede exceder 24 caracteres.');
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9_]+$/.test(clean)) {
+      triggerError('Formato inválido: solo se permiten letras, números y guión bajo (sin espacios ni símbolos especiales).');
+      return;
+    }
+
+    // Buscar si el usuario existe en los registros del sistema
     const found = findEmployee(clean);
-    const employeeToIdentify = found || {
-      id: clean,
-      username: clean,
-      name: clean,
-      role: 'PERSONAL',
-      avatar: clean.slice(0, 2).toUpperCase(),
-      color: '#2563eb',
-      isAdmin: false,
-    };
+
+    if (!found) {
+      triggerError(`El usuario "@${clean}" no se encuentra registrado en el sistema. Verifica tu usuario o solicita tu registro al administrador.`);
+      return;
+    }
+
+    if (found.isActive === false) {
+      triggerError(`La cuenta del usuario "@${clean}" ha sido dada de baja o se encuentra inactiva.`);
+      return;
+    }
 
     playHapticSound('success', audioEnabled);
-    onEmployeeIdentified(employeeToIdentify);
+    onEmployeeIdentified(found);
   }
 
   return (
@@ -221,12 +237,13 @@ export default function EmployeeIdScreen({ onBack, onEmployeeIdentified, audioEn
                   ref={inputRef}
                   id="employee-username-input"
                   type="text"
+                  maxLength={24}
                   value={username}
                   onChange={(e) => {
                     setErrorMsg('');
                     setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ''));
                   }}
-                  placeholder="ej. cajero_marvin o AngelAdmin"
+                  placeholder="ej. admin o usuario"
                   autoComplete="username"
                   autoCapitalize="none"
                   spellCheck="false"
@@ -273,6 +290,22 @@ export default function EmployeeIdScreen({ onBack, onEmployeeIdentified, audioEn
                   </button>
                 )}
               </div>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  fontSize: '0.75rem',
+                  color: '#64748b',
+                  marginTop: '0.4rem',
+                  padding: '0 0.25rem'
+                }}
+              >
+                <span>3 a 24 caracteres (letras, números y guión bajo)</span>
+                <span style={{ fontWeight: 600, color: username.length >= 24 ? '#ef4444' : '#64748b' }}>
+                  {username.length}/24
+                </span>
+              </div>
             </div>
 
             {errorMsg && (
@@ -318,7 +351,7 @@ export default function EmployeeIdScreen({ onBack, onEmployeeIdentified, audioEn
                 gap: '0.6rem',
                 boxShadow: username.trim().length >= 3 ? '0 10px 25px -5px rgba(15, 23, 42, 0.25)' : 'none',
                 transition: 'all 0.2s ease',
-                marginBottom: '1.5rem'
+                marginBottom: '0'
               }}
             >
               <span>CONTINUAR (ENTER)</span>
@@ -332,7 +365,7 @@ export default function EmployeeIdScreen({ onBack, onEmployeeIdentified, audioEn
               width: '100%',
               display: 'flex',
               alignItems: 'center',
-              margin: '0.5rem 0 1.25rem',
+              margin: '1.25rem 0 1rem',
               color: '#94a3b8',
               fontSize: '0.78rem',
               fontWeight: 700,
@@ -394,7 +427,7 @@ export default function EmployeeIdScreen({ onBack, onEmployeeIdentified, audioEn
                       width: '38px',
                       height: '38px',
                       borderRadius: '50%',
-                      backgroundColor: emp.color || (emp.role === 'ADMINISTRADOR' ? '#0f172a' : '#2563eb'),
+                      backgroundColor: emp.color || (emp.role === 'ADMINISTRADOR' ? '#0f172a' : emp.role === 'GERENTE' ? '#7c3aed' : '#2563eb'),
                       color: '#ffffff',
                       display: 'flex',
                       alignItems: 'center',
@@ -431,8 +464,8 @@ export default function EmployeeIdScreen({ onBack, onEmployeeIdentified, audioEn
                       fontWeight: 700,
                       padding: '0.25rem 0.55rem',
                       borderRadius: '9999px',
-                      backgroundColor: emp.role === 'ADMINISTRADOR' ? '#0f172a' : '#e0e7ff',
-                      color: emp.role === 'ADMINISTRADOR' ? '#ffffff' : '#3730a3',
+                      backgroundColor: emp.role === 'ADMINISTRADOR' ? '#0f172a' : emp.role === 'GERENTE' ? '#ede9fe' : '#e0e7ff',
+                      color: emp.role === 'ADMINISTRADOR' ? '#ffffff' : emp.role === 'GERENTE' ? '#6d28d9' : '#3730a3',
                       textTransform: 'uppercase',
                       letterSpacing: '0.04em'
                     }}

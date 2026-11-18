@@ -6249,6 +6249,7 @@ paths:
                             - CAJERO
                             - PREPARACION
                             - ADMINISTRADOR
+                            - GERENTE
                         isActive:
                           type: boolean
                       required:
@@ -7470,6 +7471,7 @@ components:
             - CAJERO
             - PREPARACION
             - ADMINISTRADOR
+            - GERENTE
         accountType:
           type: string
           enum:

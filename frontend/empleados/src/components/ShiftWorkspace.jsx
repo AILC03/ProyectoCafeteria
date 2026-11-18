@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import * as db from '../data/db.js';
-import { getEmployees } from '../data/employees.js';
+import { getEmployees, isEmployeeGerente } from '../data/employees.js';
 import { showToast } from '../utils/notify.js';
 import { getCurrentCashSession, openCashSession, closeCashSession } from '../api/cash.js';
 import { getSalesSummary } from '../api/sales.js';
 import { formatCents, numberToCents } from '../utils/money.js';
 
-export default function ShiftWorkspace({ cashierName }) {
+export default function ShiftWorkspace({ cashierName, currentEmployee }) {
+  const isGerente = isEmployeeGerente(currentEmployee);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeSession, setActiveSession] = useState(null);
@@ -68,9 +69,22 @@ export default function ShiftWorkspace({ cashierName }) {
 
   async function handleOpenShift(e) {
     e.preventDefault();
-    const cashNum = parseFloat(startingCashInput) || 0;
-    if (cashNum < 0) {
+    const cleanInput = String(startingCashInput).trim();
+    if (!cleanInput) {
+      showToast('Por favor introduce el monto del fondo inicial de caja', 'warning');
+      return;
+    }
+    if (!/^\d+(\.\d{1,2})?$/.test(cleanInput)) {
+      showToast('Formato inválido: el fondo inicial debe ser un número positivo (ej. 500.00)', 'error');
+      return;
+    }
+    const cashNum = parseFloat(cleanInput);
+    if (isNaN(cashNum) || cashNum < 0) {
       showToast('El fondo inicial debe ser mayor o igual a cero', 'warning');
+      return;
+    }
+    if (cashNum > 50000) {
+      showToast('El fondo inicial no puede exceder $50,000.00', 'warning');
       return;
     }
 
@@ -90,9 +104,22 @@ export default function ShiftWorkspace({ cashierName }) {
   async function handleCloseShift(e) {
     e.preventDefault();
     if (!activeSession) return;
-    const cashNum = parseFloat(countedCashInput);
-    if (isNaN(cashNum) || cashNum < 0) {
+    const cleanInput = String(countedCashInput).trim();
+    if (!cleanInput) {
       showToast('Por favor introduce el monto en efectivo contado al arqueo', 'warning');
+      return;
+    }
+    if (!/^\d+(\.\d{1,2})?$/.test(cleanInput)) {
+      showToast('Formato inválido: el efectivo contado debe ser un número positivo (ej. 1250.50)', 'error');
+      return;
+    }
+    const cashNum = parseFloat(cleanInput);
+    if (isNaN(cashNum) || cashNum < 0) {
+      showToast('Por favor introduce un monto en efectivo contado válido', 'warning');
+      return;
+    }
+    if (cashNum > 500000) {
+      showToast('El monto en efectivo contado no puede exceder $500,000.00', 'warning');
       return;
     }
 
@@ -264,40 +291,55 @@ export default function ShiftWorkspace({ cashierName }) {
               </div>
             </div>
 
-            {/* Formulario de Cierre de Caja */}
-            <form onSubmit={handleCloseShift} style={{ background: '#fffbeb', border: '1px solid #fde68a', padding: '1rem', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-              <div style={{ flex: 1, minWidth: '220px' }}>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#92400e', marginBottom: '0.3rem' }}>
-                  ARQUEO DE CIERRE: Efectivo contado en caja ($ MXN)
-                </label>
-                <input
-                  type="number"
-                  step="0.5"
-                  value={countedCashInput}
-                  onChange={(e) => setCountedCashInput(e.target.value)}
-                  placeholder="Ej. 1250"
-                  style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem', fontWeight: 700 }}
-                />
+            {/* Formulario de Cierre de Caja / Aviso Gerencial */}
+            {isGerente ? (
+              <div style={{ background: '#f5f3ff', border: '1px solid #ddd6fe', padding: '0.9rem 1.25rem', borderRadius: '12px', color: '#6b21a8', fontSize: '0.88rem', fontWeight: 600 }}>
+                ℹ️ Modo Supervisión Gerencial (Solo Lectura): La caja se encuentra abierta y operando. El arqueo y cierre corresponden al cajero en turno o al administrador.
               </div>
-              <button
-                type="submit"
-                disabled={isClosingSession || !countedCashInput}
-                style={{
-                  height: '42px',
-                  padding: '0 1.5rem',
-                  background: '#b45309',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: '10px',
-                  fontWeight: 700,
-                  fontSize: '0.9rem',
-                  cursor: 'pointer',
-                  marginTop: '1.2rem'
-                }}
-              >
-                {isClosingSession ? 'CERRANDO CAJA...' : 'CERRAR TURNO Y REALIZAR ARQUEO'}
-              </button>
-            </form>
+            ) : (
+              <form onSubmit={handleCloseShift} style={{ background: '#fffbeb', border: '1px solid #fde68a', padding: '1rem', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: '220px' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#92400e', marginBottom: '0.3rem' }}>
+                    ARQUEO DE CIERRE: Efectivo contado en caja ($ MXN)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={countedCashInput}
+                    onChange={(e) => setCountedCashInput(e.target.value)}
+                    placeholder="Ej. 1250"
+                    style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem', fontWeight: 700 }}
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={isClosingSession || !countedCashInput}
+                  style={{
+                    height: '42px',
+                    padding: '0 1.5rem',
+                    background: '#b45309',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '10px',
+                    fontWeight: 700,
+                    fontSize: '0.9rem',
+                    cursor: 'pointer',
+                    marginTop: '1.2rem'
+                  }}
+                >
+                  {isClosingSession ? 'CERRANDO CAJA...' : 'CERRAR TURNO Y REALIZAR ARQUEO'}
+                </button>
+              </form>
+            )}
+          </div>
+        ) : isGerente ? (
+          <div style={{ background: '#f8fafc', border: '1px dashed #cbd5e1', padding: '1.25rem', borderRadius: '14px', color: '#64748b' }}>
+            <span style={{ display: 'block', fontSize: '0.95rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.2rem' }}>
+              No hay una sesión de caja abierta actualmente
+            </span>
+            <p style={{ fontSize: '0.85rem', margin: 0 }}>
+              ℹ️ Modo Supervisión Gerencial (Solo Lectura): La apertura de turno de caja corresponde al personal en turno o administrador.
+            </p>
           </div>
         ) : (
           <form onSubmit={handleOpenShift} style={{ background: '#f8fafc', border: '1px dashed #cbd5e1', padding: '1.25rem', borderRadius: '14px', display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>

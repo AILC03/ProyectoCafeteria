@@ -11,7 +11,7 @@ export class SalesRepository {
   read<T>(actor: Principal, fn: (tx: Prisma.TransactionClient) => Promise<T>) {
     return withTransaction(this.db, async (tx) => {
       const role = await new OrdersTransaction(tx).actor(actor, new Date());
-      if (!['CAJERO', 'ADMINISTRADOR'].includes(role)) throw forbidden();
+      if (!['CAJERO', 'ADMINISTRADOR', 'GERENTE'].includes(role)) throw forbidden();
       return fn(tx);
     });
   }

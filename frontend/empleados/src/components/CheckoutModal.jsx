@@ -5,11 +5,13 @@ import { showToast } from '../utils/notify.js';
 export default function CheckoutModal({ isOpen, onClose, totalAmount, onConfirmPayment, audioEnabled }) {
   const [method, setMethod] = useState('cash');
   const [cashReceived, setCashReceived] = useState('');
+  const [inputError, setInputError] = useState('');
 
   useEffect(() => {
     if (isOpen) {
       setMethod('cash');
       setCashReceived(Math.ceil(totalAmount).toString());
+      setInputError('');
     }
   }, [isOpen, totalAmount]);
 
@@ -21,6 +23,7 @@ export default function CheckoutModal({ isOpen, onClose, totalAmount, onConfirmP
 
   function handleQuickBill(val) {
     playHapticSound('click', audioEnabled);
+    setInputError('');
     if (val === 'exact') {
       setCashReceived(totalAmount.toFixed(2));
     } else {
@@ -29,10 +32,35 @@ export default function CheckoutModal({ isOpen, onClose, totalAmount, onConfirmP
   }
 
   function handleConfirm() {
-    if (isInsufficient) {
-      playHapticSound('error', audioEnabled);
-      showToast('El monto en efectivo recibido es menor al total a pagar.', 'error');
-      return;
+    setInputError('');
+    if (method === 'cash') {
+      const cleanCash = String(cashReceived).trim();
+      if (!cleanCash) {
+        setInputError('Por favor ingresa el monto en efectivo recibido.');
+        playHapticSound('error', audioEnabled);
+        return;
+      }
+      if (!/^\d+(\.\d{1,2})?$/.test(cleanCash)) {
+        setInputError('El monto debe ser un número positivo válido (hasta 2 decimales).');
+        playHapticSound('error', audioEnabled);
+        return;
+      }
+      if (numCash <= 0) {
+        setInputError('El monto en efectivo debe ser mayor a cero.');
+        playHapticSound('error', audioEnabled);
+        return;
+      }
+      if (numCash > 100000) {
+        setInputError('El monto excede el límite máximo permitido ($100,000.00).');
+        playHapticSound('error', audioEnabled);
+        return;
+      }
+      if (numCash < totalAmount) {
+        setInputError(`Monto insuficiente: faltan $${(totalAmount - numCash).toFixed(2)} para cubrir el total.`);
+        playHapticSound('error', audioEnabled);
+        showToast('El monto en efectivo recibido es menor al total a pagar.', 'error');
+        return;
+      }
     }
 
     playHapticSound('success', audioEnabled);
@@ -98,22 +126,50 @@ export default function CheckoutModal({ isOpen, onClose, totalAmount, onConfirmP
               Efectivo Recibido:
             </label>
             <input
-              type="number"
-              step="any"
+              type="text"
+              inputMode="decimal"
               value={cashReceived}
-              onChange={(e) => setCashReceived(e.target.value)}
+              onChange={(e) => {
+                setInputError('');
+                const val = e.target.value.replace(/[^0-9.]/g, '');
+                const parts = val.split('.');
+                const sanitized = parts.length > 2 ? `${parts[0]}.${parts.slice(1).join('')}` : val;
+                setCashReceived(sanitized);
+              }}
               placeholder="0.00"
               style={{
                 width: '100%',
                 padding: '0.75rem 1rem',
                 fontSize: '1.25rem',
                 fontWeight: 700,
-                border: '1px solid #cbd5e1',
+                border: inputError ? '2px solid #ef4444' : '1px solid #cbd5e1',
                 borderRadius: '12px',
                 outline: 'none',
-                marginBottom: '0.75rem'
+                marginBottom: '0.75rem',
+                boxSizing: 'border-box'
               }}
             />
+
+            {inputError && (
+              <div
+                style={{
+                  padding: '0.5rem 0.75rem',
+                  backgroundColor: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  borderRadius: '10px',
+                  color: '#b91c1c',
+                  fontSize: '0.82rem',
+                  fontWeight: 600,
+                  marginBottom: '0.75rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem'
+                }}
+              >
+                <span>⚠️</span>
+                <span>{inputError}</span>
+              </div>
+            )}
 
             {/* Billetes rápidos */}
             <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>

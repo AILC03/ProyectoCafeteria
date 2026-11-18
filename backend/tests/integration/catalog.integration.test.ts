@@ -71,7 +71,7 @@ describe.skipIf(!target)('catálogo con PostgreSQL real', () => {
     await db?.$disconnect();
   });
   it('seed repetible no duplica roles ni menú', async () => {
-    expect(await db.role.count()).toBe(4);
+    expect(await db.role.count()).toBe(5);
     expect(await db.product.count({ where: { name: { endsWith: '(demo)' } } })).toBe(4);
   });
   it('categorías inactivas no aparecen', async () => {

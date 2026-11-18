@@ -146,6 +146,7 @@ export const DEFAULT_TEST_EMPLOYEES = [
     username: 'AngelAdmin',
     role: 'ADMINISTRADOR',
     pin: 'Admin1234',
+    password: 'Admin1234',
     avatar: 'AA',
     color: '#0f172a',
     isAdmin: true,

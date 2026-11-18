@@ -64,9 +64,16 @@ export class CustomerRegistrationTransaction {
     return !!(await this.tx.user.findUnique({ where: { phone }, select: { id: true } }));
   }
   async clientRoleId() {
-    const [role] = await this.tx.$queryRaw<
+    let [role] = await this.tx.$queryRaw<
       { id: bigint }[]
     >`SELECT id FROM roles WHERE name='CLIENTE' FOR SHARE`;
+    if (!role) {
+      await this.tx
+        .$executeRaw`INSERT INTO roles (name) VALUES ('CLIENTE') ON CONFLICT (name) DO NOTHING`;
+      [role] = await this.tx.$queryRaw<
+        { id: bigint }[]
+      >`SELECT id FROM roles WHERE name='CLIENTE' FOR SHARE`;
+    }
     if (!role) throw unavailable();
     return role.id;
   }

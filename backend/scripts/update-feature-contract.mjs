@@ -53,7 +53,7 @@ const schemas = api.components.schemas;
 schemas.AuthUser = object({
   id,
   name: text(120),
-  role: { type: 'string', enum: ['CLIENTE', 'CAJERO', 'PREPARACION', 'ADMINISTRADOR'] },
+  role: { type: 'string', enum: ['CLIENTE', 'CAJERO', 'PREPARACION', 'ADMINISTRADOR', 'GERENTE'] },
   accountType: { type: 'string', enum: ['STAFF', 'CUSTOMER'] },
   mustChangePin: bool,
 });
