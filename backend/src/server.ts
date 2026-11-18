@@ -1,0 +1,147 @@
+import { createApp } from './app.js';
+import { parseEnvironment } from './config/env.js';
+import pino from 'pino';
+import { createDatabase } from './config/database.js';
+import { PrismaCatalogRepository } from './modules/catalog/catalog.repository.js';
+import { authConfiguration } from './config/auth.js';
+import { AuthRepository } from './modules/auth/auth.repository.js';
+import { AuthService } from './modules/auth/auth.service.js';
+import { AdminRepository } from './modules/catalog/admin.repository.js';
+import { AdminService } from './modules/catalog/admin.service.js';
+import { ImageService } from './modules/catalog/image.service.js';
+import { CloudinaryProvider } from './modules/catalog/image.provider.js';
+import { cloudinaryConfiguration } from './config/cloudinary.js';
+import { OrdersRepository } from './modules/orders/orders.repository.js';
+import { OrdersService } from './modules/orders/orders.service.js';
+import { CashRepository } from './modules/cash/cash.repository.js';
+import { CashService } from './modules/cash/cash.service.js';
+import { PaymentsService } from './modules/payments/payments.service.js';
+import { TicketsService } from './modules/tickets/tickets.service.js';
+import { ticketCipherConfiguration } from './modules/tickets/tickets.cipher.js';
+import { CustomerRegistrationRepository } from './modules/customer-registration/customer-registration.repository.js';
+import { CustomerRegistrationService } from './modules/customer-registration/customer-registration.service.js';
+import { CustomersRepository } from './modules/customers/customers.repository.js';
+import { CustomersService } from './modules/customers/customers.service.js';
+import { AccountsRepository } from './modules/accounts/accounts.repository.js';
+import { AccountsService } from './modules/accounts/accounts.service.js';
+import { SalesRepository, SalesService } from './modules/sales/sales.service.js';
+import { StripeRepository } from './modules/payments/stripe.repository.js';
+import { StripeService } from './modules/payments/stripe.service.js';
+import { mailConfiguration } from './config/completion.js';
+
+const logger = pino({
+  redact: [
+    'password',
+    'passwordHash',
+    'pin',
+    'pinHash',
+    'token',
+    'access',
+    'refresh',
+    'csrfToken',
+    'refreshTokenHash',
+    'cookie',
+    'authorization',
+    'DATABASE_URL',
+    'AUTH_JWT_SECRET',
+    'AUTH_CSRF_SECRET',
+    'CLOUDINARY_API_SECRET',
+    'TICKET_ENCRYPTION_KEY',
+    'OUTBOX_ENCRYPTION_KEY',
+    'STRIPE_SECRET_KEY',
+    'STRIPE_WEBHOOK_SECRET',
+  ],
+});
+async function main() {
+  const env = parseEnvironment(process.env);
+  const auth = authConfiguration(process.env, env.FRONTEND_ORIGIN, env.NODE_ENV === 'production');
+  if (env.NODE_ENV === 'production' && (!auth || !env.FRONTEND_ORIGIN.startsWith('https://')))
+    throw new Error('Producción requiere claves de autenticación y HTTPS.');
+  const cloud = cloudinaryConfiguration(process.env);
+  const ticketCipher = ticketCipherConfiguration(process.env);
+  const cashQrCipher = ticketCipherConfiguration(process.env, 'cash-payment');
+  const checkoutCipher = ticketCipherConfiguration(process.env, 'stripe-checkout');
+  const database = createDatabase(env.DATABASE_URL);
+  try {
+    await database.$connect();
+    // Asegurar roles fundamentales en la base de datos para prevenir errores de clave foránea
+    for (const name of ['CLIENTE', 'CAJERO', 'PREPARACION', 'ADMINISTRADOR', 'GERENTE']) {
+      await database.role.upsert({
+        where: { name },
+        create: { name },
+        update: {},
+      });
+    }
+  } catch {
+    await database.$disconnect();
+    throw new Error('PostgreSQL no disponible; no se inició la API.');
+  }
+  const adminService = new AdminService(new AdminRepository(database));
+  const cashRepository = new CashRepository(database);
+  const authService = auth ? new AuthService(new AuthRepository(database), auth) : undefined;
+  const app = createApp({
+    catalogRepository: new PrismaCatalogRepository(database),
+    logger,
+    frontendOrigin: env.FRONTEND_ORIGIN,
+    catalogRateLimit: env.CATALOG_RATE_LIMIT,
+    authService,
+    adminService,
+    ordersService: new OrdersService(
+      new OrdersRepository(database),
+      undefined,
+      cashQrCipher,
+      checkoutCipher,
+    ),
+    cashService: new CashService(cashRepository),
+    paymentsService: new PaymentsService(cashRepository, ticketCipher),
+    ticketsService: new TicketsService(cashRepository, ticketCipher),
+    registrationService: new CustomerRegistrationService(
+      new CustomerRegistrationRepository(database),
+    ),
+    customersService: new CustomersService(new CustomersRepository(database)),
+    accountsService: authService
+      ? new AccountsService(
+          new AccountsRepository(database),
+          authService,
+          mailConfiguration(process.env, env.FRONTEND_ORIGIN),
+        )
+      : undefined,
+    salesService: new SalesService(new SalesRepository(database)),
+    stripeService: new StripeService(new StripeRepository(database), undefined, ticketCipher),
+    imageService: cloud ? new ImageService(adminService, new CloudinaryProvider(cloud)) : undefined,
+  });
+  const server = app.listen(env.PORT, () =>
+    logger.info({ port: env.PORT, authEnabled: !!auth, imagesEnabled: !!cloud }, 'api_started'),
+  );
+  let closing = false;
+  function shutdown(failed = false) {
+    if (closing) return;
+    closing = true;
+    const timeout = setTimeout(() => {
+      server.closeAllConnections();
+    }, 10_000);
+    timeout.unref();
+    server.close(() => {
+      database
+        .$disconnect()
+        .then(() => {
+          clearTimeout(timeout);
+          process.exitCode = failed ? 1 : 0;
+        })
+        .catch(() => {
+          process.exitCode = 1;
+        });
+    });
+    server.closeIdleConnections();
+  }
+  server.on('error', () => {
+    logger.error('http_server_error');
+    shutdown(true);
+  });
+  process.once('SIGINT', () => shutdown());
+  process.once('SIGTERM', () => shutdown());
+}
+main().catch(() => {
+  logger.error('startup_failed_check_local_configuration');
+  process.exitCode = 1;
+});

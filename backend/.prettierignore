@@ -1,0 +1,8 @@
+node_modules
+dist
+coverage
+src/generated
+package-lock.json
+.env
+frontend-clientes
+frontend-empleados
