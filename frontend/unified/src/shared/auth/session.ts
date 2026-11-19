@@ -1,4 +1,4 @@
-import { ApiError, apiFetch, setCsrfToken } from '../api/client';
+import { ApiError, fetchSessionActor, invalidateCsrfToken, logoutSession, refreshSession, setCsrfToken, subscribeToApiAuthEvents } from '../api/client';
 
 export type Actor = {
   id: string;
@@ -15,6 +15,9 @@ export type SessionState =
   | { status: 'pin-change-required'; actor: null }
   | { status: 'recoverable-error'; actor: null; error: ApiError };
 
+export type ActorDestination = 'client' | 'terminal';
+export type PrivateStateCleaner = () => void;
+
 type ApiEnvelope<T> = { data: T };
 type RefreshPayload = { user: Actor; csrfToken: string };
 type LockManagerLike = {
@@ -23,6 +26,7 @@ type LockManagerLike = {
 
 const LOCK_KEY_PREFIX = 'cafeteria:auth-refresh:';
 const CHANNEL_PREFIX = 'cafeteria:auth-refresh:';
+type AuthMessageType = 'refresh-complete' | 'session-cleared' | 'csrf-invalid' | 'pin-change-required';
 
 function isRecoverable(error: ApiError): boolean {
   return error.status === 0 || error.status === 429 || error.status >= 500;
@@ -46,12 +50,13 @@ export class RefreshCoordinator {
     this.channel = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel(`${CHANNEL_PREFIX}${profile}`);
   }
 
-  onRefreshComplete(listener: () => void): () => void {
+  onMessage(listener: (type: AuthMessageType) => void): () => void {
     if (this.channel === null) return () => undefined;
     const handler = (event: MessageEvent<unknown>) => {
       const message = event.data;
-      if (message !== null && typeof message === 'object' && (message as { type?: unknown }).type === 'refresh-complete') {
-        listener();
+      const type = message !== null && typeof message === 'object' ? (message as { type?: unknown }).type : undefined;
+      if (type === 'refresh-complete' || type === 'session-cleared' || type === 'csrf-invalid' || type === 'pin-change-required') {
+        listener(type);
       }
     };
     this.channel.addEventListener('message', handler);
@@ -68,9 +73,13 @@ export class RefreshCoordinator {
     return locks.request(this.lockKey, { mode: 'exclusive' }, operation);
   }
 
-  complete(): void {
+  publish(type: AuthMessageType): void {
     // Event payload is intentionally fixed: never actor, role, CSRF or credentials.
-    this.channel?.postMessage({ type: 'refresh-complete' });
+    this.channel?.postMessage({ type });
+  }
+
+  complete(): void {
+    this.publish('refresh-complete');
   }
 
   close(): void {
@@ -84,9 +93,21 @@ export class SessionManager {
   private readonly listeners = new Set<(state: SessionState) => void>();
   private bootstrapRequest: Promise<SessionState> | null = null;
   private readonly unsubscribeRefresh: () => void;
+  private readonly unsubscribeApiAuth: () => void;
+  private readonly privateStateCleaners = new Set<PrivateStateCleaner>();
 
   constructor(private readonly coordinator = new RefreshCoordinator()) {
-    this.unsubscribeRefresh = coordinator.onRefreshComplete(() => { void this.resolveActor(); });
+    this.unsubscribeRefresh = coordinator.onMessage((type) => this.receiveMessage(type));
+    this.unsubscribeApiAuth = subscribeToApiAuthEvents((event) => {
+      if (event.type === 'csrf-invalid') {
+        invalidateCsrfToken();
+        coordinator.publish('csrf-invalid');
+      } else if (event.type === 'pin-change-required') {
+        this.restrictToPinChange(true);
+      } else {
+        this.clearSession(this.entryFor(this.state.actor), true);
+      }
+    });
   }
 
   getSnapshot = (): SessionState => this.state;
@@ -95,6 +116,38 @@ export class SessionManager {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   };
+
+  registerPrivateStateCleaner(cleaner: PrivateStateCleaner): () => void {
+    this.privateStateCleaners.add(cleaner);
+    return () => this.privateStateCleaners.delete(cleaner);
+  }
+
+  /** Closes the current server session before a login flow for another actor starts. */
+  async replaceActor(destination: ActorDestination): Promise<boolean> {
+    const actor = this.state.actor;
+    if (actor === null) return true;
+    try {
+      await logoutSession();
+    } catch {
+      // A failed logout must never allow the next actor flow to begin.
+      return false;
+    }
+    this.clearSession(this.entryFor(actor), true);
+    // The caller owns the next login implementation (TASK-09/TASK-13).
+    this.navigateTo(destination === 'client' ? '/cliente/iniciar-sesion' : '/terminal');
+    return true;
+  }
+
+  async logout(): Promise<boolean> {
+    const actor = this.state.actor;
+    try {
+      await logoutSession();
+    } catch {
+      return false;
+    }
+    this.clearSession(this.entryFor(actor), true);
+    return true;
+  }
 
   async bootstrap(): Promise<SessionState> {
     this.bootstrapRequest ??= this.bootstrapActor().finally(() => { this.bootstrapRequest = null; });
@@ -125,15 +178,16 @@ export class SessionManager {
 
   dispose(): void {
     this.unsubscribeRefresh();
+    this.unsubscribeApiAuth();
     this.coordinator.close();
   }
 
   private async resolveActor(): Promise<SessionState> {
     try {
-      const response = await apiFetch<ApiEnvelope<Actor>>('/auth/me');
-      return this.set(response.data.mustChangePin
-        ? { status: 'pin-change-required', actor: null }
-        : { status: 'authenticated', actor: response.data });
+      const response = await fetchSessionActor<ApiEnvelope<Actor>>();
+      return response.data.mustChangePin
+        ? this.restrictToPinChange(true)
+        : this.set({ status: 'authenticated', actor: response.data });
     } catch (error) {
       return this.applyFailure(error);
     }
@@ -141,10 +195,10 @@ export class SessionManager {
 
   private async bootstrapActor(): Promise<SessionState> {
     try {
-      const response = await apiFetch<ApiEnvelope<Actor>>('/auth/me');
-      return this.set(response.data.mustChangePin
-        ? { status: 'pin-change-required', actor: null }
-        : { status: 'authenticated', actor: response.data });
+      const response = await fetchSessionActor<ApiEnvelope<Actor>>();
+      return response.data.mustChangePin
+        ? this.restrictToPinChange(true)
+        : this.set({ status: 'authenticated', actor: response.data });
     } catch (error) {
       // Bootstrap has exactly one coordinated recovery attempt for an expired
       // access cookie. refresh() owns the Web Locks availability check and
@@ -155,21 +209,21 @@ export class SessionManager {
   }
 
   private async performRefresh(): Promise<SessionState> {
-    const response = await apiFetch<ApiEnvelope<RefreshPayload>>('/auth/refresh', { method: 'POST', body: {} });
+    const response = await refreshSession<ApiEnvelope<RefreshPayload>>();
     setCsrfToken(response.data.csrfToken);
-    const next = this.set(response.data.user.mustChangePin
-      ? { status: 'pin-change-required', actor: null }
-      : { status: 'authenticated', actor: response.data.user });
+    const next = response.data.user.mustChangePin
+      ? this.restrictToPinChange(true)
+      : this.set({ status: 'authenticated', actor: response.data.user });
     this.coordinator.complete();
     return next;
   }
 
   private async resolveActorAfterCoordination(): Promise<SessionState | null> {
     try {
-      const response = await apiFetch<ApiEnvelope<Actor>>('/auth/me');
-      return this.set(response.data.mustChangePin
-        ? { status: 'pin-change-required', actor: null }
-        : { status: 'authenticated', actor: response.data });
+      const response = await fetchSessionActor<ApiEnvelope<Actor>>();
+      return response.data.mustChangePin
+        ? this.restrictToPinChange(true)
+        : this.set({ status: 'authenticated', actor: response.data });
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) return null;
       return this.applyFailure(error);
@@ -178,9 +232,51 @@ export class SessionManager {
 
   private applyFailure(error: unknown): SessionState {
     if (!(error instanceof ApiError)) throw error;
-    if (isPinChange(error)) return this.set({ status: 'pin-change-required', actor: null });
+    if (isPinChange(error)) return this.restrictToPinChange(true);
     if (isRecoverable(error)) return this.set({ status: 'recoverable-error', actor: null, error });
-    return this.set({ status: 'anonymous', actor: null });
+    return this.clearSession(this.entryFor(this.state.actor), true);
+  }
+
+  private receiveMessage(type: AuthMessageType): void {
+    if (type === 'refresh-complete') { void this.resolveActor(); return; }
+    if (type === 'csrf-invalid') { invalidateCsrfToken(); return; }
+    if (type === 'pin-change-required') { this.restrictToPinChange(false); return; }
+    this.clearSession(this.entryFor(this.state.actor), false);
+  }
+
+  private restrictToPinChange(broadcast: boolean): SessionState {
+    if (this.state.status === 'pin-change-required') return this.state;
+    this.clearPrivateState();
+    invalidateCsrfToken();
+    const next = this.set({ status: 'pin-change-required', actor: null });
+    this.navigateTo('/cambiar-nip');
+    if (broadcast) this.coordinator.publish('pin-change-required');
+    return next;
+  }
+
+  private clearSession(entry: string, broadcast: boolean): SessionState {
+    this.clearPrivateState();
+    invalidateCsrfToken();
+    const next = this.set({ status: 'anonymous', actor: null });
+    this.navigateTo(entry);
+    if (broadcast) this.coordinator.publish('session-cleared');
+    return next;
+  }
+
+  private clearPrivateState(): void {
+    this.privateStateCleaners.forEach((cleaner) => cleaner());
+  }
+
+  private entryFor(actor: Actor | null): string {
+    return actor?.accountType === 'STAFF' || (actor === null && typeof window !== 'undefined' && window.location.pathname.startsWith('/terminal'))
+      ? '/terminal'
+      : '/cliente/iniciar-sesion';
+  }
+
+  private navigateTo(entry: string): void {
+    if (typeof window === 'undefined' || window.location.pathname === entry) return;
+    window.history.replaceState(null, '', entry);
+    window.dispatchEvent(new PopStateEvent('popstate'));
   }
 
   private set(state: SessionState): SessionState {

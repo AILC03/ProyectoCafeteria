@@ -41,7 +41,26 @@ const apiBase = (import.meta.env.VITE_API_BASE_URL || '/api/v1').replace(/\/+$/,
 const mutationMethods = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 let csrfToken: string | null = null;
-let csrfRequest: Promise<string> | null = null;
+let normalCsrfRequest: Promise<string> | null = null;
+let suppressedCsrfRequest: Promise<string> | null = null;
+type AuthEventMode = 'normal' | 'suppressed';
+
+/**
+ * Narrow, payload-free bridge for authentication infrastructure.  The HTTP
+ * client does not import session code; consumers decide how a CSRF event is
+ * synchronized for their own browser/Electron profile.
+ */
+type ApiAuthEvent = { type: 'csrf-invalid' } | { type: 'pin-change-required' } | { type: 'session-expired' };
+const apiAuthListeners = new Set<(event: ApiAuthEvent) => void>();
+
+export function subscribeToApiAuthEvents(listener: (event: ApiAuthEvent) => void): () => void {
+  apiAuthListeners.add(listener);
+  return () => apiAuthListeners.delete(listener);
+}
+
+function publishApiAuthEvent(event: ApiAuthEvent): void {
+  apiAuthListeners.forEach((listener) => listener(event));
+}
 
 function endpointUrl(endpoint: string): string {
   if (/^https?:\/\//i.test(endpoint)) {
@@ -106,13 +125,14 @@ function invalidateCsrfTokenIfCurrent(token: string | null): void {
   }
 }
 
-export async function getCsrfToken(): Promise<string> {
+async function getCsrfTokenInternal(mode: AuthEventMode): Promise<string> {
   if (csrfToken !== null) {
     return csrfToken;
   }
 
-  if (csrfRequest === null) {
-    csrfRequest = (async () => {
+  const currentRequest = mode === 'normal' ? normalCsrfRequest : suppressedCsrfRequest;
+  if (currentRequest === null) {
+    const request = (async () => {
       const response = await fetchResponse(endpointUrl('/auth/csrf'), {
         method: 'GET',
         headers: { Accept: 'application/json, application/problem+json' },
@@ -121,6 +141,9 @@ export async function getCsrfToken(): Promise<string> {
       const payload = await readProblem(response);
 
       if (!response.ok) {
+        if (mode === 'normal' && response.status === 401) {
+          publishApiAuthEvent({ type: 'session-expired' });
+        }
         throw toApiError(response.status, response.statusText, payload);
       }
 
@@ -133,14 +156,22 @@ export async function getCsrfToken(): Promise<string> {
       csrfToken = token;
       return token;
     })().finally(() => {
-      csrfRequest = null;
+      if (mode === 'normal') normalCsrfRequest = null;
+      else suppressedCsrfRequest = null;
     });
+    if (mode === 'normal') normalCsrfRequest = request;
+    else suppressedCsrfRequest = request;
+    return request;
   }
 
-  return csrfRequest;
+  return currentRequest;
 }
 
-export async function apiFetch<T = void>(endpoint: string, options: ApiFetchOptions = {}): Promise<T> {
+export function getCsrfToken(): Promise<string> {
+  return getCsrfTokenInternal('normal');
+}
+
+async function apiFetchInternal<T = void>(endpoint: string, options: ApiFetchOptions, authEventMode: AuthEventMode): Promise<T> {
   const method = (options.method ?? 'GET').toUpperCase();
   const isMutation = mutationMethods.has(method);
   const headers = new Headers(options.headers);
@@ -157,7 +188,7 @@ export async function apiFetch<T = void>(endpoint: string, options: ApiFetchOpti
 
   let requestCsrfToken: string | null = null;
   if (isMutation && !options.skipCsrf) {
-    requestCsrfToken = await getCsrfToken();
+    requestCsrfToken = await getCsrfTokenInternal(authEventMode);
     headers.set('X-CSRF-Token', requestCsrfToken);
   }
 
@@ -175,7 +206,8 @@ export async function apiFetch<T = void>(endpoint: string, options: ApiFetchOpti
     const problem = await readProblem(response.clone());
     if (problem?.code === 'CSRF_INVALID') {
       invalidateCsrfTokenIfCurrent(requestCsrfToken);
-      headers.set('X-CSRF-Token', await getCsrfToken());
+      if (authEventMode === 'normal') publishApiAuthEvent({ type: 'csrf-invalid' });
+      headers.set('X-CSRF-Token', await getCsrfTokenInternal(authEventMode));
       response = await fetchResponse(url, { ...init, headers });
     }
   }
@@ -186,8 +218,14 @@ export async function apiFetch<T = void>(endpoint: string, options: ApiFetchOpti
 
   const contentType = response.headers.get('content-type') ?? '';
   if (!response.ok) {
+    if (authEventMode === 'normal' && response.status === 401) {
+      publishApiAuthEvent({ type: 'session-expired' });
+    }
     const problem = await readProblem(response);
     if (problem !== undefined) {
+      if (authEventMode === 'normal' && response.status === 403 && problem.code === 'PIN_CHANGE_REQUIRED') {
+        publishApiAuthEvent({ type: 'pin-change-required' });
+      }
       throw toApiError(response.status, response.statusText, problem);
     }
 
@@ -200,6 +238,23 @@ export async function apiFetch<T = void>(endpoint: string, options: ApiFetchOpti
   }
 
   return (await response.text()) as T;
+}
+
+export function apiFetch<T = void>(endpoint: string, options: ApiFetchOptions = {}): Promise<T> {
+  return apiFetchInternal<T>(endpoint, options, 'normal');
+}
+
+/** Session-only calls are intentionally fixed to the auth endpoints below. */
+export function fetchSessionActor<T>(): Promise<T> {
+  return apiFetchInternal<T>('/auth/me', {}, 'suppressed');
+}
+
+export function refreshSession<T>(): Promise<T> {
+  return apiFetchInternal<T>('/auth/refresh', { method: 'POST', body: {} }, 'suppressed');
+}
+
+export function logoutSession(): Promise<void> {
+  return apiFetchInternal('/auth/logout', { method: 'POST', body: {} }, 'suppressed');
 }
 
 export const apiRequest = apiFetch;

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { HttpResponse, http } from 'msw';
 import { RouterProvider } from 'react-router-dom';
 import { describe, expect, test } from 'vitest';
@@ -42,6 +42,33 @@ describe('application routes', () => {
     expect(await screen.findByRole('navigation', { name: 'Navegación de terminal' })).toBeInTheDocument();
   });
 
+  test('requires actor replacement confirmation before crossing from client to terminal', async () => {
+    renderRoute('/cliente/menu');
+    const terminalLink = await screen.findByRole('link', { name: 'Terminal' });
+    fireEvent.click(terminalLink);
+    expect(await screen.findByRole('dialog', { name: 'Cambiar de sesión' })).toBeInTheDocument();
+    expect(screen.getByText('Se cerrará la sesión de Cliente para abrir la terminal.')).toBeInTheDocument();
+    expect(document.querySelector('.session-content')).toHaveAttribute('inert');
+    expect(document.querySelector('.session-content')).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  test('renders the restricted PIN route with a visible logout action and no NIP form', async () => {
+    const pinActor = { id: 'customer-1', name: 'Cliente', role: 'CLIENTE', accountType: 'CUSTOMER', mustChangePin: true };
+    server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ data: pinActor })));
+    render(<SessionProvider><RouterProvider router={createTestRouter(['/cambiar-nip'])} /></SessionProvider>);
+    expect(await screen.findByRole('heading', { name: 'Cambio de NIP obligatorio' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cerrar sesión' })).toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+  });
+
+  test('globally redirects PIN-change-required sessions away from all other routes', async () => {
+    const pinActor = { id: 'customer-1', name: 'Cliente', role: 'CLIENTE', accountType: 'CUSTOMER', mustChangePin: true };
+    server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ data: pinActor })));
+    render(<SessionProvider><RouterProvider router={createTestRouter(['/cliente/menu'])} /></SessionProvider>);
+    expect(await screen.findByRole('heading', { name: 'Cambio de NIP obligatorio' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Menú' })).not.toBeInTheDocument();
+  });
+
   test('renders a safe fallback for unknown routes', async () => {
     renderRoute('/desconocida');
     expect(await screen.findByRole('heading', { name: 'Página no encontrada' })).toBeInTheDocument();
@@ -69,10 +96,9 @@ describe('application routes', () => {
     expect(await screen.findByRole('heading', { name: 'Acceso no disponible' })).toBeInTheDocument();
   });
 
-  test.each([
-    ['anonymous', 401, 'UNAUTHENTICATED'],
-    ['PIN-change-required', 403, 'PIN_CHANGE_REQUIRED'],
-  ])('blocks a %s session without rendering protected content', async (_state, status, code) => {
+  test('blocks an anonymous session without rendering protected content', async () => {
+    const status = 401;
+    const code = 'UNAUTHENTICATED';
     server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ code }, { status })));
     render(<SessionProvider><RouterProvider router={createTestRouter(['/cliente/cuenta'])} /></SessionProvider>);
     expect(await screen.findByRole('heading', { name: 'Acceso no disponible' })).toBeInTheDocument();

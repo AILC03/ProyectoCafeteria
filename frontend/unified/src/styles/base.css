@@ -8,3 +8,7 @@ a:focus-visible, [tabindex="-1"]:focus { outline: 3px solid #005fcc; outline-off
 .skip-link:focus { transform: translateY(0); }
 .client-layout header { background: #f4f7fb; }
 .terminal-layout header { background: #eef6ef; }
+
+.auth-dialog-backdrop { align-items: center; background: rgb(0 0 0 / 55%); display: flex; inset: 0; justify-content: center; padding: 1rem; position: fixed; z-index: 1000; }
+.auth-dialog { background: Canvas; border-radius: .5rem; box-shadow: 0 .5rem 2rem rgb(0 0 0 / 35%); color: CanvasText; max-width: 32rem; padding: 1.5rem; width: 100%; }
+.auth-dialog-actions { display: flex; flex-wrap: wrap; gap: .75rem; justify-content: flex-end; }

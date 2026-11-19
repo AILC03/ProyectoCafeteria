@@ -3,11 +3,16 @@ import {
   createMemoryRouter,
   Link,
   Navigate,
+  Outlet,
+  useLocation,
   type RouteObject,
 } from 'react-router-dom';
 import { ClientAccessGuard, TerminalAccessGuard } from './guards';
 import { ClientLayout } from '../layouts/ClientLayout';
 import { TerminalLayout } from '../layouts/TerminalLayout';
+import { ActorAreaLink } from '../shared/auth/ActorAreaLink';
+import { useSession, useSessionManager } from '../shared/auth/SessionProvider';
+import { useState } from 'react';
 
 function PlaceholderPage({ title }: { title: string }) {
   return <section aria-labelledby="page-title"><h1 id="page-title">{title}</h1><p>Esta pantalla estará disponible próximamente.</p></section>;
@@ -17,9 +22,34 @@ function LandingPage() {
   return (
     <main id="main-content" tabIndex={-1}>
       <h1>Aplicación unificada de cafetería</h1>
-      <nav aria-label="Elegir área"><ul><li><Link to="/cliente/menu">Área de cliente</Link></li><li><Link to="/terminal">Terminal</Link></li></ul></nav>
+      <nav aria-label="Elegir área"><ul><li><ActorAreaLink destination="client" to="/cliente/menu">Área de cliente</ActorAreaLink></li><li><ActorAreaLink destination="terminal" to="/terminal">Terminal</ActorAreaLink></li></ul></nav>
     </main>
   );
+}
+
+function PinChangeRequiredPage() {
+  const session = useSession();
+  const manager = useSessionManager();
+  const [error, setError] = useState<string | null>(null);
+  async function logout(): Promise<void> {
+    if (!await manager.logout()) setError('No fue posible cerrar la sesión. Inténtalo de nuevo.');
+  }
+  if (session.status !== 'pin-change-required') return <main id="main-content" tabIndex={-1}><h1>Ruta no disponible</h1></main>;
+  return <main id="main-content" tabIndex={-1}><section aria-labelledby="pin-change-title">
+    <h1 id="pin-change-title">Cambio de NIP obligatorio</h1>
+    <p role="status">Tu sesión está restringida hasta cambiar el NIP o cerrar sesión.</p>
+    {error !== null && <p role="alert">{error}</p>}
+    <button type="button" onClick={() => { void logout(); }}>Cerrar sesión</button>
+  </section></main>;
+}
+
+function PinChangeGate() {
+  const session = useSession();
+  const location = useLocation();
+  if (session.status === 'pin-change-required' && location.pathname !== '/cambiar-nip') {
+    return <Navigate to="/cambiar-nip" replace />;
+  }
+  return <Outlet />;
 }
 
 function NotFoundContent() {
@@ -31,20 +61,22 @@ function NotFoundPage() {
 }
 
 export const appRoutes: RouteObject[] = [
-  { path: '/', element: <LandingPage /> },
-  {
-    path: '/cliente',
-    element: <ClientLayout />, children: [
+  { element: <PinChangeGate />, children: [
+    { path: '/', element: <LandingPage /> },
+    { path: '/cambiar-nip', element: <PinChangeRequiredPage /> },
+    {
+      path: '/cliente',
+      element: <ClientLayout />, children: [
       { index: true, element: <Navigate to="menu" replace /> },
       { path: 'iniciar-sesion', element: <PlaceholderPage title="Iniciar sesión" /> },
       { path: 'menu', element: <PlaceholderPage title="Menú" /> },
       { element: <ClientAccessGuard />, children: [{ path: 'cuenta', element: <PlaceholderPage title="Cuenta" /> }] },
       { path: '*', element: <section aria-labelledby="page-title"><NotFoundContent /></section> },
-    ],
-  },
-  {
-    path: '/terminal',
-    element: <TerminalLayout />, children: [
+      ],
+    },
+    {
+      path: '/terminal',
+      element: <TerminalLayout />, children: [
       { index: true, element: <PlaceholderPage title="Terminal" /> },
       { element: <TerminalAccessGuard allowedRoles={['CAJERO', 'ADMINISTRADOR']} />, children: [
         { path: 'pos', element: <PlaceholderPage title="Punto de venta" /> },
@@ -57,9 +89,10 @@ export const appRoutes: RouteObject[] = [
         { path: 'administracion/*', element: <PlaceholderPage title="Administración" /> },
       ] },
       { path: '*', element: <section aria-labelledby="page-title"><NotFoundContent /></section> },
-    ],
-  },
-  { path: '*', element: <NotFoundPage /> },
+      ],
+    },
+    { path: '*', element: <NotFoundPage /> },
+  ] },
 ];
 
 export const router = createBrowserRouter(appRoutes);

@@ -1,6 +1,6 @@
 import { HttpResponse, http } from 'msw';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiError, apiFetch, invalidateCsrfToken } from './client';
+import { ApiError, apiFetch, invalidateCsrfToken, refreshSession, subscribeToApiAuthEvents } from './client';
 import { server } from '../../test/server';
 
 const api = '/api/v1';
@@ -43,6 +43,45 @@ describe('apiFetch', () => {
 
     expect(csrfRequests).toBe(1);
     expect(receivedTokens).toEqual(['csrf-1', 'csrf-1']);
+  });
+
+  it('does not let an arbitrary caller silence a definitive 401', async () => {
+    const events: string[] = [];
+    const unsubscribe = subscribeToApiAuthEvents((event) => events.push(event.type));
+    server.use(http.get(`${api}/private`, () => new HttpResponse(null, { status: 401 })));
+    // @ts-expect-error Suppression is not a public apiFetch option.
+    await expect(apiFetch('/private', { suppressAuthEvents: true })).rejects.toMatchObject({ status: 401 });
+    expect(events).toEqual(['session-expired']);
+    unsubscribe();
+  });
+
+  it('keeps normal CSRF single-flight separate from a suppressed session request', async () => {
+    const events: string[] = [];
+    const unsubscribe = subscribeToApiAuthEvents((event) => events.push(event.type));
+    let csrfRequests = 0;
+    let releaseSuppressed!: () => void;
+    const suppressedStarted = new Promise<void>((resolve) => { releaseSuppressed = resolve; });
+    let markSuppressedStarted!: () => void;
+    const suppressedHasStarted = new Promise<void>((resolve) => { markSuppressedStarted = resolve; });
+    server.use(http.get(`${api}/auth/csrf`, async () => {
+      csrfRequests += 1;
+      if (csrfRequests === 1) {
+        markSuppressedStarted();
+        await suppressedStarted;
+      }
+      return new HttpResponse(null, { status: 401 });
+    }));
+
+    const suppressed = refreshSession().catch(() => undefined);
+    await suppressedHasStarted;
+    const normal = apiFetch('/orders', { method: 'POST', body: {} }).catch(() => undefined);
+    await normal;
+    releaseSuppressed();
+    await suppressed;
+
+    expect(csrfRequests).toBe(2);
+    expect(events).toEqual(['session-expired']);
+    unsubscribe();
   });
 
   it('preserves FormData without imposing a JSON content type', async () => {
