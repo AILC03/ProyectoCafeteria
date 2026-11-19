@@ -1,8 +1,8 @@
 # PLAN-FE-001 — Migración a frontend unificado
 
-**Estado:** Propuesta — pendiente de aprobación  
+**Estado:** Aprobado por responsable — 2026-11-18
 **Fecha:** 2026-11-18  
-**Spec de referencia:** [SPEC-FE-001](../specs/FRONTEND-UNIFICATION-SPEC.md), aprobada el 2026-11-18.
+**Spec de referencia:** [SPEC-FE-001](./FRONTEND-UNIFICATION-SPEC.md), aprobada el 2026-11-18.
 
 ## 1. Objetivo del plan
 
@@ -102,11 +102,9 @@ La consolidación visual no es una reescritura global: inicialmente coexistirán
 - Migrar catálogo, categorías, opciones y personalización desde la API; no usar catálogo local como fuente operativa.
 - Migrar carrito como borrador no sensible y creación de orden móvil con idempotencia.
 - Migrar perfil propio, favoritos, historial y repetición sólo bajo sesión CLIENTE.
-- Migrar el registro mediante QR impreso en ticket de compra pagada de invitado: el personal obtiene el ticket protegido confirmado por sesión con `GET /sales/{id}/ticket`, renderiza su QR de registro sólo después del pago confirmado y entrega el token al formulario de alta únicamente en memoria. Antes del alta, el área cliente verifica que no existan cookies/sesión de acceso o refresh; si existe sesión CLIENTE o personal, exige su logout exitoso antes de solicitar CSRF prelogin. El alta no inicia sesión automáticamente y no persiste QR/token.
-- Mantener semánticamente separado el QR de registro del QR CASH: el primero sólo sirve para alta de invitado; el segundo se crea/recupera/escanea sólo por los endpoints y roles de caja. `POST /sales/{id}/ticket-access` y `X-Ticket-Token` no se usarán ni mostrarán como QR de registro.
-- Mantener fuera el comprobante digital `X-Ticket-Token`, retorno Stripe y recuperación/cambio de NIP.
+- Mantener fuera el QR de registro, el comprobante digital `X-Ticket-Token`, retorno Stripe y recuperación/cambio de NIP hasta el slice de caja/ticket de Fase 4.
 
-**Salida verificable:** E2E de visitante, CLIENTE e invitado; pruebas negativas de permisos, de token QR y de separación QR registro/QR CASH/`X-Ticket-Token`; regresión de catálogo, carrito y órdenes; pruebas de teclado, foco visible, contraste y movimiento reducido en las rutas de cliente.
+**Salida verificable:** E2E de visitante, CLIENTE e invitado; pruebas negativas de permisos; regresión de catálogo, carrito y órdenes; pruebas de teclado, foco visible, contraste y movimiento reducido en las rutas de cliente.
 
 **Dependencia:** Fase 2.  
 **Reversión:** conservar `frontend/clientes/` como entrada de contingencia hasta la aceptación funcional.
@@ -119,6 +117,7 @@ La consolidación visual no es una reescritura global: inicialmente coexistirán
 - Migrar bienvenida, guardas y navegación de terminal con rutas reales.
 - Migrar toma de orden de caja, asociación mínima de cliente, apertura/cierre de caja y cobro efectivo usando API, CSRF e idempotencia.
 - Migrar impresión/renderizado de ticket confirmado por API y QR de registro cuando corresponda: obtener el ticket protegido mediante `GET /sales/{id}/ticket` bajo sesión CAJERO/ADMINISTRADOR, usar su QR sólo para alta de invitado y mantenerlo en memoria. Mantener QR CASH como flujo independiente de caja. Nunca usar `ticket-access`/`X-Ticket-Token` como QR de registro ni emitir recibo definitivo tras timeout/error.
+- Migrar el alta con QR desde el área cliente como parte del slice de ticket: resolver el actor activo mediante `GET /auth/me`; si hay sesión CLIENTE o personal, confirmar el reemplazo y completar `POST /auth/logout` con CSRF antes de obtener CSRF prelogin. El token se conserva sólo en memoria y el alta no inicia sesión automáticamente.
 - Migrar historial y ventas operativas autorizadas.
 
 **Salida verificable:** pruebas por rol para rutas, caja y cobro; E2E de apertura, cobro exitoso, conflicto/timeout y QR de registro; pruebas negativas de QR CASH frente a QR de alta y de `X-Ticket-Token`; no hay acceso desde claves locales manipuladas; pruebas de teclado, foco visible, contraste y movimiento reducido en POS/caja.
