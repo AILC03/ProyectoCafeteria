@@ -1,5 +1,6 @@
 import react from '@vitejs/plugin-react';
-import { defineConfig, loadEnv } from 'vite';
+import { loadEnv } from 'vite';
+import { defineConfig } from 'vitest/config';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_');
@@ -9,6 +10,29 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    test: {
+      environment: 'jsdom',
+      setupFiles: ['./src/test/setup.ts'],
+      coverage: {
+        provider: 'v8',
+      },
+      projects: [
+        {
+          extends: true,
+          test: {
+            name: 'unit',
+            include: ['src/**/*.unit.test.{ts,tsx}'],
+          },
+        },
+        {
+          extends: true,
+          test: {
+            name: 'components',
+            include: ['src/**/*.component.test.tsx'],
+          },
+        },
+      ],
+    },
     server: {
       port: 5173,
       proxy: {
