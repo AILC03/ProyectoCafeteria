@@ -34,26 +34,30 @@ export const appRoutes: RouteObject[] = [
   { path: '/', element: <LandingPage /> },
   {
     path: '/cliente',
-    element: <ClientAccessGuard />,
-    children: [{ element: <ClientLayout />, children: [
+    element: <ClientLayout />, children: [
       { index: true, element: <Navigate to="menu" replace /> },
       { path: 'iniciar-sesion', element: <PlaceholderPage title="Iniciar sesión" /> },
       { path: 'menu', element: <PlaceholderPage title="Menú" /> },
-      { path: 'cuenta', element: <PlaceholderPage title="Cuenta" /> },
+      { element: <ClientAccessGuard />, children: [{ path: 'cuenta', element: <PlaceholderPage title="Cuenta" /> }] },
       { path: '*', element: <section aria-labelledby="page-title"><NotFoundContent /></section> },
-    ] }],
+    ],
   },
   {
     path: '/terminal',
-    element: <TerminalAccessGuard />,
-    children: [{ element: <TerminalLayout />, children: [
+    element: <TerminalLayout />, children: [
       { index: true, element: <PlaceholderPage title="Terminal" /> },
-      { path: 'pos', element: <PlaceholderPage title="Punto de venta" /> },
-      { path: 'cocina', element: <PlaceholderPage title="Cocina" /> },
-      { path: 'caja', element: <PlaceholderPage title="Caja" /> },
-      { path: 'administracion/*', element: <PlaceholderPage title="Administración" /> },
+      { element: <TerminalAccessGuard allowedRoles={['CAJERO', 'ADMINISTRADOR']} />, children: [
+        { path: 'pos', element: <PlaceholderPage title="Punto de venta" /> },
+        { path: 'caja', element: <PlaceholderPage title="Caja" /> },
+      ] },
+      { element: <TerminalAccessGuard allowedRoles={['PREPARACION', 'CAJERO', 'ADMINISTRADOR']} />, children: [
+        { path: 'cocina', element: <PlaceholderPage title="Cocina" /> },
+      ] },
+      { element: <TerminalAccessGuard allowedRoles={['ADMINISTRADOR']} />, children: [
+        { path: 'administracion/*', element: <PlaceholderPage title="Administración" /> },
+      ] },
       { path: '*', element: <section aria-labelledby="page-title"><NotFoundContent /></section> },
-    ] }],
+    ],
   },
   { path: '*', element: <NotFoundPage /> },
 ];

@@ -32,3 +32,11 @@ Si no se definen, esos valores locales seguros son los predeterminados. No versi
 
 El servidor MSW de pruebas se inicia sin handlers y falla ante solicitudes no gestionadas, por lo
 que las pruebas no llaman a la API real de forma predeterminada.
+
+## Coordinación de refresh
+
+`SessionProvider` coordina `POST /auth/refresh` por perfil exclusivamente con Web Locks. Si el
+navegador no ofrece esa API, no intenta el refresh automático y expone un error recuperable para
+que un flujo de sesión posterior decida cómo continuar. No se usa `localStorage` como lock.
+`BroadcastChannel` difunde únicamente el evento fijo `refresh-complete`; cada contexto vuelve a
+consultar `/auth/me` con sus cookies HttpOnly.

@@ -89,6 +89,17 @@ export function invalidateCsrfToken(): void {
   csrfToken = null;
 }
 
+/**
+ * Replaces the CSRF value held only by this JavaScript context. Auth responses
+ * are the sole callers; this deliberately never writes to browser storage.
+ */
+export function setCsrfToken(token: string): void {
+  if (token.length === 0) {
+    throw new TypeError('CSRF token must not be empty');
+  }
+  csrfToken = token;
+}
+
 function invalidateCsrfTokenIfCurrent(token: string | null): void {
   if (token !== null && csrfToken === token) {
     invalidateCsrfToken();

@@ -1,10 +1,19 @@
 import { render, screen } from '@testing-library/react';
+import { HttpResponse, http } from 'msw';
 import { RouterProvider } from 'react-router-dom';
 import { describe, expect, test } from 'vitest';
 import { createTestRouter } from './app/router';
+import { SessionProvider } from './shared/auth/SessionProvider';
+import { server } from './test/server';
 
 function renderRoute(path: string) {
-  return render(<RouterProvider router={createTestRouter([path])} />);
+  const actor = path.startsWith('/terminal/administracion')
+    ? { id: 'admin-1', name: 'Admin', role: 'ADMINISTRADOR', accountType: 'STAFF', mustChangePin: false }
+    : path.startsWith('/terminal')
+    ? { id: 'staff-1', name: 'Caja', role: 'CAJERO', accountType: 'STAFF', mustChangePin: false }
+    : { id: 'customer-1', name: 'Cliente', role: 'CLIENTE', accountType: 'CUSTOMER', mustChangePin: false };
+  server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ data: actor })));
+  return render(<SessionProvider><RouterProvider router={createTestRouter([path])} /></SessionProvider>);
 }
 
 describe('application routes', () => {
@@ -48,5 +57,34 @@ describe('application routes', () => {
     const skipLink = await screen.findByRole('link', { name: 'Saltar al contenido principal' });
     expect(skipLink).toHaveAttribute('href', '#main-content');
     expect(document.querySelector('main')).toHaveAttribute('tabindex', '-1');
+  });
+
+  test.each([
+    ['/cliente/cuenta', { id: 'staff-1', name: 'Caja', role: 'CAJERO', accountType: 'STAFF', mustChangePin: false }],
+    ['/terminal/pos', { id: 'customer-1', name: 'Cliente', role: 'CLIENTE', accountType: 'CUSTOMER', mustChangePin: false }],
+    ['/terminal/administracion/catalogo', { id: 'staff-1', name: 'Caja', role: 'CAJERO', accountType: 'STAFF', mustChangePin: false }],
+  ])('blocks an actor with an unsuitable role from %s', async (path, actor) => {
+    server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ data: actor })));
+    render(<SessionProvider><RouterProvider router={createTestRouter([path])} /></SessionProvider>);
+    expect(await screen.findByRole('heading', { name: 'Acceso no disponible' })).toBeInTheDocument();
+  });
+
+  test.each([
+    ['anonymous', 401, 'UNAUTHENTICATED'],
+    ['PIN-change-required', 403, 'PIN_CHANGE_REQUIRED'],
+  ])('blocks a %s session without rendering protected content', async (_state, status, code) => {
+    server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ code }, { status })));
+    render(<SessionProvider><RouterProvider router={createTestRouter(['/cliente/cuenta'])} /></SessionProvider>);
+    expect(await screen.findByRole('heading', { name: 'Acceso no disponible' })).toBeInTheDocument();
+  });
+
+  test.each([
+    ['/cliente/iniciar-sesion', 'Iniciar sesión'],
+    ['/cliente/menu', 'Menú'],
+    ['/terminal', 'Terminal'],
+  ])('keeps %s public while session bootstrap is anonymous', async (path, heading) => {
+    server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ code: 'UNAUTHENTICATED' }, { status: 401 })));
+    render(<SessionProvider><RouterProvider router={createTestRouter([path])} /></SessionProvider>);
+    expect(await screen.findByRole('heading', { name: heading })).toBeInTheDocument();
   });
 });
