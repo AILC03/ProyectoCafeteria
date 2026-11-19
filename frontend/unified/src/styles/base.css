@@ -1,0 +1,10 @@
+:root { font-family: system-ui, sans-serif; color: #1f2933; background: #fff; }
+body { margin: 0; }
+header, main { padding: 1rem; }
+header { display: flex; gap: 1rem; align-items: center; }
+nav { display: flex; gap: .75rem; flex-wrap: wrap; }
+a:focus-visible, [tabindex="-1"]:focus { outline: 3px solid #005fcc; outline-offset: 3px; }
+.skip-link { position: fixed; top: .5rem; left: .5rem; transform: translateY(-200%); background: #fff; color: #111; padding: .5rem; z-index: 1; }
+.skip-link:focus { transform: translateY(0); }
+.client-layout header { background: #f4f7fb; }
+.terminal-layout header { background: #eef6ef; }
