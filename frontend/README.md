@@ -47,12 +47,26 @@ Vite reenvía las solicitudes que comienzan con `/api` a `http://localhost:3000`
 
 Consulte los README de cada aplicación para sus rutas, flujos y comandos específicos.
 
+## Documentación
+
+La documentación técnica completa del frontend (arquitectura, estado real frente a OpenAPI 0.11.0, guías por módulo, brechas detectadas, diccionario de almacenamiento y backlog) está disponible en [`docs/`](./docs/README.md):
+
+- [Índice reconciliado y estado actual](./docs/README.md)
+- [Contexto del proyecto y equipo](./docs/PROJECT-CONTEXT.md)
+- [Arquitectura dual (Clientes PWA + POS Electron)](./docs/architecture.md)
+- [Cobertura de endpoints OpenAPI 0.11.0](./docs/api/endpoints-coverage.md)
+- [Integración técnica con backend](./docs/backend-integration.md)
+- [Auditoría de brechas (FE-GAP-01)](./docs/tasks/FE-GAP-01-integration-audit.md)
+- [Backlog y trabajo pendiente](./docs/development-tasks.md)
+- [Arranque local, PWA y Electron](./docs/local-setup.md)
+
 ## Estructura
 
 ```text
 frontend/
 ├── clientes/    # Portal de autoservicio para clientes (React + TypeScript)
-└── empleados/   # Terminal POS y administración (React + JavaScript + Electron)
+├── empleados/   # Terminal POS y administración (React + JavaScript + Electron)
+└── docs/        # Documentación técnica, ADRs, cobertura de API y backlog
 ```
 
 ## Alcance de datos
