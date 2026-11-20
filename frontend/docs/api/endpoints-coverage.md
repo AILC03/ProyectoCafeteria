@@ -1,5 +1,15 @@
 # Cobertura de endpoints OpenAPI 0.11.0 en el frontend
 
+## Avance de `frontend/unified/` — TASK-11 (2026-11-20)
+
+En el paquete unificado, `features/clientes/cart/` revalida cada línea del
+borrador mediante `GET /products/{productId}` y
+`GET /products/{productId}/options`; `features/clientes/orders/mobileOrders.ts`
+consume `POST /orders` para crear una orden móvil `CASH` o `STRIPE` pendiente.
+Mantiene una misma clave/cuerpo ante resultado incierto y no interpreta la
+creación como cobro. No solicita QR CASH, token de checkout ni retorno Stripe.
+Esta nota **no cambia** los estados de las aplicaciones legadas auditadas abajo.
+
 Inventario completo de las rutas definidas en [OpenAPI 0.11.0](../../../backend/docs/api/openapi.yaml)
 contrastadas contra los módulos `src/api/` y componentes de `frontend/clientes/` y
 `frontend/empleados/` al **2026-11-18**.

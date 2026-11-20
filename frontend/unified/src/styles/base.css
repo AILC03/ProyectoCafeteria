@@ -62,8 +62,16 @@ button.secondary-button { background: #fff; color: #1e3a8a; border-color: #1e3a8
 .availability-badge { font-size: .8rem; font-weight: 700; padding: .2rem .55rem; border-radius: 999px; background: #f0fdf4; color: #14532d; border: 1px solid #86efac; white-space: nowrap; }
 .availability-badge-soldout { background: #fef2f2; color: #991b1b; border-color: #fca5a5; }
 .catalog-confirmation { background: #eff6ff; border-color: #93c5fd; color: #1e3a8a; }
+.client-cart { box-sizing: border-box; max-width: min(100%, 42rem); min-width: 0; overflow-wrap: anywhere; }
+.client-cart ul { display: grid; gap: .75rem; list-style: none; padding: 0; margin: 0; }
+.client-cart li { border-bottom: 1px solid #cbd5e1; padding-bottom: .65rem; display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+.client-cart li > * { max-width: 100%; min-width: 0; }
+.client-cart button { max-width: 100%; white-space: normal; }
+.client-cart li p { flex-basis: 100%; margin: 0; color: #991b1b; }
+.client-cart fieldset { display: grid; gap: .65rem; border: 1px solid #94a3b8; border-radius: .375rem; }
+.client-cart fieldset label { display: flex; align-items: center; gap: .5rem; min-height: 2.5rem; }
 
-.catalog-dialog { max-width: 38rem; max-height: 90vh; overflow-y: auto; display: grid; gap: 1rem; }
+.catalog-dialog { box-sizing: border-box; max-width: 38rem; max-height: 90vh; min-width: 0; overflow-y: auto; display: grid; gap: 1rem; }
 .catalog-dialog-header { display: flex; justify-content: space-between; align-items: start; gap: 1rem; }
 .catalog-dialog-header h2 { margin: 0 0 .25rem; }
 .catalog-options-list { display: grid; gap: .85rem; }

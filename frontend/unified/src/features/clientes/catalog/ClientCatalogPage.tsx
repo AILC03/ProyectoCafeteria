@@ -1,5 +1,9 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent } from 'react';
 import { formatMxnCents } from '../../../shared/utils/money';
+import { getCartDraft, saveCartDraft, type CartDraftItem } from '../../../shared/storage';
+import { ClientCart } from '../cart/ClientCart';
+import { useSessionManager } from '../../../shared/auth/SessionProvider';
+import { mobileOrderStoreFor } from '../orders/mobileOrders';
 import {
   fetchCatalogCategories,
   fetchCatalogProducts,
@@ -20,6 +24,10 @@ function isSafeImageUrl(url: string | null): url is string {
 
 /** Public and customer catalog browsing page backed exclusively by API responses. */
 export function ClientCatalogPage() {
+  const manager = useSessionManager();
+  const orderStore = mobileOrderStoreFor(manager);
+  const orderAttempt = useSyncExternalStore(orderStore.subscribe, orderStore.getSnapshot, orderStore.getSnapshot);
+  const lastOrderClearRevision = useRef(orderStore.getClearRevision());
   const [categories, setCategories] = useState<CatalogCategory[]>([]);
   const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [activeCategoryId, setActiveCategoryId] = useState<string>(ALL_CATEGORIES_ID);
@@ -28,7 +36,28 @@ export function ClientCatalogPage() {
   const [retryCount, setRetryCount] = useState(0);
   const [selectedProduct, setSelectedProduct] = useState<CatalogProduct | null>(null);
   const [lastConfirmed, setLastConfirmed] = useState<ConfirmedCustomization | null>(null);
+  const [cartItems, setCartItems] = useState<CartDraftItem[]>(() => getCartDraft().items);
+  const [cartNotice, setCartNotice] = useState<string | null>(null);
+  const [cartLocked, setCartLocked] = useState(false);
   const categoryButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
+  useEffect(() => manager.registerPrivateStateCleaner(() => {
+    setCartItems([]);
+    setLastConfirmed(null);
+    setCartNotice(null);
+    setCartLocked(false);
+  }), [manager]);
+
+  useEffect(() => {
+    const revision = orderStore.getClearRevision();
+    if (revision === lastOrderClearRevision.current) return;
+    lastOrderClearRevision.current = revision;
+    setCartItems([]);
+    setLastConfirmed(null);
+    setSelectedProduct(null);
+    setCartNotice(null);
+    setCartLocked(false);
+  }, [orderAttempt, orderStore]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -101,8 +130,24 @@ export function ClientCatalogPage() {
             ({lastConfirmed.selectedLabels.length > 0 ? lastConfirmed.selectedLabels.join(', ') : 'Sin extras'}) —{' '}
             Estimado {formatMxnCents(lastConfirmed.estimatedTotalCents)}.
           </p>
+          <button type="button" disabled={cartLocked} onClick={() => {
+            if (cartLocked) return;
+            if (cartItems.length >= 50) {
+              setCartNotice('El carrito admite hasta 50 líneas. Quita una antes de añadir otra.');
+              return;
+            }
+            const next = [...cartItems, { productId: lastConfirmed.productId, quantity: lastConfirmed.quantity, optionValueIds: lastConfirmed.optionValueIds }];
+            mobileOrderStoreFor(manager).dismissConfirmation();
+            saveCartDraft({ version: 1, items: next });
+            setCartItems(next);
+            setLastConfirmed(null);
+            setCartNotice('Producto añadido al carrito borrador. Comprueba el catálogo antes de ordenar.');
+          }}>Añadir al carrito</button>
         </div>
       )}
+      {cartNotice !== null && <p role="status">{cartNotice}</p>}
+
+      <ClientCart items={cartItems} onChange={setCartItems} catalogRevision={retryCount} onLockChange={setCartLocked} />
 
       {loading && (
         <p role="status" aria-live="polite">
