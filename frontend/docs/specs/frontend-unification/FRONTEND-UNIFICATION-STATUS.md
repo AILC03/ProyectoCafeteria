@@ -15,10 +15,11 @@ Las recomendaciones aceptadas y sus sustituciones se documentan en el [registro 
 | TASK-06 — Cambio de actor y limpieza distribuida | Terminada | 2026-11-19 | `f2146ce` | Logout confirmado, PIN restringido, invalidación distribuida y modal accesible; lint, typecheck, build y 53 pruebas correctos; revisión aprobada. |
 | TASK-07 — Almacenamiento local permitido | Terminada | 2026-11-19 | `5a43d6a` | Preferencias y borrador acotados, limpieza legacy/IndexedDB; lint, typecheck, build, escaneo de bundle y 65 pruebas correctos; revisión aprobada. |
 | TASK-08 — Idempotencia reutilizable | Terminada | 2026-11-19 | `65ce738` | Operaciones en memoria sin reintento automático; lint, typecheck, build y 73 pruebas correctos; revisión aprobada. |
+| TASK-09 — Autenticación y entrada de cliente | Terminada | 2026-11-20 | `mismo commit` | Login `CLIENTE`, invitado en memoria, logout, reemplazo de actor y guardas `/cliente/*`; `lint`, `typecheck`, `build`, 92 pruebas Vitest y 3 E2E Playwright (Chromium, mocks de API) correctos; revisión aprobada; decisiones D-14 a D-16. |
 
-**Pendientes:** TASK-09 a TASK-21. No se consideran terminadas por tener precondiciones cumplidas; cada una requiere implementación, verificación, revisión independiente y commit propio.
+**Pendientes:** TASK-10 a TASK-21. No se consideran terminadas por tener precondiciones cumplidas; cada una requiere implementación, verificación, revisión independiente y commit propio.
 
-**Decisiones por tarea:** TASK-04: D-01; TASK-05: D-02 (sustituida), D-03 y D-04; TASK-06: D-05 a D-07; TASK-07: D-08 a D-11 (D-10 sustituida); TASK-08: D-12 y D-13. TASK-00 a TASK-03 se rigen por la spec y el plan aprobados, sin recomendación adicional registrada aquí.
+**Decisiones por tarea:** TASK-04: D-01; TASK-05: D-02 (sustituida), D-03 y D-04; TASK-06: D-05 a D-07; TASK-07: D-08 a D-11 (D-10 sustituida); TASK-08: D-12 y D-13; TASK-09: D-14 a D-16. TASK-00 a TASK-03 se rigen por la spec y el plan aprobados, sin recomendación adicional registrada aquí.
 
 ## Cómo registrar cada cierre futuro
 

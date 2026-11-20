@@ -1,4 +1,4 @@
-import { ApiError, fetchSessionActor, invalidateCsrfToken, logoutSession, refreshSession, setCsrfToken, subscribeToApiAuthEvents } from '../api/client';
+import { ApiError, fetchSessionActor, invalidateCsrfToken, loginCustomerSession, logoutSession, refreshSession, setCsrfToken, subscribeToApiAuthEvents } from '../api/client';
 
 export type Actor = {
   id: string;
@@ -149,6 +149,31 @@ export class SessionManager {
     return true;
   }
 
+  /** Authenticates a customer without allowing an active actor session to be mixed. */
+  async loginCustomer(credentials: { identifier: string; pin: string }): Promise<SessionState> {
+    if (this.state.status === 'loading' || this.state.status === 'authenticated' || this.state.status === 'pin-change-required') {
+      throw new ApiError(409, 'Debe cerrarse la sesión activa antes de iniciar otra.');
+    }
+    try {
+      const response = await loginCustomerSession<ApiEnvelope<RefreshPayload>>(credentials);
+      if (response.data.user.accountType !== 'CUSTOMER' || response.data.user.role !== 'CLIENTE') {
+        this.clearSession('/cliente/iniciar-sesion', true);
+        throw new ApiError(403, 'El actor autenticado no pertenece al área de cliente.');
+      }
+      this.clearPrivateState();
+      setCsrfToken(response.data.csrfToken);
+      if (response.data.user.mustChangePin) {
+        return this.restrictToPinChange(true);
+      }
+      const next = this.set({ status: 'authenticated', actor: response.data.user });
+      this.coordinator.complete();
+      return next;
+    } catch (error) {
+      if (isPinChange(error)) return this.restrictToPinChange(true);
+      throw error;
+    }
+  }
+
   async bootstrap(): Promise<SessionState> {
     this.bootstrapRequest ??= this.bootstrapActor().finally(() => { this.bootstrapRequest = null; });
     return this.bootstrapRequest;
@@ -234,6 +259,10 @@ export class SessionManager {
     if (!(error instanceof ApiError)) throw error;
     if (isPinChange(error)) return this.restrictToPinChange(true);
     if (isRecoverable(error)) return this.set({ status: 'recoverable-error', actor: null, error });
+    if (this.state.status === 'loading' && this.state.actor === null) {
+      invalidateCsrfToken();
+      return this.set({ status: 'anonymous', actor: null });
+    }
     return this.clearSession(this.entryFor(this.state.actor), true);
   }
 

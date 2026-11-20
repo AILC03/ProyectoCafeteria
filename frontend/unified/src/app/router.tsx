@@ -7,7 +7,9 @@ import {
   useLocation,
   type RouteObject,
 } from 'react-router-dom';
-import { ClientAccessGuard, TerminalAccessGuard } from './guards';
+import { ClientAccessGuard, ClientPublicGuard, TerminalAccessGuard } from './guards';
+import { ClientAuthPage } from '../features/clientes/auth/ClientAuthPage';
+import { exitGuestMode, useGuestSession } from '../features/clientes/auth/guestSession';
 import { ClientLayout } from '../layouts/ClientLayout';
 import { TerminalLayout } from '../layouts/TerminalLayout';
 import { ActorAreaLink } from '../shared/auth/ActorAreaLink';
@@ -19,10 +21,26 @@ function PlaceholderPage({ title }: { title: string }) {
 }
 
 function LandingPage() {
+  const guest = useGuestSession();
   return (
     <main id="main-content" tabIndex={-1}>
       <h1>Aplicación unificada de cafetería</h1>
-      <nav aria-label="Elegir área"><ul><li><ActorAreaLink destination="client" to="/cliente/menu">Área de cliente</ActorAreaLink></li><li><ActorAreaLink destination="terminal" to="/terminal">Terminal</ActorAreaLink></li></ul></nav>
+      <nav aria-label="Elegir área">
+        <ul>
+          <li><ActorAreaLink destination="client" to="/cliente/menu">Área de cliente</ActorAreaLink></li>
+          <li>
+            <ActorAreaLink
+              destination="terminal"
+              to="/terminal"
+              onClick={() => {
+                if (guest.isGuest) exitGuestMode();
+              }}
+            >
+              Terminal
+            </ActorAreaLink>
+          </li>
+        </ul>
+      </nav>
     </main>
   );
 }
@@ -68,8 +86,8 @@ export const appRoutes: RouteObject[] = [
       path: '/cliente',
       element: <ClientLayout />, children: [
       { index: true, element: <Navigate to="menu" replace /> },
-      { path: 'iniciar-sesion', element: <PlaceholderPage title="Iniciar sesión" /> },
-      { path: 'menu', element: <PlaceholderPage title="Menú" /> },
+      { path: 'iniciar-sesion', element: <ClientAuthPage /> },
+      { element: <ClientPublicGuard />, children: [{ path: 'menu', element: <PlaceholderPage title="Menú" /> }] },
       { element: <ClientAccessGuard />, children: [{ path: 'cuenta', element: <PlaceholderPage title="Cuenta" /> }] },
       { path: '*', element: <section aria-labelledby="page-title"><NotFoundContent /></section> },
       ],

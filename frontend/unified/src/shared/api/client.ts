@@ -269,4 +269,8 @@ export function logoutSession(): Promise<void> {
   return apiFetchInternal('/auth/logout', { method: 'POST', body: {} }, 'suppressed');
 }
 
+export function loginCustomerSession<T>(credentials: { identifier: string; pin: string }): Promise<T> {
+  return apiFetchInternal<T>('/auth/login/customer', { method: 'POST', body: credentials }, 'suppressed');
+}
+
 export const apiRequest = apiFetch;

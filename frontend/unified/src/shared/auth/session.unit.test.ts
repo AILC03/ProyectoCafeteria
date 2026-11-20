@@ -62,7 +62,16 @@ describe('SessionManager', () => {
     manager.dispose();
   });
 
-  it('becomes anonymous when the one bootstrap refresh fails definitively', async () => {
+  it('becomes anonymous when the one bootstrap refresh fails definitively without redirecting public routes or clearing guest state', async () => {
+    const messages: unknown[] = [];
+    class TestBroadcastChannel {
+      constructor(_name: string) {}
+      addEventListener(): void {}
+      removeEventListener(): void {}
+      postMessage(message: unknown): void { messages.push(message); }
+      close(): void {}
+    }
+    vi.stubGlobal('BroadcastChannel', TestBroadcastChannel);
     let refreshes = 0;
     server.use(
       http.get(`${api}/auth/me`, () => HttpResponse.json({ code: 'UNAUTHENTICATED' }, { status: 401 })),
@@ -72,10 +81,19 @@ describe('SessionManager', () => {
         return HttpResponse.json({ code: 'UNAUTHENTICATED' }, { status: 401 });
       }),
     );
-    const manager = new SessionManager();
-    await expect(manager.bootstrap()).resolves.toEqual({ status: 'anonymous', actor: null });
-    expect(refreshes).toBe(1);
-    manager.dispose();
+
+    for (const publicPath of ['/', '/cliente/menu']) {
+      window.history.replaceState(null, '', publicPath);
+      const manager = new SessionManager(new RefreshCoordinator('bootstrap-anon-test'));
+      const cleaner = vi.fn();
+      manager.registerPrivateStateCleaner(cleaner);
+      await expect(manager.bootstrap()).resolves.toEqual({ status: 'anonymous', actor: null });
+      expect(window.location.pathname).toBe(publicPath);
+      expect(cleaner).not.toHaveBeenCalled();
+      expect(messages).toEqual([]);
+      manager.dispose();
+    }
+    expect(refreshes).toBe(2);
   });
 
   it('serializes refresh between contexts with Web Locks', async () => {
@@ -341,6 +359,124 @@ describe('SessionManager', () => {
     expect(cleaner).toHaveBeenCalledOnce();
     expect(messages).toEqual([{ type: 'session-cleared' }]);
     expect(window.location.pathname).toBe('/terminal');
+    manager.dispose();
+  });
+
+  it('authenticates a customer, stores CSRF only in memory, clears private state, and broadcasts refresh-complete', async () => {
+    const messages: unknown[] = [];
+    class TestBroadcastChannel {
+      constructor(_name: string) {}
+      addEventListener(): void {}
+      removeEventListener(): void {}
+      postMessage(message: unknown): void { messages.push(message); }
+      close(): void {}
+    }
+    vi.stubGlobal('BroadcastChannel', TestBroadcastChannel);
+    server.use(
+      http.get(`${api}/auth/me`, () => HttpResponse.json({ code: 'UNAUTHENTICATED' }, { status: 401 })),
+      http.get(`${api}/auth/csrf`, () => HttpResponse.json({ data: { csrfToken: 'prelogin-csrf' } })),
+      http.post(`${api}/auth/refresh`, () => HttpResponse.json({ code: 'UNAUTHENTICATED' }, { status: 401 })),
+      http.post(`${api}/auth/login/customer`, async ({ request }) => {
+        expect(request.headers.get('X-CSRF-Token')).toBe('prelogin-csrf');
+        return HttpResponse.json({ data: { user, csrfToken: 'customer-session-csrf' } });
+      }),
+    );
+    const manager = new SessionManager(new RefreshCoordinator('customer-login-test'));
+    const cleaner = vi.fn();
+    manager.registerPrivateStateCleaner(cleaner);
+    await manager.bootstrap();
+    await expect(manager.loginCustomer({ identifier: '5512345678', pin: '1234' })).resolves.toEqual({
+      status: 'authenticated',
+      actor: user,
+    });
+    expect(cleaner).toHaveBeenCalledOnce();
+    await expect(getCsrfToken()).resolves.toBe('customer-session-csrf');
+    expect(messages).toEqual([{ type: 'refresh-complete' }]);
+    expect(localStorage.length).toBe(0);
+    manager.dispose();
+  });
+
+  it('does not broadcast session-cleared or wipe private state when customer login fails with 401', async () => {
+    const messages: unknown[] = [];
+    class TestBroadcastChannel {
+      constructor(_name: string) {}
+      addEventListener(): void {}
+      removeEventListener(): void {}
+      postMessage(message: unknown): void { messages.push(message); }
+      close(): void {}
+    }
+    vi.stubGlobal('BroadcastChannel', TestBroadcastChannel);
+    server.use(
+      http.get(`${api}/auth/me`, () => HttpResponse.json({ code: 'UNAUTHENTICATED' }, { status: 401 })),
+      http.get(`${api}/auth/csrf`, () => HttpResponse.json({ data: { csrfToken: 'prelogin-csrf' } })),
+      http.post(`${api}/auth/refresh`, () => HttpResponse.json({ code: 'UNAUTHENTICATED' }, { status: 401 })),
+      http.post(`${api}/auth/login/customer`, () => HttpResponse.json({ code: 'INVALID_CREDENTIALS', detail: 'Bad credentials' }, { status: 401 })),
+    );
+    const manager = new SessionManager(new RefreshCoordinator('customer-login-401-test'));
+    const cleaner = vi.fn();
+    manager.registerPrivateStateCleaner(cleaner);
+    await manager.bootstrap();
+    await expect(manager.loginCustomer({ identifier: '5512345678', pin: '9999' })).rejects.toMatchObject({ status: 401 });
+    expect(manager.getSnapshot()).toEqual({ status: 'anonymous', actor: null });
+    expect(cleaner).not.toHaveBeenCalled();
+    expect(messages).toEqual([]);
+    manager.dispose();
+  });
+
+  it('restricts navigation to pin-change-required when loginCustomer returns mustChangePin or 403 PIN_CHANGE_REQUIRED', async () => {
+    server.use(
+      http.get(`${api}/auth/me`, () => HttpResponse.json({ code: 'UNAUTHENTICATED' }, { status: 401 })),
+      http.get(`${api}/auth/csrf`, () => HttpResponse.json({ data: { csrfToken: 'prelogin-csrf' } })),
+      http.post(`${api}/auth/refresh`, () => HttpResponse.json({ code: 'UNAUTHENTICATED' }, { status: 401 })),
+      http.post(`${api}/auth/login/customer`, () => HttpResponse.json({
+        data: { user: { ...user, mustChangePin: true }, csrfToken: 'pin-csrf' },
+      })),
+    );
+    const first = new SessionManager(new RefreshCoordinator('customer-pin-flag'));
+    await first.bootstrap();
+    await expect(first.loginCustomer({ identifier: 'C000105', pin: '1234' })).resolves.toEqual({
+      status: 'pin-change-required',
+      actor: null,
+    });
+    expect(window.location.pathname).toBe('/cambiar-nip');
+    first.dispose();
+
+    window.history.replaceState(null, '', '/cliente/iniciar-sesion');
+    server.use(
+      http.post(`${api}/auth/login/customer`, () => HttpResponse.json({ code: 'PIN_CHANGE_REQUIRED' }, { status: 403 })),
+    );
+    const second = new SessionManager(new RefreshCoordinator('customer-pin-403'));
+    await second.bootstrap();
+    await expect(second.loginCustomer({ identifier: 'C000105', pin: '1234' })).resolves.toEqual({
+      status: 'pin-change-required',
+      actor: null,
+    });
+    expect(window.location.pathname).toBe('/cambiar-nip');
+    second.dispose();
+  });
+
+  it('blocks loginCustomer with 409 when an actor session is already active', async () => {
+    const staff = { id: 'staff-1', name: 'Caja', role: 'CAJERO', accountType: 'STAFF', mustChangePin: false };
+    server.use(http.get(`${api}/auth/me`, () => HttpResponse.json({ data: staff })));
+    const manager = new SessionManager();
+    await manager.bootstrap();
+    await expect(manager.loginCustomer({ identifier: '5512345678', pin: '1234' })).rejects.toMatchObject({ status: 409 });
+    expect(manager.getSnapshot()).toEqual({ status: 'authenticated', actor: staff });
+    manager.dispose();
+  });
+
+  it('rejects non-customer actors returned unexpectedly from loginCustomer', async () => {
+    const staff = { id: 'staff-1', name: 'Caja', role: 'CAJERO', accountType: 'STAFF', mustChangePin: false };
+    server.use(
+      http.get(`${api}/auth/me`, () => HttpResponse.json({ code: 'UNAUTHENTICATED' }, { status: 401 })),
+      http.get(`${api}/auth/csrf`, () => HttpResponse.json({ data: { csrfToken: 'prelogin-csrf' } })),
+      http.post(`${api}/auth/refresh`, () => HttpResponse.json({ code: 'UNAUTHENTICATED' }, { status: 401 })),
+      http.post(`${api}/auth/login/customer`, () => HttpResponse.json({ data: { user: staff, csrfToken: 'bad' } })),
+    );
+    const manager = new SessionManager();
+    await manager.bootstrap();
+    await expect(manager.loginCustomer({ identifier: '5512345678', pin: '1234' })).rejects.toMatchObject({ status: 403 });
+    expect(manager.getSnapshot()).toEqual({ status: 'anonymous', actor: null });
     manager.dispose();
   });
 });
