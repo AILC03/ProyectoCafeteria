@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { apiFetch, getCsrfToken, invalidateCsrfToken, setCsrfToken } from '../api/client';
 import { RefreshCoordinator, SessionManager } from './session';
 import { server } from '../../test/server';
+import { CART_DRAFT_KEY, clearPrivateState, getCartDraft, migrateAndCleanupStorage, saveCartDraft, savePreferences } from '../storage';
 
 const api = '/api/v1';
 const user = { id: '42', name: 'Ada', role: 'CLIENTE', accountType: 'CUSTOMER', mustChangePin: false };
@@ -30,6 +31,17 @@ describe('SessionManager', () => {
     server.use(http.get(`${api}/auth/me`, () => HttpResponse.json({ data: user })));
     const manager = new SessionManager();
     await expect(manager.bootstrap()).resolves.toEqual({ status: 'authenticated', actor: user });
+    manager.dispose();
+  });
+
+  it('does not restore a legacy cart when bootstrapping an existing personal session', async () => {
+    localStorage.setItem('taffy_cart', JSON.stringify([{ productId: 'coffee-1', quantity: 2, optionValueIds: [], guestName: 'Ada' }]));
+    await migrateAndCleanupStorage();
+    server.use(http.get(`${api}/auth/me`, () => HttpResponse.json({ data: user })));
+    const manager = new SessionManager();
+    await expect(manager.bootstrap()).resolves.toEqual({ status: 'authenticated', actor: user });
+    expect(getCartDraft()).toEqual({ version: 1, items: [] });
+    expect(localStorage.getItem('taffy_cart')).toBeNull();
     manager.dispose();
   });
 
@@ -208,6 +220,23 @@ describe('SessionManager', () => {
     expect(cleaner).toHaveBeenCalledOnce();
     expect(messages).toEqual([{ type: 'session-cleared' }]);
     expect(JSON.stringify(messages)).not.toContain('logout-token');
+    manager.dispose();
+  });
+
+  it('clears the actor cart draft after successful logout while retaining preferences', async () => {
+    server.use(
+      http.get(`${api}/auth/me`, () => HttpResponse.json({ data: user })),
+      http.get(`${api}/auth/csrf`, () => HttpResponse.json({ data: { csrfToken: 'logout-token' } })),
+      http.post(`${api}/auth/logout`, () => new HttpResponse(null, { status: 204 })),
+    );
+    savePreferences({ theme: 'theme-dark' });
+    saveCartDraft({ version: 1, items: [{ productId: 'coffee-1', quantity: 1, optionValueIds: [] }] });
+    const manager = new SessionManager();
+    manager.registerPrivateStateCleaner(clearPrivateState);
+    await manager.bootstrap();
+    await expect(manager.logout()).resolves.toBe(true);
+    expect(localStorage.getItem(CART_DRAFT_KEY)).toBeNull();
+    expect(localStorage.getItem('cafeteria:preferences:v1')).toContain('theme-dark');
     manager.dispose();
   });
 

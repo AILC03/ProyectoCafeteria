@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { ActorChangeDialog } from './ActorChangeDialog';
 import { RefreshCoordinator, SessionManager, type ActorDestination, type SessionState } from './session';
+import { clearPrivateState } from '../storage';
 
 export type { Actor } from './session';
 
@@ -36,6 +37,8 @@ export function SessionProvider({ children, profile = runtimeProfile(), manager:
       }, 0);
     };
   }, [manager]);
+
+  useEffect(() => manager.registerPrivateStateCleaner(clearPrivateState), [manager]);
 
   useEffect(() => {
     const content = contentRef.current;
