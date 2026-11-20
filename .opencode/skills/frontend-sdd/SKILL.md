@@ -14,7 +14,7 @@ Usa esta skill para el trabajo de unificación de clientes y empleados.
 3. **Tasks:** tareas atómicas con criterio verificable, dependencias, archivos esperados, comandos de validación y revisor. Solicita la aprobación explícita del responsable antes de implementar la primera task.
 4. **Implementación:** sólo de una task aprobada a la vez; su verificación y revisión independiente son obligatorias antes del commit.
 
-No conviertas una recomendación en decisión aprobada. Registra las decisiones como propuestas hasta recibir confirmación explícita.
+No conviertas una recomendación en decisión aprobada. Registra cada propuesta y su aceptación explícita en `frontend/docs/specs/frontend-unification/FRONTEND-UNIFICATION-DECISIONS.md` **antes de implementarla**, con ID, task, estado, límites y sustitución de decisiones previas. Si afecta la spec/plan aprobados, solicita autorización para modificar también esos documentos. Enlaza los IDs aplicables al cierre de la task.
 
 ## Decisiones ya confirmadas
 

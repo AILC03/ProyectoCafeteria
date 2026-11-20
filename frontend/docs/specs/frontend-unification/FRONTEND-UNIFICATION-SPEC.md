@@ -1,6 +1,6 @@
 # SPEC-FE-001 — Frontend unificado de Coffee's POS
 
-**Estado:** Propuesta — pendiente de aprobación  
+**Estado:** Aprobada por responsable — 2026-11-18
 **Fecha:** 2026-11-16  
 **Fuentes:** `frontend/clientes/`, `frontend/empleados/`, `backend/docs/api/openapi.yaml`, `backend/docs/frontend-integration.md`, `backend/docs/permissions.md`.
 
@@ -38,7 +38,7 @@ La aplicación deberá reutilizar una base común de API, autenticación, seguri
 - Cambiar el backend, su contrato o sus cookies durante esta migración sin una tarea backend aprobada.
 - Incluir Stripe, correo o Cloudinary como servicios reales; su disponibilidad seguirá la configuración y autorizaciones del backend.
 - Retirar las aplicaciones antiguas antes de que la sustitución se valide en una fase posterior.
-- Incorporar en esta primera migración flujos backend que no estén hoy expuestos por las dos aplicaciones: recuperación o cambio de NIP, verificación de correo, retorno de Stripe, ticket digital protegido o restablecimiento presencial. Requerirán una spec propia.
+- Incorporar en esta primera migración flujos backend que no estén hoy expuestos por las dos aplicaciones: recuperación o cambio de NIP, verificación de correo, retorno de Stripe, comprobante digital protegido con `X-Ticket-Token` o restablecimiento presencial. Requerirán una spec propia.
 
 ## 4. Usuarios y permisos
 
@@ -189,18 +189,17 @@ La ubicación definitiva y la estrategia de consolidación de dependencias se de
 | Fallos de red en cobro. | Nunca producir éxito o recibo definitivo local; usar el flujo de recuperación de la guía backend. |
 | Diferencias JavaScript/TypeScript y CSS/Tailwind. | Decidir la estrategia de migración en el plan, sin reescritura global no justificada. |
 
-## 13. Flujos de ticket y registro incluidos
+## 13. QR de registro incluido
 
-La primera migración incluye los flujos actualmente expuestos de registro con ticket y acceso digital de invitado:
+La primera migración incluye el QR de registro impreso en el ticket de una compra pagada de invitado:
 
 - El registro usa sólo el token original en memoria, sin URL, logs, analítica o almacenamiento local; exige flujo de invitado sin cookie de acceso/refresh, CSRF prelogin y, tras éxito, muestra confirmación y ofrece login normal sin iniciar sesión automáticamente.
 - El ticket/QR de registro emitido tras una venta se trata únicamente como QR de alta; no es QR de pago ni permiso de lectura de compras.
-- El acceso digital de invitado usa exclusivamente `X-Ticket-Token`, sólo para el comprobante permitido. Nunca habilita historial, estado, datos de cuenta ni QR de registro.
-- Emisión, reemisión, impresión y lectura respetan los roles, propiedad, estado y expiración de `permissions.md`; los tokens no se conservan después del flujo en memoria.
+- El QR se muestra o imprime únicamente tras la confirmación de pago de la API y conforme a su elegibilidad. No se almacena ni se reutiliza localmente.
 
 ## 14. Flujos excluidos de la primera migración
 
-La primera migración unifica lo que está expuesto por las aplicaciones actuales. Los siguientes flujos de la API quedan explícitamente fuera hasta contar con una spec aprobada: retorno de Stripe, verificación de correo, recuperación/confirmación/cambio de NIP, reset presencial y cualquier token recibido en fragmentos de URL. `PIN_CHANGE_REQUIRED` no implementa el cambio de NIP en esta fase, pero debe restringir el acceso a una pantalla informativa de cambio obligatorio o logout, conforme al contrato.
+La primera migración unifica lo que está expuesto por las aplicaciones actuales. Los siguientes flujos de la API quedan explícitamente fuera hasta contar con una spec aprobada: retorno de Stripe, verificación de correo, recuperación/confirmación/cambio de NIP, reset presencial, comprobante digital protegido con `X-Ticket-Token` y cualquier token recibido en fragmentos de URL. `PIN_CHANGE_REQUIRED` no implementa el cambio de NIP en esta fase, pero debe restringir el acceso a una pantalla informativa de cambio obligatorio o logout, conforme al contrato.
 
 Cuando se especifiquen, deberán prohibir la persistencia de tokens, eliminar fragmentos de URL tras leerlos y no interpretar un retorno de pago como confirmación de venta.
 
@@ -218,8 +217,6 @@ Esta matriz complementa, pero no reemplaza, `backend/docs/permissions.md`. Las p
 | Buscar/asociar cliente antes de pago | CAJERO, ADMINISTRADOR; asociación con confirmación mínima de identidad | CLIENTE, Visitante, PREPARACION; cualquier actor después de pago/vencimiento |
 | Emitir/reemitir QR CASH pendiente y escanearlo para cobro | CAJERO, ADMINISTRADOR con sesión, CSRF y caja/responsable cuando corresponda | CLIENTE, Visitante, PREPARACION; QR no confirma pago |
 | Obtener e imprimir ticket CASH protegido | CAJERO, ADMINISTRADOR con sesión | CLIENTE, Visitante, PREPARACION |
-| Emitir/reemitir acceso digital de invitado | CAJERO, ADMINISTRADOR, sólo venta pagada sin cliente | CLIENTE, Visitante, PREPARACION |
-| Leer comprobante con `X-Ticket-Token` | Portador del permiso, limitado a ese comprobante | Cualquier lectura de estado, historial, cuenta o QR de registro |
 | Registrar cuenta con QR de ticket | Invitado sin cookies de sesión, token válido y no usado | Personal, cliente autenticado, segundo uso del token |
 
 ## 16. Escenarios de verificación obligatorios
@@ -241,7 +238,7 @@ Esta matriz complementa, pero no reemplaza, `backend/docs/permissions.md`. Las p
 6. Ningún flujo de personal acepta credenciales, roles o permisos desde datos locales ni incluye contraseñas/NIP de respaldo; datos locales manipulados no afectan la autorización.
 7. Un fallo o incertidumbre en un cobro no genera confirmación de venta, ticket ni recibo definitivo local.
 8. El cliente API unificado adjunta cookies y CSRF correctamente, trata errores RFC 7807 y sigue la guía aprobada para 401, 403, 409 y reintentos.
-9. El registro con ticket y los permisos de comprobante incluidos no persisten tokens ni inician sesión automáticamente; sus guardas respetan invitado, propiedad y roles.
+9. El QR de registro impreso para una compra pagada de invitado no persiste su token ni inicia sesión automáticamente; sus guardas respetan el flujo de invitado y las reglas de elegibilidad de la API.
 10. Electron abre el área `/terminal` desde un origen HTTPS configurado fuera de desarrollo, permitido por la API y con fallback History API; conserva sus aislamientos de seguridad y no depende de `file://` para mutaciones.
 11. Las aplicaciones actuales no se eliminan hasta que las rutas migradas hayan sido verificadas y aprobadas.
 12. La interfaz mantiene accesibilidad básica: foco visible, navegación por teclado, contraste suficiente y respeto de movimiento reducido.
