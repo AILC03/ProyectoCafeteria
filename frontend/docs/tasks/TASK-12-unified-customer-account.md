@@ -31,11 +31,11 @@ Migrar perfil propio, favoritos, historial y repetición de órdenes para el rol
 
 | ID | Requisito y fuente | Archivo / componente previsto | Verificación esperada | Estado |
 | --- | --- | --- | --- | --- |
-| CA-01 | Perfil propio y teléfono con NIP actual; OpenAPI `customers/me` | `features/clientes/account/` | GET/PATCH, validación, revocación y errores | Pendiente |
-| CA-02 | Favoritos del CLIENTE; OpenAPI `customers/me/favorites` | `features/clientes/account/` | paginación, PUT/DELETE 204 y rollback ante fallo | Pendiente |
-| CA-03 | Historial propio y detalle; OpenAPI `customers/me/orders`, `orders/{id}` | `features/clientes/account/` | vacío, cursor, estados pagados/no pagados, 404 ajeno | Pendiente |
-| CA-04 | Preview y confirmación explícita de nueva orden; OpenAPI `repeat-preview`, `POST /orders` | `features/clientes/account/`, órdenes TASK-11 | avisos informativos/bloqueantes, nueva clave, red incierta sin éxito falso | Pendiente |
-| CA-05 | Sólo CLIENTE, limpieza entre actores y accesibilidad; SPEC-FE-001 | router, cuenta y pruebas | invitado/STAFF denegados, 401/403, teclado y estados | Pendiente |
+| CA-01 | Perfil propio y teléfono con NIP actual; OpenAPI `customers/me` | `features/clientes/account/` | GET/PATCH, validación, revocación y errores | Verificado |
+| CA-02 | Favoritos del CLIENTE; OpenAPI `customers/me/favorites` | `features/clientes/account/` | paginación, PUT/DELETE 204 y rollback ante fallo | Verificado |
+| CA-03 | Historial propio y detalle; OpenAPI `customers/me/orders`, `orders/{id}` | `features/clientes/account/` | vacío, cursor, estados pagados/no pagados, 404 ajeno | Verificado |
+| CA-04 | Preview y confirmación explícita de nueva orden; OpenAPI `repeat-preview`, `POST /orders` | `features/clientes/account/`, órdenes TASK-11 | avisos informativos/bloqueantes, nueva clave, red incierta sin éxito falso | Verificado |
+| CA-05 | Sólo CLIENTE, limpieza entre actores y accesibilidad; SPEC-FE-001 | router, cuenta y pruebas | invitado/STAFF denegados, 401/403, teclado y estados | Verificado |
 
 ## Impacto técnico
 
@@ -45,7 +45,8 @@ Migrar perfil propio, favoritos, historial y repetición de órdenes para el rol
 
 ## Evidencia de entrega
 
-- Archivos modificados: pendiente.
-- Comandos y resultados: pendiente (perfil V-CLIENT).
+- Archivos nuevos: `features/clientes/account/{ClientAccountPage.tsx,accountApi.ts,repeatAttempt.ts,ClientAccountPage.component.test.tsx,account.unit.test.ts}` y `e2e/client-account.spec.ts`.
+- Archivo modificado: `app/router.tsx`.
+- Comandos y resultados: verificación completada en su commit; no se conservó una cifra comprobable de esa ejecución, por lo que no se atribuye un total numérico a esta tarea.
 - Pruebas manuales con API real: no previstas; mocks de API para pruebas.
-- Pendientes conocidos: revisión humana y eventual retarget del PR tras integrar TASK-11.
+- Pendientes conocidos: revisión humana y PR #13 abierto sobre la rama base.

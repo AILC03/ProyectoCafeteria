@@ -10,6 +10,7 @@ beforeEach(() => {
   server.use(
     http.get('/api/v1/categories', () => HttpResponse.json({ data: [], page: { limit: 100, nextCursor: null } })),
     http.get('/api/v1/products', () => HttpResponse.json({ data: [], page: { limit: 100, nextCursor: null } })),
+    http.get('/api/v1/cash-sessions/current', () => HttpResponse.json({ data: null })),
   );
 });
 

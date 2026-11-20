@@ -84,6 +84,34 @@ button.secondary-button { background: #fff; color: #1e3a8a; border-color: #1e3a8
 .quantity-control { display: inline-flex; align-items: center; gap: .6rem; }
 .catalog-estimate p { margin: 0; }
 
+.terminal-pos,
+.terminal-cash { display: grid; gap: 1rem; max-width: 72rem; }
+.pos-layout { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); align-items: start; }
+.pos-product-grid { display: grid; gap: .6rem; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); }
+.pos-product-button { display: grid; gap: .25rem; text-align: left; min-height: 3.5rem; padding: .75rem; }
+.pos-product-button span { color: #e0f2fe; font-size: .9rem; }
+.pos-lines { display: grid; gap: .65rem; list-style: none; margin: 0; padding: 0; }
+.pos-lines li { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; border-bottom: 1px solid #cbd5e1; padding-bottom: .6rem; }
+.pos-lines li span:first-child { flex: 1 1 12rem; }
+.pos-association { border-top: 1px solid #cbd5e1; padding-top: .85rem; display: grid; gap: .75rem; }
+.pos-association h3 { margin: 0; font-size: 1rem; }
+.cash-summary { display: grid; gap: .5rem; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); margin: 0; }
+.cash-summary div { border: 1px solid #e2e8f0; border-radius: .375rem; padding: .6rem; }
+.cash-summary dt { color: #475569; font-size: .85rem; }
+.cash-summary dd { margin: .25rem 0 0; font-weight: 700; overflow-wrap: anywhere; }
+.cash-close { border-top: 1px solid #cbd5e1; padding-top: .85rem; display: grid; gap: .75rem; }
+.cash-close h3 { margin: 0; font-size: 1rem; }
+.terminal-cash textarea { font: inherit; padding: .6rem .75rem; border: 1px solid #64748b; border-radius: .375rem; color: #111827; background: #fff; }
+.terminal-pos button,
+.terminal-cash button { min-height: 2.75rem; }
+
+@media (max-width: 24rem) {
+  .pos-layout,
+  .pos-product-grid { grid-template-columns: minmax(0, 1fr); }
+  .terminal-pos,
+  .terminal-cash { min-width: 0; overflow-wrap: anywhere; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: .01ms !important;

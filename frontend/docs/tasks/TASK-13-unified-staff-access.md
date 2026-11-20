@@ -62,8 +62,9 @@ Migrar el acceso staff y las guardas de terminal del frontend unificado conforme
 - Entorno: Node v26.13.0 detectado, fuera del rango declarado `>=22.13.0 <23`;
   queda repetir la matriz con Node 22 en el pipeline del equipo.
 - Pruebas manuales con API real: no previstas; URL y estados simulados con MSW/Playwright.
-- Pendientes conocidos: revisión humana, ratificación de decisiones y registro de
-  cierre en `FRONTEND-UNIFICATION-STATUS.md`; no se hizo push ni PR de esta rama.
+- Pendientes conocidos: revisión humana y ratificación de las decisiones
+  propuestas; registro de cierre incluido en
+  `FRONTEND-UNIFICATION-STATUS.md` y PR #14 abierto sobre la rama base.
 
 ## Referencias
 

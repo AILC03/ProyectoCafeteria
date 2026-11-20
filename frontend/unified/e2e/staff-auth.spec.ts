@@ -92,6 +92,11 @@ async function setupApiMocks(
       return;
     }
 
+    if (pathname === '/api/v1/cash-sessions/current' && request.method() === 'GET') {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: null }) });
+      return;
+    }
+
     if ((pathname === '/api/v1/categories' || pathname === '/api/v1/products') && request.method() === 'GET') {
       await route.fulfill({
         status: 200,
