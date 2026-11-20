@@ -11,6 +11,7 @@ import { ClientAccessGuard, ClientPublicGuard, TerminalAccessGuard } from './gua
 import { ClientAuthPage } from '../features/clientes/auth/ClientAuthPage';
 import { exitGuestMode, useGuestSession } from '../features/clientes/auth/guestSession';
 import { ClientCatalogPage } from '../features/clientes/catalog/ClientCatalogPage';
+import { ClientAccountPage } from '../features/clientes/account/ClientAccountPage';
 import { ClientLayout } from '../layouts/ClientLayout';
 import { TerminalLayout } from '../layouts/TerminalLayout';
 import { ActorAreaLink } from '../shared/auth/ActorAreaLink';
@@ -89,7 +90,7 @@ export const appRoutes: RouteObject[] = [
       { index: true, element: <Navigate to="menu" replace /> },
       { path: 'iniciar-sesion', element: <ClientAuthPage /> },
       { element: <ClientPublicGuard />, children: [{ path: 'menu', element: <ClientCatalogPage /> }] },
-      { element: <ClientAccessGuard />, children: [{ path: 'cuenta', element: <PlaceholderPage title="Cuenta" /> }] },
+       { element: <ClientAccessGuard />, children: [{ path: 'cuenta', element: <ClientAccountPage /> }] },
       { path: '*', element: <section aria-labelledby="page-title"><NotFoundContent /></section> },
       ],
     },
