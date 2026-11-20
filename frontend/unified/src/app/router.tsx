@@ -14,6 +14,8 @@ import { ClientCatalogPage } from '../features/clientes/catalog/ClientCatalogPag
 import { ClientAccountPage } from '../features/clientes/account/ClientAccountPage';
 import { ClientLayout } from '../layouts/ClientLayout';
 import { TerminalLayout } from '../layouts/TerminalLayout';
+import { TerminalAuthPage } from '../features/terminal/auth/TerminalAuthPage';
+import { TerminalWelcomePage } from '../features/terminal/auth/TerminalWelcomePage';
 import { ActorAreaLink } from '../shared/auth/ActorAreaLink';
 import { useSession, useSessionManager } from '../shared/auth/SessionProvider';
 import { useState } from 'react';
@@ -97,7 +99,8 @@ export const appRoutes: RouteObject[] = [
     {
       path: '/terminal',
       element: <TerminalLayout />, children: [
-      { index: true, element: <PlaceholderPage title="Terminal" /> },
+      { index: true, element: <TerminalWelcomePage /> },
+      { path: 'acceso', element: <TerminalAuthPage /> },
       { element: <TerminalAccessGuard allowedRoles={['CAJERO', 'ADMINISTRADOR']} />, children: [
         { path: 'pos', element: <PlaceholderPage title="Punto de venta" /> },
         { path: 'caja', element: <PlaceholderPage title="Caja" /> },

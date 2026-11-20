@@ -97,6 +97,9 @@ describe('application routes', () => {
     ['/cliente/cuenta', { id: 'staff-1', name: 'Caja', role: 'CAJERO', accountType: 'STAFF', mustChangePin: false }],
     ['/terminal/pos', { id: 'customer-1', name: 'Cliente', role: 'CLIENTE', accountType: 'CUSTOMER', mustChangePin: false }],
     ['/terminal/administracion/catalogo', { id: 'staff-1', name: 'Caja', role: 'CAJERO', accountType: 'STAFF', mustChangePin: false }],
+    ['/terminal/pos', { id: 'legacy-1', name: 'Gerente', role: 'GERENTE', accountType: 'STAFF', mustChangePin: false }],
+    ['/terminal/cocina', { id: 'legacy-1', name: 'Gerente', role: 'GERENTE', accountType: 'STAFF', mustChangePin: false }],
+    ['/terminal/administracion/catalogo', { id: 'staff-2', name: 'Cocina', role: 'PREPARACION', accountType: 'STAFF', mustChangePin: false }],
   ])('blocks an actor with an unsuitable role from %s', async (path, actor) => {
     server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ data: actor })));
     render(<SessionProvider><RouterProvider router={createTestRouter([path])} /></SessionProvider>);
@@ -115,6 +118,7 @@ describe('application routes', () => {
     ['/cliente/iniciar-sesion', 'Iniciar sesión'],
     ['/cliente/menu', 'Menú'],
     ['/terminal', 'Terminal'],
+    ['/terminal/acceso', 'Acceso a terminal'],
   ])('keeps %s public while session bootstrap is anonymous', async (path, heading) => {
     server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ code: 'UNAUTHENTICATED' }, { status: 401 })));
     render(<SessionProvider><RouterProvider router={createTestRouter([path])} /></SessionProvider>);

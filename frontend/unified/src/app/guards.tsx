@@ -48,7 +48,9 @@ function allowsClient(actor: Actor): boolean {
 }
 
 function allowsTerminal(actor: Actor, roles: readonly string[]): boolean {
-  return actor.accountType === 'STAFF' && roles.includes(actor.role);
+  // GERENTE is a legacy frontend-only role and CUSTOMER belongs to the client area.
+  if (actor.role === 'GERENTE' || actor.role === 'CLIENTE' || actor.accountType !== 'STAFF') return false;
+  return roles.includes(actor.role);
 }
 
 /**
