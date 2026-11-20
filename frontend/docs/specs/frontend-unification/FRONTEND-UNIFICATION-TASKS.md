@@ -4,6 +4,10 @@
 **Fecha:** 2026-11-18  
 **Referencias:** [SPEC-FE-001](./FRONTEND-UNIFICATION-SPEC.md) y [PLAN-FE-001](./FRONTEND-UNIFICATION-PLAN.md).
 
+**Seguimiento de cierres:** [Registro de tareas terminadas](./FRONTEND-UNIFICATION-STATUS.md). Este documento define el alcance; el registro indica qué tareas están realmente cerradas y su evidencia.
+
+**Decisiones aceptadas:** [Registro de decisiones](./FRONTEND-UNIFICATION-DECISIONS.md). Una recomendación no aprobada no modifica el alcance de la task.
+
 ## Reglas de ejecución
 
 - Estas tasks se ejecutan en orden de dependencias, una por una.
@@ -11,6 +15,8 @@
 - Cada task usa `frontend-implementer`, `frontend-verifier` y `frontend-reviewer`; se añade `frontend-spec-researcher` cuando la investigación sea necesaria.
 - Ninguna task se commitea sin verificaciones aplicables y revisión independiente sin bloqueantes, salvo excepción autorizada y documentada por el responsable.
 - Cada commit será local, atómico y limitado a la task. No se hará push, merge, rebase, reset ni `git add -A`.
+- Al cerrar una task, incluir su fila de estado y evidencia en el registro de cierres dentro del mismo commit atómico; confirmar después el hash real en el reporte al responsable.
+- Registrar toda decisión propuesta/aceptada antes de implementarla; enlazar sus IDs en el cierre. Una decisión sustituida permanece visible y no habilita implementar la opción anterior.
 - Las aplicaciones `clientes/` y `empleados/` no se eliminan ni modifican como parte de una task de coexistencia, salvo que su alcance lo indique y una aprobación posterior lo autorice.
 
 ## Dependencias resumidas
