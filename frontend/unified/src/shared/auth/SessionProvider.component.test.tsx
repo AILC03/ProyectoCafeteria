@@ -6,6 +6,7 @@ import { SessionProvider } from './SessionProvider';
 import { RefreshCoordinator, SessionManager } from './session';
 import { ActorChangeDialog } from './ActorChangeDialog';
 import { server } from '../../test/server';
+import { clearIdempotencyOperations, idempotencyOperations } from '../api/idempotency';
 
 const user = { id: '42', name: 'Ada', role: 'CLIENTE', accountType: 'CUSTOMER', mustChangePin: false };
 const originalLocks = (navigator as Navigator & { locks?: unknown }).locks;
@@ -17,6 +18,7 @@ function setLocks(locks: unknown): void {
 afterEach(() => {
   setLocks(originalLocks);
   vi.unstubAllGlobals();
+  clearIdempotencyOperations();
 });
 
 it('traps focus, closes on Escape, and restores the invoking focus for actor replacement', () => {
@@ -74,4 +76,19 @@ it('keeps refresh coordination usable after the StrictMode effect remount', asyn
   unmount();
   await new Promise((resolve) => setTimeout(resolve, 0));
   expect(closed).toBe(true);
+});
+
+it('clears in-memory idempotency operations when the session logs out', async () => {
+  server.use(
+    http.get('/api/v1/auth/me', () => HttpResponse.json({ data: user })),
+    http.get('/api/v1/auth/csrf', () => HttpResponse.json({ data: { csrfToken: 'logout-csrf' } })),
+    http.post('/api/v1/auth/logout', () => new HttpResponse(null, { status: 204 })),
+  );
+  const manager = new SessionManager(new RefreshCoordinator('idempotency-cleanup-test'));
+  render(<SessionProvider manager={manager}><p>content</p></SessionProvider>);
+  await waitFor(() => expect(manager.getSnapshot().status).toBe('authenticated'));
+  idempotencyOperations.create({ productId: 'coffee' });
+  await expect(manager.logout()).resolves.toBe(true);
+  expect(idempotencyOperations.activeCount).toBe(0);
+  manager.dispose();
 });

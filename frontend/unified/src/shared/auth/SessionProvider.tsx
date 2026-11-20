@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState, useSyncExternal
 import { ActorChangeDialog } from './ActorChangeDialog';
 import { RefreshCoordinator, SessionManager, type ActorDestination, type SessionState } from './session';
 import { clearPrivateState } from '../storage';
+import { clearIdempotencyOperations } from '../api/idempotency';
 
 export type { Actor } from './session';
 
@@ -39,6 +40,9 @@ export function SessionProvider({ children, profile = runtimeProfile(), manager:
   }, [manager]);
 
   useEffect(() => manager.registerPrivateStateCleaner(clearPrivateState), [manager]);
+  // Retry material belongs to the current actor/context and must not survive
+  // logout, actor replacement, definitive 401, or mandatory PIN change.
+  useEffect(() => manager.registerPrivateStateCleaner(clearIdempotencyOperations), [manager]);
 
   useEffect(() => {
     const content = contentRef.current;

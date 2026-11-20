@@ -171,7 +171,7 @@ export function getCsrfToken(): Promise<string> {
   return getCsrfTokenInternal('normal');
 }
 
-async function apiFetchInternal<T = void>(endpoint: string, options: ApiFetchOptions, authEventMode: AuthEventMode): Promise<T> {
+async function apiFetchInternal<T = void>(endpoint: string, options: ApiFetchOptions, authEventMode: AuthEventMode, retryCsrfInvalid = true): Promise<T> {
   const method = (options.method ?? 'GET').toUpperCase();
   const isMutation = mutationMethods.has(method);
   const headers = new Headers(options.headers);
@@ -207,8 +207,10 @@ async function apiFetchInternal<T = void>(endpoint: string, options: ApiFetchOpt
     if (problem?.code === 'CSRF_INVALID') {
       invalidateCsrfTokenIfCurrent(requestCsrfToken);
       if (authEventMode === 'normal') publishApiAuthEvent({ type: 'csrf-invalid' });
-      headers.set('X-CSRF-Token', await getCsrfTokenInternal(authEventMode));
-      response = await fetchResponse(url, { ...init, headers });
+      if (retryCsrfInvalid) {
+        headers.set('X-CSRF-Token', await getCsrfTokenInternal(authEventMode));
+        response = await fetchResponse(url, { ...init, headers });
+      }
     }
   }
 
@@ -242,6 +244,16 @@ async function apiFetchInternal<T = void>(endpoint: string, options: ApiFetchOpt
 
 export function apiFetch<T = void>(endpoint: string, options: ApiFetchOptions = {}): Promise<T> {
   return apiFetchInternal<T>(endpoint, options, 'normal');
+}
+
+/**
+ * Dedicated path for a previously-created idempotent operation. It still uses
+ * CSRF, credentials, Problem Details and auth events, but never replays a
+ * mutation automatically after CSRF_INVALID: the operation owner decides
+ * whether to retry its exact snapshot.
+ */
+export function apiFetchIdempotent<T = void>(endpoint: string, options: ApiFetchOptions): Promise<T> {
+  return apiFetchInternal<T>(endpoint, options, 'normal', false);
 }
 
 /** Session-only calls are intentionally fixed to the auth endpoints below. */
