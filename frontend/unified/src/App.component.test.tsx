@@ -1,10 +1,17 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { HttpResponse, http } from 'msw';
 import { RouterProvider } from 'react-router-dom';
-import { describe, expect, test } from 'vitest';
+import { beforeEach, describe, expect, test } from 'vitest';
 import { createTestRouter } from './app/router';
 import { SessionProvider } from './shared/auth/SessionProvider';
 import { server } from './test/server';
+
+beforeEach(() => {
+  server.use(
+    http.get('/api/v1/categories', () => HttpResponse.json({ data: [], page: { limit: 100, nextCursor: null } })),
+    http.get('/api/v1/products', () => HttpResponse.json({ data: [], page: { limit: 100, nextCursor: null } })),
+  );
+});
 
 function renderRoute(path: string) {
   const actor = path.startsWith('/terminal/administracion')

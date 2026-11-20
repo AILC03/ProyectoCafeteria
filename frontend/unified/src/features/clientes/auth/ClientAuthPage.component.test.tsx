@@ -1,13 +1,20 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { HttpResponse, http } from 'msw';
 import { RouterProvider } from 'react-router-dom';
-import { afterEach, describe, expect, test } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { createTestRouter } from '../../../app/router';
 import { invalidateCsrfToken } from '../../../shared/api/client';
 import { SessionProvider } from '../../../shared/auth/SessionProvider';
 import { CART_DRAFT_KEY, saveCartDraft } from '../../../shared/storage';
 import { server } from '../../../test/server';
 import { clearGuestSession } from './guestSession';
+
+beforeEach(() => {
+  server.use(
+    http.get('/api/v1/categories', () => HttpResponse.json({ data: [], page: { limit: 100, nextCursor: null } })),
+    http.get('/api/v1/products', () => HttpResponse.json({ data: [], page: { limit: 100, nextCursor: null } })),
+  );
+});
 
 const customerActor = {
   id: 'customer-1',

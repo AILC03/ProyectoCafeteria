@@ -99,6 +99,24 @@ async function setupApiMocks(
       return;
     }
 
+    if (pathname === '/api/v1/categories' && request.method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: [], page: { limit: 100, nextCursor: null } }),
+      });
+      return;
+    }
+
+    if (pathname === '/api/v1/products' && request.method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: [], page: { limit: 100, nextCursor: null } }),
+      });
+      return;
+    }
+
     await route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ code: 'NOT_FOUND' }) });
   });
 
@@ -124,7 +142,7 @@ test.describe('Client auth and actor isolation', () => {
     await page.getByRole('button', { name: 'Iniciar sesión como cliente' }).click();
 
     await expect(page).toHaveURL(/\/cliente\/menu$/);
-    await expect(page.getByRole('heading', { name: 'Menú' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Menú', exact: true })).toBeVisible();
     await expect(page.getByText('Sesión: Mariana López')).toBeVisible();
 
     await page.getByRole('link', { name: 'Cuenta' }).click();
@@ -153,11 +171,11 @@ test.describe('Client auth and actor isolation', () => {
 
     await page.goto('/cliente/menu');
     await expect(page).toHaveURL(/\/cliente\/menu$/);
-    await expect(page.getByRole('heading', { name: 'Menú' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Menú', exact: true })).toBeVisible();
 
     await page.reload();
     await expect(page).toHaveURL(/\/cliente\/menu$/);
-    await expect(page.getByRole('heading', { name: 'Menú' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Menú', exact: true })).toBeVisible();
 
     await page.goto('/cliente/iniciar-sesion');
     await page.getByLabel('Nombre para tu pedido (opcional)').fill('Ana');
