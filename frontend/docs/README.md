@@ -1,5 +1,14 @@
 # Documentación del frontend
 
+## Unificación en curso — TASK-11 (2026-11-20)
+
+`frontend/unified/` ya conecta catálogo, carrito borrador y creación de orden móvil
+`CASH`/`STRIPE` pendiente mediante `POST /orders`, con revalidación del catálogo,
+CSRF e idempotencia. No realiza cobro, checkout Stripe ni emite QR. Las dos apps
+legadas siguen intactas; el inventario histórico inferior corresponde a ellas.
+Ver [registro de unificación](specs/frontend-unification/FRONTEND-UNIFICATION-STATUS.md),
+[cobertura de API](api/endpoints-coverage.md) y [backlog](development-tasks.md).
+
 ## Estado reconciliado — 2026-11-18
 
 Este índice documenta el estado real del frontend del proyecto **Coffee's POS** en `dev`,

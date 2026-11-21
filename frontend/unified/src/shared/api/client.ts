@@ -273,4 +273,8 @@ export function loginCustomerSession<T>(credentials: { identifier: string; pin: 
   return apiFetchInternal<T>('/auth/login/customer', { method: 'POST', body: credentials }, 'suppressed');
 }
 
+export function loginStaffSession<T>(credentials: { username: string; password: string }): Promise<T> {
+  return apiFetchInternal<T>('/auth/login/staff', { method: 'POST', body: credentials }, 'suppressed');
+}
+
 export const apiRequest = apiFetch;

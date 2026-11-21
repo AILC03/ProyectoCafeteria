@@ -479,4 +479,131 @@ describe('SessionManager', () => {
     expect(manager.getSnapshot()).toEqual({ status: 'anonymous', actor: null });
     manager.dispose();
   });
+
+  it('authenticates staff with prelogin CSRF, clears private state and adopts in-memory CSRF', async () => {
+    const staff = { id: 'staff-1', name: 'Caja', role: 'CAJERO', accountType: 'STAFF', mustChangePin: false };
+    const messages: unknown[] = [];
+    class TestBroadcastChannel {
+      constructor(_name: string) {}
+      addEventListener(): void {}
+      removeEventListener(): void {}
+      postMessage(message: unknown): void { messages.push(message); }
+      close(): void {}
+    }
+    vi.stubGlobal('BroadcastChannel', TestBroadcastChannel);
+    server.use(
+      http.get(`${api}/auth/me`, () => HttpResponse.json({ code: 'UNAUTHENTICATED' }, { status: 401 })),
+      http.get(`${api}/auth/csrf`, () => HttpResponse.json({ data: { csrfToken: 'prelogin-csrf' } })),
+      http.post(`${api}/auth/refresh`, () => HttpResponse.json({ code: 'UNAUTHENTICATED' }, { status: 401 })),
+      http.post(`${api}/auth/login/staff`, async ({ request }) => {
+        expect(request.headers.get('X-CSRF-Token')).toBe('prelogin-csrf');
+        expect(await request.json()).toEqual({ username: 'cajero1', password: 'password123' });
+        return HttpResponse.json({ data: { user: staff, csrfToken: 'staff-session-csrf' } });
+      }),
+    );
+    const manager = new SessionManager(new RefreshCoordinator('staff-login-test'));
+    const cleaner = vi.fn();
+    manager.registerPrivateStateCleaner(cleaner);
+    await manager.bootstrap();
+    await expect(manager.loginStaff({ username: 'cajero1', password: 'password123' })).resolves.toEqual({
+      status: 'authenticated', actor: staff,
+    });
+    expect(cleaner).toHaveBeenCalledOnce();
+    await expect(getCsrfToken()).resolves.toBe('staff-session-csrf');
+    expect(messages).toEqual([{ type: 'refresh-complete' }]);
+    expect(JSON.stringify(messages)).not.toContain('password123');
+    expect(localStorage.length).toBe(0);
+    manager.dispose();
+  });
+
+  it('keeps anonymous state and private data when staff login fails with 401', async () => {
+    const messages: unknown[] = [];
+    class TestBroadcastChannel {
+      constructor(_name: string) {}
+      addEventListener(): void {}
+      removeEventListener(): void {}
+      postMessage(message: unknown): void { messages.push(message); }
+      close(): void {}
+    }
+    vi.stubGlobal('BroadcastChannel', TestBroadcastChannel);
+    server.use(
+      http.get(`${api}/auth/me`, () => HttpResponse.json({ code: 'UNAUTHENTICATED' }, { status: 401 })),
+      http.get(`${api}/auth/csrf`, () => HttpResponse.json({ data: { csrfToken: 'prelogin-csrf' } })),
+      http.post(`${api}/auth/refresh`, () => HttpResponse.json({ code: 'UNAUTHENTICATED' }, { status: 401 })),
+      http.post(`${api}/auth/login/staff`, () => HttpResponse.json({ code: 'INVALID_CREDENTIALS' }, { status: 401 })),
+    );
+    const manager = new SessionManager(new RefreshCoordinator('staff-login-401-test'));
+    const cleaner = vi.fn();
+    manager.registerPrivateStateCleaner(cleaner);
+    await manager.bootstrap();
+    await expect(manager.loginStaff({ username: 'cajero1', password: 'wrong-password' })).rejects.toMatchObject({ status: 401 });
+    expect(manager.getSnapshot()).toEqual({ status: 'anonymous', actor: null });
+    expect(cleaner).not.toHaveBeenCalled();
+    expect(messages).toEqual([]);
+    manager.dispose();
+  });
+
+  it('rejects GERENTE and CUSTOMER actors returned unexpectedly from staff login', async () => {
+    const rejected = [
+      { id: 'legacy-1', name: 'Gerente', role: 'GERENTE', accountType: 'STAFF', mustChangePin: false },
+      { id: 'customer-1', name: 'Cliente', role: 'CLIENTE', accountType: 'CUSTOMER', mustChangePin: false },
+    ];
+    let index = 0;
+    server.use(
+      http.get(`${api}/auth/me`, () => HttpResponse.json({ code: 'UNAUTHENTICATED' }, { status: 401 })),
+      http.get(`${api}/auth/csrf`, () => HttpResponse.json({ data: { csrfToken: 'prelogin-csrf' } })),
+      http.post(`${api}/auth/refresh`, () => HttpResponse.json({ code: 'UNAUTHENTICATED' }, { status: 401 })),
+      http.post(`${api}/auth/login/staff`, () => HttpResponse.json({
+        data: { user: rejected[index++], csrfToken: 'bad-staff-csrf' },
+      })),
+    );
+    const manager = new SessionManager();
+    await manager.bootstrap();
+    await expect(manager.loginStaff({ username: 'legacy', password: 'password123' })).rejects.toMatchObject({ status: 403 });
+    expect(manager.getSnapshot()).toEqual({ status: 'anonymous', actor: null });
+    await expect(manager.loginStaff({ username: 'customer', password: 'password123' })).rejects.toMatchObject({ status: 403 });
+    expect(manager.getSnapshot()).toEqual({ status: 'anonymous', actor: null });
+    manager.dispose();
+  });
+
+  it('restricts navigation to pin-change-required when staff login reports mustChangePin or 403 PIN_CHANGE_REQUIRED', async () => {
+    const staff = { id: 'staff-1', name: 'Caja', role: 'CAJERO', accountType: 'STAFF', mustChangePin: false };
+    server.use(
+      http.get(`${api}/auth/me`, () => HttpResponse.json({ code: 'UNAUTHENTICATED' }, { status: 401 })),
+      http.get(`${api}/auth/csrf`, () => HttpResponse.json({ data: { csrfToken: 'prelogin-csrf' } })),
+      http.post(`${api}/auth/refresh`, () => HttpResponse.json({ code: 'UNAUTHENTICATED' }, { status: 401 })),
+      http.post(`${api}/auth/login/staff`, () => HttpResponse.json({
+        data: { user: { ...staff, mustChangePin: true }, csrfToken: 'staff-pin-csrf' },
+      })),
+    );
+    const first = new SessionManager(new RefreshCoordinator('staff-pin-flag'));
+    await first.bootstrap();
+    await expect(first.loginStaff({ username: 'cajero1', password: 'password123' })).resolves.toEqual({
+      status: 'pin-change-required', actor: null,
+    });
+    expect(window.location.pathname).toBe('/cambiar-nip');
+    first.dispose();
+
+    window.history.replaceState(null, '', '/terminal/acceso');
+    server.use(http.post(`${api}/auth/login/staff`, () => HttpResponse.json(
+      { code: 'PIN_CHANGE_REQUIRED' }, { status: 403 },
+    )));
+    const second = new SessionManager(new RefreshCoordinator('staff-pin-403'));
+    await second.bootstrap();
+    await expect(second.loginStaff({ username: 'cajero1', password: 'password123' })).resolves.toEqual({
+      status: 'pin-change-required', actor: null,
+    });
+    expect(window.location.pathname).toBe('/cambiar-nip');
+    second.dispose();
+  });
+
+  it('blocks loginStaff with 409 when an actor session is already active', async () => {
+    const staff = { id: 'staff-1', name: 'Caja', role: 'CAJERO', accountType: 'STAFF', mustChangePin: false };
+    server.use(http.get(`${api}/auth/me`, () => HttpResponse.json({ data: staff })));
+    const manager = new SessionManager();
+    await manager.bootstrap();
+    await expect(manager.loginStaff({ username: 'cajero1', password: 'password123' })).rejects.toMatchObject({ status: 409 });
+    expect(manager.getSnapshot()).toEqual({ status: 'authenticated', actor: staff });
+    manager.dispose();
+  });
 });

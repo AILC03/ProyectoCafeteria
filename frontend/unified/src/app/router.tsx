@@ -11,8 +11,13 @@ import { ClientAccessGuard, ClientPublicGuard, TerminalAccessGuard } from './gua
 import { ClientAuthPage } from '../features/clientes/auth/ClientAuthPage';
 import { exitGuestMode, useGuestSession } from '../features/clientes/auth/guestSession';
 import { ClientCatalogPage } from '../features/clientes/catalog/ClientCatalogPage';
+import { ClientAccountPage } from '../features/clientes/account/ClientAccountPage';
 import { ClientLayout } from '../layouts/ClientLayout';
 import { TerminalLayout } from '../layouts/TerminalLayout';
+import { TerminalAuthPage } from '../features/terminal/auth/TerminalAuthPage';
+import { TerminalWelcomePage } from '../features/terminal/auth/TerminalWelcomePage';
+import { PosPage } from '../features/terminal/pos/PosPage';
+import { CashSessionsPage } from '../features/terminal/cash/CashSessionsPage';
 import { ActorAreaLink } from '../shared/auth/ActorAreaLink';
 import { useSession, useSessionManager } from '../shared/auth/SessionProvider';
 import { useState } from 'react';
@@ -89,17 +94,18 @@ export const appRoutes: RouteObject[] = [
       { index: true, element: <Navigate to="menu" replace /> },
       { path: 'iniciar-sesion', element: <ClientAuthPage /> },
       { element: <ClientPublicGuard />, children: [{ path: 'menu', element: <ClientCatalogPage /> }] },
-      { element: <ClientAccessGuard />, children: [{ path: 'cuenta', element: <PlaceholderPage title="Cuenta" /> }] },
+       { element: <ClientAccessGuard />, children: [{ path: 'cuenta', element: <ClientAccountPage /> }] },
       { path: '*', element: <section aria-labelledby="page-title"><NotFoundContent /></section> },
       ],
     },
     {
       path: '/terminal',
       element: <TerminalLayout />, children: [
-      { index: true, element: <PlaceholderPage title="Terminal" /> },
+      { index: true, element: <TerminalWelcomePage /> },
+      { path: 'acceso', element: <TerminalAuthPage /> },
       { element: <TerminalAccessGuard allowedRoles={['CAJERO', 'ADMINISTRADOR']} />, children: [
-        { path: 'pos', element: <PlaceholderPage title="Punto de venta" /> },
-        { path: 'caja', element: <PlaceholderPage title="Caja" /> },
+        { path: 'pos', element: <PosPage /> },
+        { path: 'caja', element: <CashSessionsPage /> },
       ] },
       { element: <TerminalAccessGuard allowedRoles={['PREPARACION', 'CAJERO', 'ADMINISTRADOR']} />, children: [
         { path: 'cocina', element: <PlaceholderPage title="Cocina" /> },

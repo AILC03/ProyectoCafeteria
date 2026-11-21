@@ -1,5 +1,14 @@
 # Backlog de desarrollo del frontend
 
+## Unificación en curso — TASK-14 (2026-11-20)
+
+En `frontend/unified/`, TASK-14 conecta la toma de orden en caja y la sesión de
+efectivo con el contrato `/api/v1`, sin cobro, QR ni Stripe. TASK-15 es la
+siguiente pendiente. Los renglones inferiores son la auditoría histórica de
+`frontend/clientes/` y `frontend/empleados/`, no el estado del paquete
+unificado; el avance verificable está en el
+[registro de cierres](specs/frontend-unification/FRONTEND-UNIFICATION-STATUS.md).
+
 Estado de las tareas funcionales y técnicas del frontend al **2026-11-18**, tomando como referencia
 el contrato [OpenAPI 0.11.0](../../backend/docs/api/openapi.yaml) y las auditorías realizadas en
 [FE-GAP-01](tasks/FE-GAP-01-integration-audit.md).
