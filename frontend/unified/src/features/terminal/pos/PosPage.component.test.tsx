@@ -147,4 +147,19 @@ describe('Terminal POS (TASK-14)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Asociar cliente' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('ya no permite asociar clientes');
   });
+
+  test('adopts the compatible order returned by association as the POS-selected payment order', async () => {
+    server.use(
+      http.post('/api/v1/cashier/customers/search', () => HttpResponse.json({ data: { id: '10', name: 'Cliente Uno', customerNumber: 'C10' } })),
+      http.patch('/api/v1/cashier/orders/7/customer', () => HttpResponse.json({ data: pendingOrder })),
+    );
+    renderPos();
+    fireEvent.change(await screen.findByLabelText('Teléfono o número de cliente'), { target: { value: 'C10' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Buscar cliente' }));
+    await screen.findByText(/Confirma el nombre antes de usarlo/);
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar cliente' }));
+    fireEvent.change(screen.getByLabelText('ID de orden pendiente'), { target: { value: '7' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Asociar cliente' }));
+    expect(await screen.findByRole('link', { name: 'Cobrar efectivo' })).toHaveAttribute('href', '/terminal/cobro');
+  });
 });

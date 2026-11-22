@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import type { IdempotentOperation } from '../../../shared/api/idempotency';
 import { formatMxnCents } from '../../../shared/utils/money';
 import {
@@ -192,7 +193,9 @@ export function PosPage() {
     setAssociationMessage(null);
     try {
       const updated = await associateOrderCustomer(id, { identifier: candidate.identifier, confirmedName });
-      if (order?.id === updated.id) setOrder(updated);
+       // An association result is the only supported way to select another
+       // pending POS order; do not add an order lookup/list for payment.
+       if (updated.source === 'CASHIER' && isOrderAssociable(updated)) setOrder(updated);
       setAssociationMessage(`Cliente asociado a la orden ${updated.folio}.`);
     } catch (error) {
       setAssociationError(formatPosError(error));
@@ -355,8 +358,9 @@ export function PosPage() {
             <div className="auth-confirm-box" role="status">
               <p>Orden {order.folio} creada. Estado: {order.status === 'PENDIENTE_PAGO' ? 'pendiente de pago' : order.status}.</p>
               <p>Total confirmado por el servidor: {formatMxnCents(order.totalCents)}.</p>
-              <p>Crear la orden no confirma el pago ni genera un QR.</p>
-              <button type="button" className="secondary-button" onClick={startNewOrder}>Nueva orden</button>
+               <p>Crear la orden no confirma el pago ni genera un QR.</p>
+               {order.paymentMethod === 'CASH' && isOrderAssociable(order) && <Link className="secondary-button payment-link" to="/terminal/cobro" state={order}>Cobrar efectivo</Link>}
+               <button type="button" className="secondary-button" onClick={startNewOrder}>Nueva orden</button>
             </div>
           )}
 
