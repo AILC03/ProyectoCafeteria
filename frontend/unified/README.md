@@ -6,6 +6,9 @@ El servidor de desarrollo se limita a `localhost` por defecto y escucha en el pu
 
 - Node.js `>=22.13.0 <23`.
 
+Se recomienda usar la versión fijada en `.nvmrc`: ejecuta `nvm use` si ya está instalada o
+`nvm install` para instalarla.
+
 ## Proxy de API local
 
 Las siguientes variables Vite no contienen secretos y son opcionales. Defínelas en un archivo

@@ -1,6 +1,6 @@
 # TASKS-FE-001 — Frontend unificado de Coffee's POS
 
-**Estado:** Propuesta — requiere aprobación explícita del conjunto  
+**Estado:** Aprobado — ejecución en curso
 **Fecha:** 2026-11-18  
 **Referencias:** [SPEC-FE-001](./FRONTEND-UNIFICATION-SPEC.md) y [PLAN-FE-001](./FRONTEND-UNIFICATION-PLAN.md).
 
@@ -105,7 +105,7 @@ Si un script aún no existe, su task precedente debe añadirlo. Una imposibilida
 - **Alcance / exclusiones:** resolver actor mediante API, refresh con un único líder por perfil y coordinación entre contextos; no migrar pantallas de login.
 - **Archivos esperados:** `src/shared/auth/`, provider de sesión y pruebas de concurrencia.
 - **Criterios:** nunca lee cookies HttpOnly; dos contextos no ejecutan refresh concurrente; trata 401, `PIN_CHANGE_REQUIRED` y `REFRESH_ALREADY_ROTATED` conforme contrato.
-- **Verificación:** perfil V-TEST; pruebas MSW de carrera, 401, 403 y 409. Implementa Web Locks para elegir el único líder de refresh por perfil y documenta/prueba el mecanismo alterno cuando Web Locks no está disponible.
+- **Verificación:** perfil V-TEST; pruebas MSW de carrera, 401, 403 y 409. Conforme a D-03, Web Locks es obligatorio para elegir el único líder de refresh por perfil; sin soporte se expone error recuperable y no se intenta refresh, sin mecanismo alterno local.
 - **Revisor:** `frontend-reviewer`.
 - **Commit esperado:** `feat(auth): coordinate session refresh`.
 

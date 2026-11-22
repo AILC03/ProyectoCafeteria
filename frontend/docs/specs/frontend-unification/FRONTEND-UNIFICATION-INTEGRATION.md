@@ -1,7 +1,7 @@
 # Integración de API — Frontend unificado
 
 **Task:** TASK-00 de [TASKS-FE-001](./FRONTEND-UNIFICATION-TASKS.md)
-**Estado:** Documentado — pendiente de revisión/commit
+**Estado:** Cerrada — commit `652b23a`
 **Fuentes de verdad:** `backend/docs/api/openapi.yaml`, `backend/docs/frontend-integration.md` y `backend/docs/permissions.md`.
 
 ## 1. Orígenes, cookies y CSRF
@@ -13,7 +13,7 @@
 | Cookies | Usar `credentials: 'include'`. Access/refresh/CSRF son cookies HttpOnly; JavaScript no las lee ni persiste. |
 | CSRF | Antes de mutar, pedir `GET /auth/csrf` y conservar sólo el token en memoria. Enviar `X-CSRF-Token`, cookie CSRF y `Origin` permitido. |
 | Errores | `401`: refresh coordinado y, si falla, limpiar/volver a entrada. `403 CSRF_INVALID`: invalidar CSRF y reintentar una vez. `403 PIN_CHANGE_REQUIRED`: sólo cambio de NIP o logout. `409 REFRESH_ALREADY_ROTATED`: esperar/reintentar refresh una vez. |
-| Refresh | Un único líder por perfil coordina refresh entre pestañas/ventanas; nunca se usa autologin local. |
+| Refresh | Web Locks es obligatorio para elegir un único líder por perfil y coordinar/difundir el resultado entre pestañas/ventanas, sin secretos. Sin `navigator.locks`, no se llama a refresh automático y se deja un estado recuperable. Se prohíben lease, fallback o almacenamiento local para esta coordinación; nunca se usa autologin local. |
 
 Electron no puede usar `file://` para mutaciones. Antes de TASK-20 se debe validar: URL HTTPS de distribución, `FRONTEND_ORIGIN` permitido, fallback SPA para `/terminal/**` y conectividad API.
 
