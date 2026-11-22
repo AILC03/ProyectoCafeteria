@@ -229,7 +229,8 @@ export function ClientAuthPage() {
       <div className="client-auth-grid">
         <article className="auth-card" aria-labelledby="customer-login-heading">
           <h2 id="customer-login-heading">Acceso con cuenta de cliente</h2>
-          <p>Ingresa con tu teléfono registrado o tu número de cliente y tu NIP de 4 dígitos.</p>
+           <p>Ingresa con tu teléfono registrado o tu número de cliente y tu NIP de 4 dígitos.</p>
+           <p><Link to="/cliente/registro-ticket">Alta con ticket pagado</Link></p>
 
           <form onSubmit={(event) => { void handleLoginSubmit(event); }} noValidate className="auth-form">
             <div className="form-field">

@@ -141,14 +141,14 @@ export class SessionManager {
     return true;
   }
 
-  async logout(): Promise<boolean> {
+  async logout(options: { preserveLocation?: boolean } = {}): Promise<boolean> {
     const actor = this.state.actor;
     try {
       await logoutSession();
     } catch {
       return false;
     }
-    this.clearSession(this.entryFor(actor), true);
+    this.clearSession(this.entryFor(actor), true, options.preserveLocation === true);
     return true;
   }
 
@@ -312,11 +312,11 @@ export class SessionManager {
     return next;
   }
 
-  private clearSession(entry: string, broadcast: boolean): SessionState {
+  private clearSession(entry: string, broadcast: boolean, preserveLocation = false): SessionState {
     this.clearPrivateState();
     invalidateCsrfToken();
     const next = this.set({ status: 'anonymous', actor: null });
-    this.navigateTo(entry);
+    if (!preserveLocation) this.navigateTo(entry);
     if (broadcast) this.coordinator.publish('session-cleared');
     return next;
   }

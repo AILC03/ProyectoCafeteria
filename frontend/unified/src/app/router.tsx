@@ -9,6 +9,7 @@ import {
 } from 'react-router-dom';
 import { ClientAccessGuard, ClientPublicGuard, TerminalAccessGuard } from './guards';
 import { ClientAuthPage } from '../features/clientes/auth/ClientAuthPage';
+import { TicketRegistrationPage } from '../features/clientes/registration/TicketRegistrationPage';
 import { exitGuestMode, useGuestSession } from '../features/clientes/auth/guestSession';
 import { ClientCatalogPage } from '../features/clientes/catalog/ClientCatalogPage';
 import { ClientAccountPage } from '../features/clientes/account/ClientAccountPage';
@@ -93,7 +94,8 @@ export const appRoutes: RouteObject[] = [
       path: '/cliente',
       element: <ClientLayout />, children: [
       { index: true, element: <Navigate to="menu" replace /> },
-      { path: 'iniciar-sesion', element: <ClientAuthPage /> },
+       { path: 'iniciar-sesion', element: <ClientAuthPage /> },
+       { path: 'registro-ticket', element: <TicketRegistrationPage /> },
       { element: <ClientPublicGuard />, children: [{ path: 'menu', element: <ClientCatalogPage /> }] },
        { element: <ClientAccessGuard />, children: [{ path: 'cuenta', element: <ClientAccountPage /> }] },
       { path: '*', element: <section aria-labelledby="page-title"><NotFoundContent /></section> },

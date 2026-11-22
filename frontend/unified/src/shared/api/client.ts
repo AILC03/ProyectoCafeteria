@@ -256,6 +256,11 @@ export function apiFetchIdempotent<T = void>(endpoint: string, options: ApiFetch
   return apiFetchInternal<T>(endpoint, options, 'normal', false);
 }
 
+/** Normal mutation semantics without automatic replay after CSRF_INVALID. */
+export function apiFetchNoCsrfReplay<T = void>(endpoint: string, options: ApiFetchOptions): Promise<T> {
+  return apiFetchInternal<T>(endpoint, options, 'normal', false);
+}
+
 /** Session-only calls are intentionally fixed to the auth endpoints below. */
 export function fetchSessionActor<T>(): Promise<T> {
   return apiFetchInternal<T>('/auth/me', {}, 'suppressed');

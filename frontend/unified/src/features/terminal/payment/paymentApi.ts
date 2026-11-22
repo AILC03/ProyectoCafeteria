@@ -5,12 +5,18 @@ const ID = /^[1-9][0-9]{0,18}$/;
 const CENTS = /^(0|[1-9][0-9]{0,18})$/;
 
 export type CashPayment = { saleId: string; totalCents: string; cashReceivedCents: string; changeCents: string };
-export type Ticket = { saleId: string; saleNumber: string; orderFolio: string; soldAt: string; currency: string; totalCents: string; cashReceivedCents: string; changeCents: string; items: Array<{ productName: string; quantity: number; unitPriceCents: string; lineTotalCents: string }> };
+export type TicketRegistration = { token: string; qrPayload: string; expiresAt: string };
+export type Ticket = { saleId: string; saleNumber: string; orderFolio: string; soldAt: string; currency: string; totalCents: string; cashReceivedCents: string; changeCents: string; items: Array<{ productName: string; quantity: number; unitPriceCents: string; lineTotalCents: string }>; registration: TicketRegistration | null };
 export class UnverifiableCashPaymentResponseError extends Error { constructor() { super('Cash payment response cannot be verified'); this.name = 'UnverifiableCashPaymentResponseError'; } }
 
 function record(value: unknown): value is Record<string, unknown> { return value !== null && typeof value === 'object' && !Array.isArray(value); }
 function cents(value: unknown): value is string { return typeof value === 'string' && CENTS.test(value); }
 function id(value: unknown): value is string { return typeof value === 'string' && ID.test(value); }
+function registration(value: unknown): TicketRegistration | null {
+  if (value === null || value === undefined) return null;
+  if (!record(value) || value.purpose !== 'CUSTOMER_REGISTRATION' || typeof value.token !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(value.token) || typeof value.qrPayload !== 'string' || value.qrPayload !== `cafeteria:register:${value.token}` || typeof value.expiresAt !== 'string' || !Number.isFinite(Date.parse(value.expiresAt)) || Date.parse(value.expiresAt) <= Date.now()) return null;
+  return { token: value.token, qrPayload: value.qrPayload, expiresAt: value.expiresAt };
+}
 
 export function prepareCashPayment(cashSessionId: string, orderId: string, cashReceivedCents: string, changeCents?: string): IdempotentOperation {
   if (!ID.test(cashSessionId) || !ID.test(orderId) || !CENTS.test(cashReceivedCents) || (changeCents !== undefined && !CENTS.test(changeCents))) throw new TypeError('Los datos del cobro no son válidos.');
@@ -39,7 +45,7 @@ export async function sendCashPayment(operation: IdempotentOperation): Promise<C
   return verified;
 }
 
-/** Reads only printable receipt fields; registration and digital-ticket secrets are deliberately ignored. */
+/** Reads a protected receipt and retains a valid guest-registration QR only in memory. */
 export async function getProtectedTicket(saleId: string): Promise<Ticket> {
   if (!ID.test(saleId)) throw new TypeError('Venta no válida.');
   const response = await apiFetch<{ data?: unknown }>(`/sales/${encodeURIComponent(saleId)}/ticket`);
@@ -50,7 +56,7 @@ export async function getProtectedTicket(saleId: string): Promise<Ticket> {
     if (!record(item) || typeof item.productName !== 'string' || typeof item.quantity !== 'number' || !Number.isInteger(item.quantity) || item.quantity < 1 || !cents(item.unitPriceCents) || !cents(item.lineTotalCents)) throw new UnverifiableCashPaymentResponseError();
     items.push({ productName: item.productName, quantity: item.quantity, unitPriceCents: item.unitPriceCents, lineTotalCents: item.lineTotalCents });
   }
-  return { saleId: value.saleId, saleNumber: value.saleNumber, orderFolio: value.orderFolio, soldAt: value.soldAt, currency: value.currency, totalCents: value.totalCents, cashReceivedCents: value.cashReceivedCents, changeCents: value.changeCents, items };
+  return { saleId: value.saleId, saleNumber: value.saleNumber, orderFolio: value.orderFolio, soldAt: value.soldAt, currency: value.currency, totalCents: value.totalCents, cashReceivedCents: value.cashReceivedCents, changeCents: value.changeCents, items, registration: registration(value.registration) };
 }
 
 export function shouldRetryCashPayment(error: unknown): boolean { return isUncertainIdempotencyFailure(error) || error instanceof ApiError && error.status === 403 && error.code === 'CSRF_INVALID'; }
