@@ -6,11 +6,12 @@ const CENTS = /^(0|[1-9][0-9]{0,18})$/;
 
 export type CashPayment = { saleId: string; totalCents: string; cashReceivedCents: string; changeCents: string };
 export type TicketRegistration = { token: string; qrPayload: string; expiresAt: string };
-export type Ticket = { saleId: string; saleNumber: string; orderFolio: string; soldAt: string; currency: string; totalCents: string; cashReceivedCents: string; changeCents: string; items: Array<{ productName: string; quantity: number; unitPriceCents: string; lineTotalCents: string }>; registration: TicketRegistration | null };
+export type Ticket = { saleId: string; saleNumber: string; orderFolio: string; soldAt: string; currency: string; totalCents: string; cashReceivedCents: string | null; changeCents: string | null; items: Array<{ productName: string; quantity: number; unitPriceCents: string; lineTotalCents: string }>; registration: TicketRegistration | null };
 export class UnverifiableCashPaymentResponseError extends Error { constructor() { super('Cash payment response cannot be verified'); this.name = 'UnverifiableCashPaymentResponseError'; } }
 
 function record(value: unknown): value is Record<string, unknown> { return value !== null && typeof value === 'object' && !Array.isArray(value); }
 function cents(value: unknown): value is string { return typeof value === 'string' && CENTS.test(value); }
+function nullableCents(value: unknown): value is string | null { return value === null || cents(value); }
 function id(value: unknown): value is string { return typeof value === 'string' && ID.test(value); }
 function registration(value: unknown): TicketRegistration | null {
   if (value === null || value === undefined) return null;
@@ -50,7 +51,7 @@ export async function getProtectedTicket(saleId: string): Promise<Ticket> {
   if (!ID.test(saleId)) throw new TypeError('Venta no válida.');
   const response = await apiFetch<{ data?: unknown }>(`/sales/${encodeURIComponent(saleId)}/ticket`);
   const value = response?.data;
-  if (!record(value) || !id(value.saleId) || value.saleId !== saleId || !cents(value.totalCents) || !cents(value.cashReceivedCents) || !cents(value.changeCents) || typeof value.saleNumber !== 'string' || typeof value.orderFolio !== 'string' || typeof value.soldAt !== 'string' || !Number.isFinite(Date.parse(value.soldAt)) || typeof value.currency !== 'string' || !Array.isArray(value.items)) throw new UnverifiableCashPaymentResponseError();
+  if (!record(value) || !id(value.saleId) || value.saleId !== saleId || !cents(value.totalCents) || !nullableCents(value.cashReceivedCents) || !nullableCents(value.changeCents) || typeof value.saleNumber !== 'string' || typeof value.orderFolio !== 'string' || typeof value.soldAt !== 'string' || !Number.isFinite(Date.parse(value.soldAt)) || typeof value.currency !== 'string' || !Array.isArray(value.items)) throw new UnverifiableCashPaymentResponseError();
   const items: Ticket['items'] = [];
   for (const item of value.items) {
     if (!record(item) || typeof item.productName !== 'string' || typeof item.quantity !== 'number' || !Number.isInteger(item.quantity) || item.quantity < 1 || !cents(item.unitPriceCents) || !cents(item.lineTotalCents)) throw new UnverifiableCashPaymentResponseError();
