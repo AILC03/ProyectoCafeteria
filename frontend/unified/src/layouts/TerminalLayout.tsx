@@ -8,6 +8,8 @@ export function TerminalLayout() {
   const manager = useSessionManager();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const canSeeHistory = session.status === 'authenticated'
+    && (session.actor.role === 'CAJERO' || session.actor.role === 'ADMINISTRADOR');
 
   async function handleLogout(): Promise<void> {
     setBusy(true);
@@ -22,7 +24,7 @@ export function TerminalLayout() {
       <a className="skip-link" href="#main-content">Saltar al contenido principal</a>
       <header>
         <p>Terminal</p>
-        <nav aria-label="Navegación de terminal"><NavLink end to="/terminal">Inicio</NavLink><NavLink to="/terminal/pos">POS</NavLink><NavLink to="/terminal/cocina">Cocina</NavLink><NavLink to="/terminal/caja">Caja</NavLink><NavLink to="/terminal/administracion">Administración</NavLink><ActorAreaLink destination="client" to="/cliente/iniciar-sesion">Cliente</ActorAreaLink></nav>
+        <nav aria-label="Navegación de terminal"><NavLink end to="/terminal">Inicio</NavLink><NavLink to="/terminal/pos">POS</NavLink><NavLink to="/terminal/cocina">Cocina</NavLink><NavLink to="/terminal/caja">Caja</NavLink>{canSeeHistory && <NavLink to="/terminal/historial">Historial</NavLink>}<NavLink to="/terminal/administracion">Administración</NavLink><ActorAreaLink destination="client" to="/cliente/iniciar-sesion">Cliente</ActorAreaLink></nav>
         {session.status === 'authenticated' && (
           <div className="terminal-session">
             <span>Sesión: {session.actor.name}</span>
