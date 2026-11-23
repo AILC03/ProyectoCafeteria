@@ -112,7 +112,7 @@ describe('Terminal staff authentication (TASK-13)', () => {
     fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'password123' } });
     fireEvent.click(screen.getByRole('button', { name: 'Iniciar sesión como personal' }));
 
-    expect(await screen.findByRole('heading', { name: 'Cocina' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Cola de cocina' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('link', { name: 'POS' }));
     expect(await screen.findByRole('heading', { name: 'Acceso no disponible' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Punto de venta' })).not.toBeInTheDocument();
