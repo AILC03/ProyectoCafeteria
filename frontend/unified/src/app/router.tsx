@@ -21,6 +21,8 @@ import { PosPage } from '../features/terminal/pos/PosPage';
 import { CashSessionsPage } from '../features/terminal/cash/CashSessionsPage';
 import { CashPaymentPage } from '../features/terminal/payment/CashPaymentPage';
 import { HistoryPage } from '../features/terminal/history/HistoryPage';
+import { KitchenPage } from '../features/terminal/kitchen/KitchenPage';
+import { AvailabilityPage } from '../features/terminal/kitchen/AvailabilityPage';
 import { ActorAreaLink } from '../shared/auth/ActorAreaLink';
 import { useSession, useSessionManager } from '../shared/auth/SessionProvider';
 import { useState } from 'react';
@@ -114,7 +116,10 @@ export const appRoutes: RouteObject[] = [
          { path: 'historial', element: <HistoryPage /> },
       ] },
       { element: <TerminalAccessGuard allowedRoles={['PREPARACION', 'CAJERO', 'ADMINISTRADOR']} />, children: [
-        { path: 'cocina', element: <PlaceholderPage title="Cocina" /> },
+        { path: 'cocina', element: <KitchenPage /> },
+      ] },
+      { element: <TerminalAccessGuard allowedRoles={['CAJERO', 'ADMINISTRADOR']} />, children: [
+        { path: 'disponibilidad', element: <AvailabilityPage /> },
       ] },
       { element: <TerminalAccessGuard allowedRoles={['ADMINISTRADOR']} />, children: [
         { path: 'administracion/*', element: <PlaceholderPage title="Administración" /> },

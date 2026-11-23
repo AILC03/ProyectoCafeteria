@@ -1,10 +1,11 @@
 # Backlog de desarrollo del frontend
 
-## Unificación en curso — TASK-17 (2026-11-23)
+## Unificación en curso — TASK-18 (2026-11-23)
 
-En `frontend/unified/`, TASK-17 conecta el historial operativo y la reimpresión del
-ticket protegido con el contrato `/api/v1`, sin cobro, Stripe, QR de cobro ni
-historial personal de cliente. TASK-18 es la siguiente pendiente. Los renglones
+En `frontend/unified/`, TASK-18 conecta la cola de cocina `EN_PREPARACION`,
+la acción `LISTO` y la disponibilidad de productos permitida a CAJERO con
+el contrato `/api/v1`, sin administración completa ni cobro. TASK-19 es la
+siguiente pendiente. Los renglones
 inferiores son la auditoría histórica de
 `frontend/clientes/` y `frontend/empleados/`, no el estado del paquete
 unificado; el avance verificable está en el

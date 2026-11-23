@@ -87,7 +87,9 @@ button.secondary-button { background: #fff; color: #1e3a8a; border-color: #1e3a8
 .terminal-pos,
 .terminal-cash,
 .terminal-payment,
-.terminal-history { display: grid; gap: 1rem; max-width: 72rem; }
+.terminal-history,
+.terminal-kitchen,
+.terminal-availability { display: grid; gap: 1rem; max-width: 72rem; }
 .pos-layout { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); align-items: start; }
 .pos-product-grid { display: grid; gap: .6rem; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); }
 .pos-product-button { display: grid; gap: .25rem; text-align: left; min-height: 3.5rem; padding: .75rem; }
@@ -113,10 +115,27 @@ button.secondary-button { background: #fff; color: #1e3a8a; border-color: #1e3a8
 .history-table-wrap th, .history-table-wrap td { border-bottom: 1px solid #cbd5e1; padding: .5rem; text-align: left; overflow-wrap: anywhere; }
 .history-pagination { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; }
 .history-ticket { border-top: 1px solid #cbd5e1; padding-top: .85rem; display: grid; gap: .75rem; max-width: 100%; min-width: 0; overflow-wrap: anywhere; }
+.kitchen-cards { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); align-items: start; }
+.kitchen-card { border: 1px solid #cbd5e1; border-radius: .375rem; padding: .85rem; display: grid; gap: .5rem; min-width: 0; overflow-wrap: anywhere; }
+.kitchen-card h2 { font-size: 1.05rem; margin: 0; }
+.kitchen-card p { margin: 0; }
+.kitchen-items { list-style: none; margin: 0; padding: 0; display: grid; gap: .35rem; }
+.kitchen-items li { border-bottom: 1px solid #e2e8f0; padding-bottom: .35rem; display: grid; gap: .15rem; }
+.kitchen-items small { color: #475569; }
+.kitchen-feedback:empty { display: none; }
+.kitchen-feedback { display: grid; gap: .5rem; }
+.kitchen-feedback p { margin: 0; }
+.kitchen-pagination { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; }
+.availability-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+.availability-item { border: 1px solid #cbd5e1; border-radius: .375rem; padding: .75rem; display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; }
+.availability-name { flex: 1 1 12rem; overflow-wrap: anywhere; }
+.availability-price { font-variant-numeric: tabular-nums; }
 .terminal-pos button,
 .terminal-cash button,
 .terminal-payment button,
-.terminal-history button { min-height: 2.75rem; }
+.terminal-history button,
+.terminal-kitchen button,
+.terminal-availability button { min-height: 2.75rem; }
 .payment-link { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; min-height: 2.75rem; box-sizing: border-box; }
 .protected-ticket { background: #fff; border: 1px solid #334155; color: #111; max-width: 28rem; padding: 1rem; }
 .protected-ticket table { border-collapse: collapse; width: 100%; }
@@ -125,11 +144,14 @@ button.secondary-button { background: #fff; color: #1e3a8a; border-color: #1e3a8
 
 @media (max-width: 24rem) {
   .pos-layout,
-  .pos-product-grid { grid-template-columns: minmax(0, 1fr); }
+  .pos-product-grid,
+  .kitchen-cards { grid-template-columns: minmax(0, 1fr); }
   .history-filters { grid-template-columns: minmax(0, 1fr); }
   .terminal-pos,
   .terminal-cash,
-  .terminal-history { min-width: 0; overflow-wrap: anywhere; }
+  .terminal-history,
+  .terminal-kitchen,
+  .terminal-availability { min-width: 0; overflow-wrap: anywhere; }
 }
 
 @media (prefers-reduced-motion: reduce) {

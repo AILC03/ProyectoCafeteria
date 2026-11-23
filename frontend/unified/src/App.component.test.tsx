@@ -13,6 +13,7 @@ beforeEach(() => {
     http.get('/api/v1/cash-sessions/current', () => HttpResponse.json({ data: null })),
     http.get('/api/v1/sales', () => HttpResponse.json({ data: [], page: { limit: 20, nextCursor: null } })),
     http.get('/api/v1/sales/summary', () => HttpResponse.json({ data: { count: '0', totalCents: '0', cashCents: '0', stripeCents: '0' } })),
+  http.get('/api/v1/preparation/orders', () => HttpResponse.json({ data: [], page: { limit: 20, nextCursor: null } })),
   );
 });
 
@@ -35,7 +36,8 @@ describe('application routes', () => {
     ['/cliente/cuenta', 'Cuenta'],
     ['/terminal', 'Terminal'],
     ['/terminal/pos', 'Punto de venta'],
-    ['/terminal/cocina', 'Cocina'],
+    ['/terminal/cocina', 'Cola de cocina'],
+    ['/terminal/disponibilidad', 'Disponibilidad de productos'],
     ['/terminal/caja', 'Caja'],
     ['/terminal/historial', 'Historial y ventas'],
     ['/terminal/administracion/catalogo', 'Administración'],
@@ -106,6 +108,21 @@ describe('application routes', () => {
     expect(document.querySelector('main')).toHaveAttribute('tabindex', '-1');
   });
 
+  test('links kitchen and availability only for authorised terminal roles', async () => {
+    const preparacion = { id: '3', name: 'Cocina', role: 'PREPARACION', accountType: 'STAFF', mustChangePin: false };
+    server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ data: preparacion })));
+    const first = render(<SessionProvider><RouterProvider router={createTestRouter(['/terminal/cocina'])} /></SessionProvider>);
+    const prepNav = await screen.findByRole('navigation', { name: 'Navegación de terminal' });
+    expect(within(prepNav).getByRole('link', { name: 'Cocina' })).toHaveAttribute('href', '/terminal/cocina');
+    expect(within(prepNav).queryByRole('link', { name: 'Disponibilidad' })).not.toBeInTheDocument();
+    first.unmount();
+
+    renderRoute('/terminal/disponibilidad');
+    const cashierNav = await screen.findByRole('navigation', { name: 'Navegación de terminal' });
+    expect(within(cashierNav).getByRole('link', { name: 'Cocina' })).toHaveAttribute('href', '/terminal/cocina');
+    expect(within(cashierNav).getByRole('link', { name: 'Disponibilidad' })).toHaveAttribute('href', '/terminal/disponibilidad');
+  });
+
   test.each([
     ['/cliente/cuenta', { id: 'staff-1', name: 'Caja', role: 'CAJERO', accountType: 'STAFF', mustChangePin: false }],
     ['/terminal/pos', { id: 'customer-1', name: 'Cliente', role: 'CLIENTE', accountType: 'CUSTOMER', mustChangePin: false }],
@@ -115,17 +132,22 @@ describe('application routes', () => {
     ['/terminal/historial', { id: 'legacy-1', name: 'Gerente', role: 'GERENTE', accountType: 'STAFF', mustChangePin: false }],
     ['/terminal/pos', { id: 'legacy-1', name: 'Gerente', role: 'GERENTE', accountType: 'STAFF', mustChangePin: false }],
     ['/terminal/cocina', { id: 'legacy-1', name: 'Gerente', role: 'GERENTE', accountType: 'STAFF', mustChangePin: false }],
+    ['/terminal/cocina', { id: 'customer-1', name: 'Cliente', role: 'CLIENTE', accountType: 'CUSTOMER', mustChangePin: false }],
+    ['/terminal/disponibilidad', { id: 'staff-2', name: 'Cocina', role: 'PREPARACION', accountType: 'STAFF', mustChangePin: false }],
+    ['/terminal/disponibilidad', { id: 'customer-1', name: 'Cliente', role: 'CLIENTE', accountType: 'CUSTOMER', mustChangePin: false }],
     ['/terminal/administracion/catalogo', { id: 'staff-2', name: 'Cocina', role: 'PREPARACION', accountType: 'STAFF', mustChangePin: false }],
   ])('blocks an actor with an unsuitable role from %s', async (path, actor) => {
-    const salesRequests: string[] = [];
+    const privateRequests: string[] = [];
     server.use(
       http.get('/api/v1/auth/me', () => HttpResponse.json({ data: actor })),
-      http.get('/api/v1/sales', () => { salesRequests.push('list'); return HttpResponse.json({ data: [], page: { limit: 20, nextCursor: null } }); }),
-      http.get('/api/v1/sales/summary', () => { salesRequests.push('summary'); return HttpResponse.json({ data: { count: '0', totalCents: '0', cashCents: '0', stripeCents: '0' } }); }),
+      http.get('/api/v1/sales', () => { privateRequests.push('sales'); return HttpResponse.json({ data: [], page: { limit: 20, nextCursor: null } }); }),
+      http.get('/api/v1/sales/summary', () => { privateRequests.push('summary'); return HttpResponse.json({ data: { count: '0', totalCents: '0', cashCents: '0', stripeCents: '0' } }); }),
+      http.get('/api/v1/preparation/orders', () => { privateRequests.push('kitchen'); return HttpResponse.json({ data: [], page: { limit: 20, nextCursor: null } }); }),
+      http.get('/api/v1/products', () => { privateRequests.push('products'); return HttpResponse.json({ data: [], page: { limit: 100, nextCursor: null } }); }),
     );
     render(<SessionProvider><RouterProvider router={createTestRouter([path])} /></SessionProvider>);
     expect(await screen.findByRole('heading', { name: 'Acceso no disponible' })).toBeInTheDocument();
-    expect(salesRequests).toEqual([]);
+    expect(privateRequests).toEqual([]);
   });
 
   test('blocks an anonymous session without rendering protected content', async () => {
