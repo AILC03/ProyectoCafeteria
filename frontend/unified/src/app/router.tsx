@@ -23,13 +23,10 @@ import { CashPaymentPage } from '../features/terminal/payment/CashPaymentPage';
 import { HistoryPage } from '../features/terminal/history/HistoryPage';
 import { KitchenPage } from '../features/terminal/kitchen/KitchenPage';
 import { AvailabilityPage } from '../features/terminal/kitchen/AvailabilityPage';
+import { AdminPage } from '../features/terminal/admin/AdminPage';
 import { ActorAreaLink } from '../shared/auth/ActorAreaLink';
 import { useSession, useSessionManager } from '../shared/auth/SessionProvider';
 import { useState } from 'react';
-
-function PlaceholderPage({ title }: { title: string }) {
-  return <section aria-labelledby="page-title"><h1 id="page-title">{title}</h1><p>Esta pantalla estará disponible próximamente.</p></section>;
-}
 
 function LandingPage() {
   const guest = useGuestSession();
@@ -122,7 +119,7 @@ export const appRoutes: RouteObject[] = [
         { path: 'disponibilidad', element: <AvailabilityPage /> },
       ] },
       { element: <TerminalAccessGuard allowedRoles={['ADMINISTRADOR']} />, children: [
-        { path: 'administracion/*', element: <PlaceholderPage title="Administración" /> },
+        { path: 'administracion/*', element: <AdminPage /> },
       ] },
       { path: '*', element: <section aria-labelledby="page-title"><NotFoundContent /></section> },
       ],

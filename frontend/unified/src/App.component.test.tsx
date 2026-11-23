@@ -13,7 +13,8 @@ beforeEach(() => {
     http.get('/api/v1/cash-sessions/current', () => HttpResponse.json({ data: null })),
     http.get('/api/v1/sales', () => HttpResponse.json({ data: [], page: { limit: 20, nextCursor: null } })),
     http.get('/api/v1/sales/summary', () => HttpResponse.json({ data: { count: '0', totalCents: '0', cashCents: '0', stripeCents: '0' } })),
-  http.get('/api/v1/preparation/orders', () => HttpResponse.json({ data: [], page: { limit: 20, nextCursor: null } })),
+    http.get('/api/v1/preparation/orders', () => HttpResponse.json({ data: [], page: { limit: 20, nextCursor: null } })),
+    http.get('/api/v1/admin/products', () => HttpResponse.json({ data: [], page: { limit: 20, nextCursor: null } })),
   );
 });
 
