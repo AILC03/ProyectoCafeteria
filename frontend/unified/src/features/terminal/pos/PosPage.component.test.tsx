@@ -96,7 +96,8 @@ describe('Terminal POS (TASK-14)', () => {
 
     renderPos();
     await screen.findByRole('heading', { name: 'Punto de venta' });
-    fireEvent.click(await screen.findByRole('button', { name: 'Personalizar Latte' }));
+    expect(await screen.findByRole('button', { name: 'Personalizar Latte, $65.00' })).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: /Personalizar Latte/ }));
     fireEvent.click(await screen.findByRole('button', { name: 'Confirmar personalización' }));
     expect(await screen.findByText('1 × Latte (Mediano)')).toBeInTheDocument();
 
@@ -124,7 +125,8 @@ describe('Terminal POS (TASK-14)', () => {
   test('blocks new orders after an unverifiable 201 response', async () => {
     server.use(http.post('/api/v1/cashier/orders', () => HttpResponse.json({ data: { id: '7' } }, { status: 201 })));
     renderPos();
-    fireEvent.click(await screen.findByRole('button', { name: 'Personalizar Latte' }));
+    expect(await screen.findByRole('button', { name: 'Personalizar Latte, $65.00' })).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: /Personalizar Latte/ }));
     fireEvent.click(await screen.findByRole('button', { name: 'Confirmar personalización' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Crear orden pendiente' }));
 

@@ -255,7 +255,7 @@ Si un script aún no existe, su task precedente debe añadirlo. Una imposibilida
 - **Alcance / exclusiones:** migrar wrapper Electron para cargar URL HTTP(S) configurada en `/terminal`, allowlist externa y builds; no habilitar `file://` ni modo offline.
 - **Archivos esperados:** `frontend/unified/electron/`, scripts de empaquetado y pruebas/documentación.
 - **Criterios:** conserva aisladores de seguridad; desarrollo apunta a Vite unificado; producción exige origen permitido y HTTPS; no puede navegar al área cliente.
-- **Verificación:** build, empaquetado aplicable Windows/macOS y prueba autorizada de login/mutación CSRF desde Electron.
+- **Verificación:** build, empaquetado Windows y prueba autorizada de login/mutación CSRF desde Electron; macOS queda fuera de alcance según D-26.
 - **Revisor:** `frontend-reviewer`.
 - **Commit esperado:** `feat(electron): load unified terminal route`.
 

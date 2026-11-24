@@ -242,7 +242,7 @@ export function PosPage() {
                 key={product.id}
                 type="button"
                 className="pos-product-button"
-                aria-label={`Personalizar ${product.name}`}
+                aria-label={`Personalizar ${product.name}, ${formatMxnCents(product.basePriceCents)}`}
                 disabled={!product.isAvailable || blocked || order !== null}
                 onClick={() => { setCustomizing(product); }}
               >

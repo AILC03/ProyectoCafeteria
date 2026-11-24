@@ -11,12 +11,14 @@ Los resultados numéricos corresponden a las ejecuciones reales de esta validaci
 | `npm.cmd run lint` | Correcto, sin diagnósticos. |
 | `npm.cmd run typecheck` | Correcto (`tsc -b`). |
 | `npm.cmd run test` | **283/283** en **32 archivos**. |
-| `npm.cmd run test:e2e` | **54/54** en 12 archivos; 4 pruebas de Electron. |
+| `npm.cmd run test:e2e` | **59/59** en 13 archivos; 4 pruebas de Electron y 5 auditorías axe. |
 | `npm.cmd run build` | Correcto; advertencia no bloqueante de chunk > 500 kB. |
 | `git diff --check` | Sin errores de whitespace. |
 | `npx electron-builder --win portable nsis --x64 --config.directories.output=%TEMP%` (ejecutado desde `cmd`; en PowerShell usar `"$env:TEMP\..."`) | Correcto; `app.asar` con `electron/*.cjs` y `package.json`, sin `node_modules` ni `dist`. |
 
-Composición E2E: `admin` 6, `client-account` 1, `client-auth` 3, `client-catalog` 1, `electron` 4, `history` 7, `kitchen` 6, `mobile-order` 2, `payment-ticket` 6, `pos-and-cash` 3, `staff-auth` 5, `ticket-registration` 10.
+Composición E2E: `admin` 6, `client-account` 1, `client-auth` 3, `client-catalog` 1, `electron` 4, `history` 7, `kitchen` 6, `mobile-order` 2, `payment-ticket` 6, `pos-and-cash` 3, `staff-auth` 5, `ticket-registration` 10 y `accessibility` 5.
+
+La suite axe usa `@axe-core/playwright` 4.14 y analiza WCAG 2.1 A/AA con `color-contrast` en 5 auditorías sobre 4 rutas: `/cliente/menu`, `/terminal/acceso` (visitante y CAJERO), `/terminal/pos` y `/terminal/administracion`. Falla tanto ante violaciones como ante resultados `incomplete` de `color-contrast`. En la ejecución final no quedaron violaciones; se corrigió un `label-content-name-mismatch` real en el botón de producto del POS.
 
 ## 2. Matriz de criterios
 
@@ -31,14 +33,14 @@ Composición E2E: `admin` 6, `client-account` 1, `client-auth` 3, `client-catalo
 | Almacenamiento local manipulado no concede sesión/rol/orden | Pruebas de almacenamiento y negativas E2E | **Parcial** | No hay barrido exhaustivo de todas las claves legadas de dispositivos antiguos. |
 | CSRF, cookies y errores 401/403/409/429/503 | `client.unit.test.ts`, `payment-ticket.spec.ts`, `admin.spec.ts` (cabecera `x-csrf-token`) | **Ejecutado** | Contrato cubierto con mocks; en vivo se validó una mutación real (ver §3). |
 | Idempotencia y resultado incierto en pagos/órdenes | `idempotency.unit.test.ts`, `payment-ticket.spec.ts`, `mobile-order.spec.ts` | **Ejecutado** | Con API simulada; no se provocó un timeout real contra backend. |
-| QR de registro de invitado, token no persistido y sin login automático | `ticket-registration.spec.ts` (10 pruebas), pruebas de `registration` | **Ejecutado** | API simulada; el alta real contra backend autorizado no se ejecutó en esta task. |
-| Accesibilidad: teclado, foco, contraste y movimiento reducido | Pruebas de foco/teclado en componentes y E2E; `prefers-reduced-motion` en `base.css` | **Parcial** | No hay análisis automatizado de contraste ni `axe`. |
+| QR de registro de invitado, token no persistido y sin login automático | `ticket-registration.spec.ts` (10 pruebas), pruebas de `registration` y flujo real de §4 | **Ejecutado** | Automatizado con mocks y validado contra backend local; ver §4. |
+| Accesibilidad: teclado, foco, contraste y movimiento reducido | Suite axe (5 auditorías sobre 4 rutas, con `incomplete` de contraste), pruebas de foco/teclado y `prefers-reduced-motion` | **Ejecutado (automatizado)** | axe cubre contraste y reglas WCAG A/AA; no sustituye una revisión manual con lector de pantalla. |
 | Electron carga `/terminal`, conserva aislamientos y bloquea cliente | `e2e/electron.spec.ts` (4), revisión independiente | **Ejecutado** | Origen de desarrollo `http://localhost:5173`. |
 | Mutación CSRF real desde Electron | Ver §3 | **Ejecutado** | Contra backend local autorizado, no contra un origen HTTPS de distribución. |
 | Electron desde origen HTTPS con fallback History API | — | **Bloqueado** | No existe despliegue HTTPS ni host con fallback autorizado en este entorno. |
-| Build macOS | Configuración `dmg`/`zip` en `package.json` | **Omitido** | No construible desde Windows; requiere macOS. |
-| Empaquetado en `release/` del workspace | `npm.cmd run dist:win` | **Bloqueado** | `EPERM` al renombrar por ACL de OneDrive; el empaquetado equivalente en `%TEMP%` fue correcto. |
-| Comparación con aplicaciones origen | §4 | **Ejecutado (documental)** | No se ejecutaron las apps legadas en paralelo; el mapeo por flujo figura en §4. |
+| Build macOS | Configuración `dmg`/`zip` en `package.json` | **Omitido por decisión** | D-26: el responsable no requiere macOS por ahora; la configuración se conserva. |
+| Empaquetado en `release/` del workspace | `npm.cmd run dist:win` | **Bloqueado por entorno** | `EPERM` al renombrar por ACL de OneDrive; el empaquetado equivalente en `%TEMP%` fue correcto. Ver D-26. |
+| Comparación con aplicaciones origen | §5 | **Ejecutado (documental)** | No se ejecutaron las apps legadas en paralelo; el mapeo por flujo figura en §5. |
 | Retiro de `clientes/` y `empleados/` | — | **Omitido por alcance** | TASK-21 prohíbe eliminarlas; requiere un plan de retiro separado y aceptación funcional. |
 
 ## 3. Verificación en vivo de Electron
@@ -53,7 +55,21 @@ Procedimiento autorizado por el responsable y **ejecutado durante TASK-20; se re
 
 Esto cubre login y mutación CSRF desde Electron sobre un origen de desarrollo permitido. **No** cubre el requisito de origen HTTPS de distribución ni el fallback History API de un host real.
 
-## 4. Diferencias respecto a las aplicaciones origen
+## 4. Registro QR real contra backend local
+
+Procedimiento autorizado por el responsable y ejecutado el 2026-11-23 contra el backend local (`:3000`), PostgreSQL local y Vite (`:5173`). Antes se aplicaron las migraciones pendientes del entorno local con `npx prisma migrate deploy` (3 migraciones) y se proporcionó `TICKET_ENCRYPTION_KEY` sólo al proceso del servidor, sin escribirla en el repositorio. Los primeros intentos devolvieron `503 DEPENDENCY_UNAVAILABLE` por esas migraciones pendientes; tras aplicarlas el flujo completo funcionó.
+
+1. Un usuario temporal CAJERO abrió caja y creó una orden CASH de invitado con opciones válidas.
+2. `POST /api/v1/payments/cash` confirmó la venta **V000007**.
+3. `GET /api/v1/sales/{id}/ticket` devolvió un `registration` con token de **43 caracteres** y `qrPayload === "cafeteria:register:<token>"`.
+4. En `/cliente/registro-ticket`, el formulario real envió `POST /api/v1/customer-registration/ticket` → **201** y la interfaz mostró «Cuenta creada… Inicia sesión para continuar».
+5. El cliente registrado **C000005** pudo iniciar sesión con `POST /api/v1/auth/login/customer` → **200**.
+6. La caja se cerró con `POST /api/v1/cash-sessions/{id}/close` → **200**.
+7. El usuario temporal se desactivó y sus eventos de auditoría locales se eliminaron; no se guardaron contraseñas, tokens ni claves en el repositorio.
+
+Conclusión: el alta real consume el token, crea la cuenta y no inicia sesión automáticamente. Quedan datos de prueba locales (ventas, órdenes y clientes) en la base de desarrollo; no se usaron datos productivos.
+
+## 5. Diferencias respecto a las aplicaciones origen
 
 | Flujo | Origen | Unificado | Estado |
 | --- | --- | --- | --- |
@@ -65,6 +81,6 @@ Esto cubre login y mutación CSRF desde Electron sobre un origen de desarrollo p
 | PWA de clientes | `manifest.json` y service worker | No incluida en el paquete unificado | Fuera del alcance de la spec §9 (Electron es el canal de escritorio); no sustituye la validación de Electron. |
 | QR CASH y pago Stripe | Funciones parciales/simuladas en origen | QR CASH y cobro Stripe no migrados | Fuera de alcance de las tasks cerradas. |
 
-## 5. Conclusión
+## 6. Conclusión
 
-Las rutas, roles, sesión, CSRF, idempotencia, QR de registro y Electron cuentan con evidencia automatizada; Electron además se validó en vivo contra backend local. Quedan **bloqueados** el origen HTTPS de distribución con fallback SPA y el empaquetado en `release/` por el entorno, y **omitidos** el build macOS, la validación real de alta QR contra backend y la accesibilidad automatizada de contraste. La aceptación funcional y cualquier retiro de las aplicaciones anteriores requieren decisión del responsable y un plan separado.
+Las rutas, roles, sesión, CSRF, idempotencia, QR de registro, accesibilidad y Electron cuentan con evidencia automatizada. Además, Electron se validó en vivo con login y mutación CSRF, y el registro QR se validó de extremo a extremo contra backend local. Queda **bloqueado** el origen HTTPS de distribución con fallback SPA y el empaquetado en `release/` del workspace por el entorno; macOS queda **fuera de alcance** por decisión del responsable (D-26). La aceptación funcional y cualquier retiro de las aplicaciones anteriores requieren decisión del responsable y un plan separado.

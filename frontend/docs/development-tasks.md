@@ -4,9 +4,10 @@
 
 En `frontend/unified/`, TASK-21 documenta la matriz de validación de sustitución:
 rutas, roles, sesión, CSRF, idempotencia, QR de registro, accesibilidad y Electron,
-con evidencia ejecutada, omitida y bloqueada. Quedan bloqueados el origen HTTPS de
-distribución con fallback SPA y el empaquetado en `release/`; quedan omitidos el
-build macOS, el alta QR real y el análisis automatizado de contraste. La retirada
+con evidencia ejecutada, omitida y bloqueada. El registro QR se validó de extremo
+a extremo contra backend local y la accesibilidad se cubre con axe; quedan
+bloqueados el origen HTTPS de distribución con fallback SPA y el empaquetado en
+`release/`, y macOS queda fuera de alcance por decisión del responsable. La retirada
 de `clientes/` y `empleados/` requiere aceptación funcional y un plan separado. Los renglones
 inferiores son la auditoría histórica de
 `frontend/clientes/` y `frontend/empleados/`, no el estado del paquete
