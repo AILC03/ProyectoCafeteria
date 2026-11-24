@@ -173,6 +173,41 @@ Estado: **terminada técnicamente; re-revisión final realizada sin bloqueantes;
 - Re-revisión final: sin bloqueantes de código ni prueba. Se alineó el patrón UTC con el contrato (1–6 decimales) y se probó un límite con microsegundos.
 - Commit: `mismo commit`.
 
+## TASK-DA-E1-04 — Adaptador frontend del resumen
+
+Estado: **terminada técnicamente; revisión y re-revisión sin bloqueantes; commit `mismo commit`**.
+
+### Archivos
+
+- `frontend/unified/src/features/terminal/admin/dashboard/summaryApi.ts`: query builder estricto, DTO, parser semántico, errores y `apiFetch` compartido.
+- `frontend/unified/src/features/terminal/admin/dashboard/summaryApi.unit.test.ts`: 18 pruebas con MSW.
+
+### Comandos ejecutados en `frontend/unified/`
+
+| Comando | Resultado |
+| --- | --- |
+| `npm run test` | 315/315 en 34 archivos. |
+| `npm run typecheck` | Correcto. |
+| `npm run lint` | Correcto. |
+| `npm run build` | Correcto; advertencia existente de chunk >500 kB, no bloqueante. |
+| `git diff --check` | Correcto. |
+
+### Cobertura ejecutada
+
+- Query builder con `from`, `to`, `method` CASH/STRIPE, orden estable, rechazo de extras, offsets, fechas inexistentes, rango invertido y >366 días.
+- DTO de éxito y cero con base anterior cero → `changePercent: null`.
+- Rechazo de claves extra, moneda/zona incorrectas, mezcla que no suma, comparación inconsistente, periodo anterior incorrecto, porcentaje `-0.00`, promedio sin tickets, base ausente/base cero con porcentaje y respuesta de otro periodo.
+- Errores 400/401/403/429/503; mensajes específicos para `PIN_CHANGE_REQUIRED` y `ORIGIN_NOT_ALLOWED`, y respuesta no verificable; sin reintento automático.
+- Prueba de aborto con `AbortController`: la cancelación se presenta como `AbortError`, no como error de red; el formateador devuelve “consulta cancelada”.
+- Uso de `apiFetch`, `AbortSignal` y cliente HTTP compartido; sin segundo cliente.
+
+### Revisión independiente
+
+- Revisión inicial: sin bloqueante de código/contrato; señaló cancelación no probada, evidencia imprecisa, fechas inexistentes, límite de enteros y mensaje 403 genérico.
+- Corregido: prueba real de aborto, validación estricta de fechas UTC, límite alineado al contrato, mensajes 403 por código y casos adicionales.
+- Re-revisión final: sin bloqueantes de código/contrato. Se corrigió la cifra de pruebas y se añadieron pruebas de los mensajes 403 y del formateador de aborto.
+- Commit: `mismo commit`.
+
 ## Siguiente puerta
 
 `TASK-DA-E1-02` (shell), `TASK-DA-E1-04` (adaptador) y el resto de E1 no se inician automáticamente. E1-01 está verificada técnica y funcionalmente; solo queda la aceptación formal y la autorización de commit. La integración real ya se ejecutó (146/146) y `db:verify` pasó (22 comprobaciones).
