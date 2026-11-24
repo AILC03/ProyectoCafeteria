@@ -25,6 +25,35 @@ const product = {
 
 const salesSummary = { count: '1', totalCents: '6500', cashCents: '6500', stripeCents: '0' };
 
+function dashboardSummary(url: string) {
+  const query = new URL(url).searchParams;
+  const from = query.get('from')!;
+  const to = query.get('to')!;
+  const duration = Date.parse(to) - Date.parse(from);
+  return {
+    generatedAt: '2026-11-24T18:30:00.000Z',
+    currency: 'MXN',
+    period: {
+      from,
+      to,
+      timeZone: 'America/Tijuana',
+      previousFrom: new Date(Date.parse(from) - duration).toISOString(),
+      previousTo: from,
+    },
+    totalCents: '6500',
+    ticketCount: '1',
+    averageTicketCents: '6500',
+    unitsSold: '1',
+    paymentMix: { cashCents: '6500', stripeCents: '0' },
+    comparison: {
+      totalCents: { previous: '0', change: '6500', changePercent: null },
+      ticketCount: { previous: '0', change: '1', changePercent: null },
+      averageTicketCents: { previous: '0', change: '6500', changePercent: null },
+      unitsSold: { previous: '0', change: '1', changePercent: null },
+    },
+  };
+}
+
 /**
  * Mocks every API call the audited pages need. `actor === null` behaves like a
  * visitor without a session. No real backend, tokens or secrets are involved.
@@ -55,6 +84,9 @@ async function mockApi(context: BrowserContext, actor: MockActor | null) {
     }
     if (path === '/api/v1/products' && request.method() === 'GET') {
       return json({ data: [product], page: { limit: 100, nextCursor: null } });
+    }
+    if (path === '/api/v1/admin/dashboard/summary' && request.method() === 'GET') {
+      return json({ data: dashboardSummary(request.url()) });
     }
     if (path === '/api/v1/sales/summary' && request.method() === 'GET') {
       return json({ data: salesSummary });

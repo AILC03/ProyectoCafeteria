@@ -183,6 +183,14 @@ export function formatInteger(value: string): string {
   return BigInt(value).toLocaleString('es-MX');
 }
 
+/** Formats a signed count change without converting it to Number. */
+export function formatSignedInteger(value: string): string {
+  if (!/^(0|[1-9][0-9]{0,18}|-[1-9][0-9]{0,18})$/.test(value)) {
+    throw new TypeError('El cambio de conteo no es verificable.');
+  }
+  return BigInt(value).toLocaleString('es-MX');
+}
+
 /** Formats the backend-approved percentage string without recomputing it. */
 export function formatPercentChange(value: string | null): string {
   if (value === null) return 'Sin comparación';

@@ -5,6 +5,7 @@ import {
   defaultPeriod,
   formatInteger,
   formatPercentChange,
+  formatSignedInteger,
   periodQuery,
 } from './periods';
 
@@ -89,9 +90,12 @@ describe('DA-001 business periods (America/Tijuana)', () => {
     expect(formatInteger('9007199254740993')).toBe(
       (9007199254740993n).toLocaleString('es-MX'),
     );
+    expect(formatSignedInteger('-4')).toBe((-4).toLocaleString('es-MX'));
+    expect(formatSignedInteger('4')).toBe('4');
     for (const invalid of ['-1', '1.5', '01', '12345678901234567890']) {
       expect(() => formatInteger(invalid)).toThrow(/no es verificable/);
     }
+    expect(() => formatSignedInteger('1.5')).toThrow(/no es verificable/);
     expect(formatPercentChange(null)).toBe('Sin comparación');
     expect(formatPercentChange('23.45')).toBe('+23.45 %');
     expect(formatPercentChange('0.50')).toBe('+0.50 %');

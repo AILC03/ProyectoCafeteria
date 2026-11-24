@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Link, NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { formatMxnCents } from '../../../shared/utils/money';
-import { getSalesSummary, formatSalesError, type SalesSummary } from '../sales/salesApi';
+import { DashboardSummary } from './dashboard/DashboardSummary';
 import {
   deleteAdmin, formatAdminError, formatAdminMutationError, getConfiguration, isUncertainAdminMutation,
   listAdmin, putConfiguration, writeAdmin,
@@ -45,29 +45,6 @@ function asForm(entity?: AdminEntity): Record<string, string | boolean> {
 function entityLabel(kind: AdminKind, entity: AdminEntity): string {
   if (kind === 'employees' && 'username' in entity) return `${entity.name} (${entity.username})`;
   return entity.name;
-}
-
-function Dashboard() {
-  const [summary, setSummary] = useState<SalesSummary | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
-    let active = true;
-    getSalesSummary({}).then((data) => { if (active) setSummary(data); })
-      .catch((reason) => { if (active) setError(formatSalesError(reason)); });
-    return () => { active = false; };
-  }, []);
-  return <section aria-labelledby="admin-dashboard-title" className="admin-panel">
-    <h2 id="admin-dashboard-title">Dashboard y corte</h2>
-    <p>Totales de ventas de la API, sin datos simulados. Para abrir y cerrar caja usa la vista de caja autorizada.</p>
-    {error !== null && <p role="alert">{error}</p>}
-    {summary !== null && <dl className="cash-summary">
-      <div><dt>Ventas</dt><dd>{summary.count}</dd></div>
-      <div><dt>Total</dt><dd>{formatMxnCents(summary.totalCents)}</dd></div>
-      <div><dt>Efectivo</dt><dd>{formatMxnCents(summary.cashCents)}</dd></div>
-      <div><dt>Tarjeta registrada</dt><dd>{formatMxnCents(summary.stripeCents)}</dd></div>
-    </dl>}
-    <p><Link to="/terminal/caja">Caja y corte</Link> · <Link to="/terminal/historial">Historial operativo</Link></p>
-  </section>;
 }
 
 function ConfigurationEditor({ product }: { product: AdminProduct }) {
@@ -327,7 +304,7 @@ export function AdminPage() {
     </aside>
     <section className="admin-main" aria-labelledby="admin-title">
       <h1 id="admin-title" ref={heading} tabIndex={-1}>Administración</h1>
-      {kind === 'dashboard' ? <Dashboard /> : <Collection key={kind} kind={kind} />}
+      {kind === 'dashboard' ? <DashboardSummary /> : <Collection key={kind} kind={kind} />}
     </section>
   </div>;
 }

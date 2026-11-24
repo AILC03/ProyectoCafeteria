@@ -11,10 +11,41 @@ const admin = { id: '1', name: 'Administrador', role: 'ADMINISTRADOR', accountTy
 const cashier = { id: '2', name: 'Caja', role: 'CAJERO', accountType: 'STAFF', mustChangePin: false };
 const category = { id: '1', name: 'Bebidas', isActive: true, deletedAt: null, createdAt: '2026-01-01T12:00:00.000Z' };
 
+function dashboardSummary(url: string) {
+  const query = new URL(url).searchParams;
+  const from = query.get('from')!;
+  const to = query.get('to')!;
+  const duration = Date.parse(to) - Date.parse(from);
+  return {
+    generatedAt: new Date().toISOString(),
+    currency: 'MXN',
+    period: {
+      from,
+      to,
+      timeZone: 'America/Tijuana',
+      previousFrom: new Date(Date.parse(from) - duration).toISOString(),
+      previousTo: from,
+    },
+    totalCents: '4500',
+    ticketCount: '1',
+    averageTicketCents: '4500',
+    unitsSold: '1',
+    paymentMix: { cashCents: '4500', stripeCents: '0' },
+    comparison: {
+      totalCents: { previous: '0', change: '4500', changePercent: null },
+      ticketCount: { previous: '0', change: '1', changePercent: null },
+      averageTicketCents: { previous: '0', change: '4500', changePercent: null },
+      unitsSold: { previous: '0', change: '1', changePercent: null },
+    },
+  };
+}
+
 function setup(actor = admin, path = '/terminal/administracion') {
   server.use(
     http.get('/api/v1/auth/me', () => HttpResponse.json({ data: actor })),
-    http.get('/api/v1/sales/summary', () => HttpResponse.json({ data: { count: '1', totalCents: '4500', cashCents: '4500', stripeCents: '0' } })),
+    http.get('/api/v1/admin/dashboard/summary', ({ request }) =>
+      HttpResponse.json({ data: dashboardSummary(request.url) }),
+    ),
   );
   render(<SessionProvider><RouterProvider router={createTestRouter([path])} /></SessionProvider>);
 }
@@ -33,7 +64,8 @@ describe('administrative workspace (TASK-19)', () => {
       }),
     );
     setup();
-    expect((await screen.findAllByText('$45.00')).length).toBe(2);
+    expect(await screen.findByText('Ventas registradas')).toBeInTheDocument();
+    expect((await screen.findAllByText('$45.00')).length).toBeGreaterThanOrEqual(2);
     const tabs = screen.getByRole('navigation', { name: 'Secciones administrativas' });
     fireEvent.click(within(tabs).getByRole('link', { name: 'Categorías' }));
     expect(await screen.findByText('Bebidas')).toBeInTheDocument();
@@ -47,7 +79,7 @@ describe('administrative workspace (TASK-19)', () => {
     const requests: string[] = [];
     server.use(
       http.get('/api/v1/admin/categories', () => { requests.push('admin'); return HttpResponse.json({ data: [], page: { limit: 20, nextCursor: null } }); }),
-      http.get('/api/v1/sales/summary', () => { requests.push('summary'); return HttpResponse.json({ data: {} }); }),
+      http.get('/api/v1/admin/dashboard/summary', () => { requests.push('dashboard'); return HttpResponse.json({ data: {} }); }),
     );
     setup(cashier);
     expect(await screen.findByRole('heading', { name: 'Acceso no disponible' })).toBeInTheDocument();

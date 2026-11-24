@@ -208,6 +208,47 @@ Estado: **terminada técnicamente; revisión y re-revisión sin bloqueantes; com
 - Re-revisión final: sin bloqueantes de código/contrato. Se corrigió la cifra de pruebas y se añadieron pruebas de los mensajes 403 y del formateador de aborto.
 - Commit: `mismo commit`.
 
+## TASK-DA-E1-05 — Tarjetas de Inicio
+
+Estado: **terminada técnicamente; revisión inicial aplicada; commit `mismo commit`; identidad visual DA-D08 diferida**.
+
+### Archivos
+
+- `frontend/unified/src/features/terminal/admin/dashboard/DashboardSummary.tsx`: periodos, método, tarjetas, comparaciones, mezcla, carga/error/vacío y actualización manual.
+- `frontend/unified/src/features/terminal/admin/dashboard/DashboardSummary.component.test.tsx`: 7 pruebas de componente.
+- `frontend/unified/src/features/terminal/admin/AdminPage.tsx`: Inicio usa el componente integrado.
+- `frontend/unified/src/styles/base.css`: estilos de tarjetas/filtros responsive.
+- `frontend/unified/e2e/admin.spec.ts` y `e2e/accessibility.spec.ts`: fixtures del nuevo endpoint.
+
+### Comandos ejecutados en `frontend/unified/`
+
+| Comando | Resultado |
+| --- | --- |
+| `npm run test` | 322/322 en 35 archivos. |
+| `npm run test:e2e` | 59/59 Chromium, incluida Electron y axe. |
+| `npm run typecheck` | Correcto. |
+| `npm run lint` | Correcto. |
+| `npm run build` | Correcto; advertencia existente de chunk >500 kB. |
+| `git diff --check` | Correcto. |
+
+### Cobertura ejecutada
+
+- Tarjetas de ventas, tickets, promedio y unidades con variación absoluta/porcentual.
+- Mezcla por importe CASH/STRIPE y nota de importe bruto.
+- Periodo Hoy por defecto, presets 7/30 días, custom inclusivo y método CASH/STRIPE.
+- Estado de carga, vacío con cero, error API, DTO no verificable y reintento.
+- Respuesta antigua descartada tras cambiar de periodo; estado de carga visible antes del resultado.
+- Actualización manual: una consulta inicial, otra solo al pulsar «Actualizar resumen», sin polling.
+- Axe WCAG 2.1 A/AA de administración y prueba E2E de teclado.
+- Identidad visual final del PDF sigue diferida por DA-D08; no se declara aplicada.
+
+### Revisión independiente
+
+- Revisión inicial: sin bloqueante funcional de producción; B1 exigió prueba real de respuestas fuera de orden y corrección de la evidencia.
+- Corregido: prueba con respuesta lenta/antigua descartada, prueba de actualización manual sin polling, limpieza anticipada del resumen al cambiar filtros, `aria-invalid`/`aria-describedby` y limpieza de errores de filtro.
+- No se declara aprobada la identidad visual; DA-D08 sigue diferida.
+- Commit: `mismo commit`.
+
 ## Siguiente puerta
 
 `TASK-DA-E1-02` (shell), `TASK-DA-E1-04` (adaptador) y el resto de E1 no se inician automáticamente. E1-01 está verificada técnica y funcionalmente; solo queda la aceptación formal y la autorización de commit. La integración real ya se ejecutó (146/146) y `db:verify` pasó (22 comprobaciones).

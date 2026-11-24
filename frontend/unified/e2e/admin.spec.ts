@@ -14,6 +14,35 @@ const group = { id: '4', name: 'Tamaño', pricingScope: 'GLOBAL', deletedAt: nul
 const value = { id: '5', optionGroupId: '4', name: 'Grande', globalSurchargeCents: '500', isAvailable: true, deletedAt: null };
 const config = { groups: [{ groupId: '4', minSelections: 0, maxSelections: 1, values: [{ valueId: '5' }] }] };
 
+function dashboardSummary(url: string) {
+  const query = new URL(url).searchParams;
+  const from = query.get('from')!;
+  const to = query.get('to')!;
+  const duration = Date.parse(to) - Date.parse(from);
+  return {
+    generatedAt: '2026-11-24T18:30:00.000Z',
+    currency: 'MXN',
+    period: {
+      from,
+      to,
+      timeZone: 'America/Tijuana',
+      previousFrom: new Date(Date.parse(from) - duration).toISOString(),
+      previousTo: from,
+    },
+    totalCents: '4500',
+    ticketCount: '1',
+    averageTicketCents: '4500',
+    unitsSold: '1',
+    paymentMix: { cashCents: '4500', stripeCents: '0' },
+    comparison: {
+      totalCents: { previous: '0', change: '4500', changePercent: null },
+      ticketCount: { previous: '0', change: '1', changePercent: null },
+      averageTicketCents: { previous: '0', change: '4500', changePercent: null },
+      unitsSold: { previous: '0', change: '1', changePercent: null },
+    },
+  };
+}
+
 async function mock(context: BrowserContext, actor = administrator) {
   const requests: Array<{ method: string; path: string; body: unknown; csrf: string | null }> = [];
   await context.route('**/api/v1/**', async (route) => {
@@ -31,6 +60,9 @@ async function mock(context: BrowserContext, actor = administrator) {
       if (path === '/api/v1/admin/option-groups/4/values') return json({ data: value }, 201);
       if (path.endsWith('/configuration')) return json({ data: config });
       return json({}, 404);
+    }
+    if (path === '/api/v1/admin/dashboard/summary') {
+      return json({ data: dashboardSummary(request.url()) });
     }
     if (path === '/api/v1/sales/summary') return json({ data: { count: '1', totalCents: '4500', cashCents: '4500', stripeCents: '0' } });
     if (path === '/api/v1/admin/categories') return json({ data: [category], page: { limit: 20, nextCursor: null } });
