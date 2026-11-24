@@ -1,12 +1,13 @@
 # Backlog de desarrollo del frontend
 
-## Unificación en curso — TASK-20 (2026-11-23)
+## Unificación en curso — estado tras TASK-21 (2026-11-23)
 
-En `frontend/unified/`, TASK-20 migra el contenedor Electron a una URL HTTP(S)
-configurada en `/terminal`, sin `file://` ni respaldo offline, con bloqueo del
-área cliente y empaquetado Windows. La validación de login y mutación CSRF se
-ejecutó contra backend local; siguen pendientes un origen HTTPS de distribución
-con fallback SPA y el build macOS. Los renglones
+En `frontend/unified/`, TASK-21 documenta la matriz de validación de sustitución:
+rutas, roles, sesión, CSRF, idempotencia, QR de registro, accesibilidad y Electron,
+con evidencia ejecutada, omitida y bloqueada. Quedan bloqueados el origen HTTPS de
+distribución con fallback SPA y el empaquetado en `release/`; quedan omitidos el
+build macOS, el alta QR real y el análisis automatizado de contraste. La retirada
+de `clientes/` y `empleados/` requiere aceptación funcional y un plan separado. Los renglones
 inferiores son la auditoría histórica de
 `frontend/clientes/` y `frontend/empleados/`, no el estado del paquete
 unificado; el avance verificable está en el
