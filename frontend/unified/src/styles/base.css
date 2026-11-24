@@ -91,6 +91,15 @@ button.secondary-button { background: #fff; color: #1e3a8a; border-color: #1e3a8
 .terminal-kitchen,
 .terminal-availability,
 .terminal-admin { display: grid; gap: 1rem; max-width: 72rem; }
+.terminal-admin-shell { grid-template-columns: minmax(12rem, 15rem) minmax(0, 1fr); align-items: start; }
+.admin-sidebar { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: .5rem; padding: 1rem; position: sticky; top: 1rem; }
+.admin-sidebar nav { display: grid; gap: 1rem; }
+.admin-nav-label { color: #475569; font-size: .78rem; font-weight: 700; letter-spacing: .06em; margin: 0 0 .35rem; text-transform: uppercase; }
+.admin-nav-group ul { display: grid; gap: .2rem; list-style: none; margin: 0; padding: 0; }
+.admin-nav-group a { border-radius: .375rem; color: #1f2933; display: block; padding: .55rem .65rem; text-decoration: none; }
+.admin-nav-group a:hover { background: #e2e8f0; }
+.admin-nav-group a[aria-current="page"] { background: #1d4ed8; color: #fff; font-weight: 700; }
+.admin-main { display: grid; gap: 1rem; min-width: 0; }
 .admin-tabs { display: flex; flex-wrap: wrap; gap: .5rem; }
 .admin-tabs [aria-current="page"] { outline: 2px solid #38bdf8; }
 .admin-panel { display: grid; gap: .85rem; min-width: 0; }
@@ -153,6 +162,11 @@ button.secondary-button { background: #fff; color: #1e3a8a; border-color: #1e3a8
 .protected-ticket table { border-collapse: collapse; width: 100%; }
 .protected-ticket th, .protected-ticket td { border-bottom: 1px solid #cbd5e1; padding: .4rem; text-align: left; }
 @media print { .terminal-layout header, .terminal-payment > :not(.protected-ticket), .terminal-history > :not(.history-ticket), .history-ticket > :not(.protected-ticket) { display: none; } .protected-ticket { border: 0; max-width: none; } }
+
+@media (max-width: 48rem) {
+  .terminal-admin-shell { grid-template-columns: minmax(0, 1fr); }
+  .admin-sidebar { position: static; }
+}
 
 @media (max-width: 24rem) {
   .pos-layout,

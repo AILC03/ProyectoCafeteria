@@ -11,12 +11,12 @@ const admin = { id: '1', name: 'Administrador', role: 'ADMINISTRADOR', accountTy
 const cashier = { id: '2', name: 'Caja', role: 'CAJERO', accountType: 'STAFF', mustChangePin: false };
 const category = { id: '1', name: 'Bebidas', isActive: true, deletedAt: null, createdAt: '2026-01-01T12:00:00.000Z' };
 
-function setup(actor = admin) {
+function setup(actor = admin, path = '/terminal/administracion') {
   server.use(
     http.get('/api/v1/auth/me', () => HttpResponse.json({ data: actor })),
     http.get('/api/v1/sales/summary', () => HttpResponse.json({ data: { count: '1', totalCents: '4500', cashCents: '4500', stripeCents: '0' } })),
   );
-  render(<SessionProvider><RouterProvider router={createTestRouter(['/terminal/administracion'])} /></SessionProvider>);
+  render(<SessionProvider><RouterProvider router={createTestRouter([path])} /></SessionProvider>);
 }
 
 beforeEach(() => setCsrfToken('admin-test'));
@@ -35,7 +35,7 @@ describe('administrative workspace (TASK-19)', () => {
     setup();
     expect((await screen.findAllByText('$45.00')).length).toBe(2);
     const tabs = screen.getByRole('navigation', { name: 'Secciones administrativas' });
-    fireEvent.click(within(tabs).getByRole('button', { name: 'Categorías' }));
+    fireEvent.click(within(tabs).getByRole('link', { name: 'Categorías' }));
     expect(await screen.findByText('Bebidas')).toBeInTheDocument();
     fireEvent.change(screen.getByRole('textbox', { name: 'Nombre' }), { target: { value: 'Comida' } });
     fireEvent.click(screen.getByRole('button', { name: 'Guardar' }));
@@ -52,7 +52,7 @@ describe('administrative workspace (TASK-19)', () => {
     setup(cashier);
     expect(await screen.findByRole('heading', { name: 'Acceso no disponible' })).toBeInTheDocument();
     expect(requests).toEqual([]);
-    expect(screen.queryByRole('button', { name: 'Categorías' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Categorías' })).not.toBeInTheDocument();
   });
 
   test('keeps existing list on a 409 and offers explicit refresh', async () => {
@@ -61,7 +61,7 @@ describe('administrative workspace (TASK-19)', () => {
       http.patch('/api/v1/admin/categories/1', () => HttpResponse.json({ status: 409, code: 'CONFLICT', title: 'Conflicto' }, { status: 409 })),
     );
     setup();
-    fireEvent.click(within(await screen.findByRole('navigation', { name: 'Secciones administrativas' })).getByRole('button', { name: 'Categorías' }));
+    fireEvent.click(within(await screen.findByRole('navigation', { name: 'Secciones administrativas' })).getByRole('link', { name: 'Categorías' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Editar' }));
     fireEvent.change(screen.getByRole('textbox', { name: 'Nombre' }), { target: { value: 'Nuevo' } });
     fireEvent.click(screen.getByRole('button', { name: 'Guardar' }));
@@ -86,7 +86,7 @@ describe('administrative workspace (TASK-19)', () => {
       http.delete('/api/v1/admin/categories/1', () => HttpResponse.json({ data: { ...category, deletedAt: '2026-01-02T12:00:00.000Z' } })),
     );
     setup();
-    fireEvent.click(within(await screen.findByRole('navigation', { name: 'Secciones administrativas' })).getByRole('button', { name: 'Categorías' }));
+    fireEvent.click(within(await screen.findByRole('navigation', { name: 'Secciones administrativas' })).getByRole('link', { name: 'Categorías' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Editar' }));
     fireEvent.change(screen.getByRole('textbox', { name: 'Nombre' }), { target: { value: 'Otro nombre' } });
     fireEvent.click(screen.getByRole('button', { name: 'Guardar' }));
@@ -107,7 +107,7 @@ describe('administrative workspace (TASK-19)', () => {
       http.post('/api/v1/admin/categories', () => { posts += 1; return HttpResponse.json({ data: { ...category, id: '5', name: 'Comida', secret: true } }, { status: 201 }); }),
     );
     setup();
-    fireEvent.click(within(await screen.findByRole('navigation', { name: 'Secciones administrativas' })).getByRole('button', { name: 'Categorías' }));
+    fireEvent.click(within(await screen.findByRole('navigation', { name: 'Secciones administrativas' })).getByRole('link', { name: 'Categorías' }));
     fireEvent.change(await screen.findByRole('textbox', { name: 'Nombre' }), { target: { value: 'Comida' } });
     fireEvent.click(screen.getByRole('button', { name: 'Guardar' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(/puede haberse aplicado/);
@@ -116,6 +116,23 @@ describe('administrative workspace (TASK-19)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Consultar lista antes de continuar' }));
     await waitFor(() => expect(screen.getByRole('button', { name: 'Guardar' })).toBeEnabled());
     expect(posts).toBe(1);
+  });
+
+  test('keeps one main landmark and marks the active sidebar section', async () => {
+    setup();
+    const nav = await screen.findByRole('navigation', { name: 'Secciones administrativas' });
+    expect(within(nav).getByRole('link', { name: 'Inicio' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getAllByRole('main')).toHaveLength(1);
+    expect(await screen.findByRole('heading', { name: 'Administración' })).toHaveFocus();
+  });
+
+  test('returns focus to the page title after sidebar navigation', async () => {
+    server.use(http.get('/api/v1/admin/categories', () => HttpResponse.json({ data: [category], page: { limit: 20, nextCursor: null } })));
+    setup();
+    const nav = await screen.findByRole('navigation', { name: 'Secciones administrativas' });
+    fireEvent.click(within(nav).getByRole('link', { name: 'Categorías' }));
+    expect(await screen.findByText('Bebidas')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Administración' })).toHaveFocus();
   });
 
   test('employee PATCH includes a reason but never a password or unchanged role', async () => {
@@ -128,7 +145,7 @@ describe('administrative workspace (TASK-19)', () => {
       }),
     );
     setup();
-    fireEvent.click(within(await screen.findByRole('navigation', { name: 'Secciones administrativas' })).getByRole('button', { name: 'Personal' }));
+    fireEvent.click(within(await screen.findByRole('navigation', { name: 'Secciones administrativas' })).getByRole('link', { name: 'Personal' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Editar' }));
     fireEvent.change(screen.getByRole('textbox', { name: 'Nombre' }), { target: { value: 'María nueva' } });
     fireEvent.change(screen.getByRole('textbox', { name: 'Motivo de modificación' }), { target: { value: 'Corrección de nombre' } });

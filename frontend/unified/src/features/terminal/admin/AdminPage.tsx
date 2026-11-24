@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import { formatMxnCents } from '../../../shared/utils/money';
 import { getSalesSummary, formatSalesError, type SalesSummary } from '../sales/salesApi';
 import {
@@ -293,23 +293,41 @@ function Collection({ kind }: { kind: AdminKind }) {
 
 export function AdminPage() {
   const location = useLocation();
-  const navigate = useNavigate();
+  const heading = useRef<HTMLHeadingElement>(null);
   const section = location.pathname.split('/').filter(Boolean)[2];
   const kind: AdminKind | 'dashboard' = section === 'catalogo' ? 'products'
     : section === 'categorias' ? 'categories' : section === 'grupos' ? 'option-groups'
       : section === 'valores' ? 'option-values' : section === 'personal' ? 'employees' : 'dashboard';
-  const routes: Record<AdminKind | 'dashboard', string> = {
-    dashboard: '', categories: 'categorias', products: 'catalogo', 'option-groups': 'grupos',
-    'option-values': 'valores', employees: 'personal',
-  };
-  return <section className="terminal-admin" aria-labelledby="admin-title">
-    <h1 id="admin-title">Administración</h1>
-    <nav aria-label="Secciones administrativas" className="admin-tabs">
-      {(['dashboard', 'categories', 'products', 'option-groups', 'option-values', 'employees'] as const)
-        .map((tab) => <button type="button" key={tab} aria-current={kind === tab ? 'page' : undefined}
-          onClick={() => { void navigate(`/terminal/administracion${routes[tab] === '' ? '' : `/${routes[tab]}`}`); }}>
-          {tab === 'dashboard' ? 'Dashboard y corte' : LABELS[tab]}</button>)}
-    </nav>
-    {kind === 'dashboard' ? <Dashboard /> : <Collection key={kind} kind={kind} />}
-  </section>;
+  useEffect(() => { heading.current?.focus(); }, [location.pathname]);
+  return <div className="terminal-admin terminal-admin-shell">
+    <aside className="admin-sidebar">
+      <nav aria-label="Secciones administrativas">
+        <div className="admin-nav-group">
+          <p className="admin-nav-label">Operación</p>
+          <ul>
+            <li><NavLink end to="/terminal/administracion">Inicio</NavLink></li>
+            <li><NavLink to="/terminal/historial">Ventas</NavLink></li>
+            <li><NavLink to="/terminal/caja">Caja</NavLink></li>
+          </ul>
+        </div>
+        <div className="admin-nav-group">
+          <p className="admin-nav-label">Catálogo</p>
+          <ul>
+            <li><NavLink to="/terminal/administracion/catalogo">{LABELS.products}</NavLink></li>
+            <li><NavLink to="/terminal/administracion/categorias">{LABELS.categories}</NavLink></li>
+            <li><NavLink to="/terminal/administracion/grupos">{LABELS['option-groups']}</NavLink></li>
+            <li><NavLink to="/terminal/administracion/valores">{LABELS['option-values']}</NavLink></li>
+          </ul>
+        </div>
+        <div className="admin-nav-group">
+          <p className="admin-nav-label">Equipo</p>
+          <ul><li><NavLink to="/terminal/administracion/personal">{LABELS.employees}</NavLink></li></ul>
+        </div>
+      </nav>
+    </aside>
+    <section className="admin-main" aria-labelledby="admin-title">
+      <h1 id="admin-title" ref={heading} tabIndex={-1}>Administración</h1>
+      {kind === 'dashboard' ? <Dashboard /> : <Collection key={kind} kind={kind} />}
+    </section>
+  </div>;
 }

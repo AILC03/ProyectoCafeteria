@@ -51,7 +51,7 @@ test.describe('TASK-19 administrative workspace', () => {
     await page.goto('/terminal/administracion');
     await expect(page.getByRole('heading', { name: 'Administración' })).toBeVisible();
     await expect(page.getByText('$45.00').first()).toBeVisible();
-    const categories = page.getByRole('button', { name: 'Categorías' });
+    const categories = page.getByRole('link', { name: 'Categorías' });
     await categories.focus();
     await page.keyboard.press('Enter');
     await expect(page.getByText('Bebidas')).toBeVisible();
@@ -66,7 +66,7 @@ test.describe('TASK-19 administrative workspace', () => {
   test('configuration only uses API groups and rejects invalid edits before mutation', async ({ page, context }) => {
     const writes = await mock(context);
     await page.goto('/terminal/administracion');
-    await page.getByRole('button', { name: 'Productos', exact: true }).click();
+    await page.getByRole('link', { name: 'Productos', exact: true }).click();
     await page.getByRole('button', { name: 'Opciones de Café' }).click();
     const editor = page.getByRole('textbox', { name: 'Grupos, límites y valores (JSON)' });
     await expect(editor).toContainText('groupId');
@@ -97,7 +97,7 @@ test.describe('TASK-19 administrative workspace', () => {
     await page.getByRole('textbox', { name: 'Nombre' }).fill('Tamaño');
     await page.getByRole('button', { name: 'Guardar', exact: true }).click();
     await expect(page.getByRole('status').filter({ hasText: 'guardado' })).toBeVisible();
-    await page.getByRole('button', { name: 'Valores de opciones' }).click();
+    await page.getByRole('link', { name: 'Valores de opciones' }).click();
     await page.getByRole('textbox', { name: 'ID del grupo de opciones' }).fill('4');
     await page.getByRole('textbox', { name: 'Nombre' }).fill('Grande');
     await page.getByRole('textbox', { name: 'Recargo global en centavos (vacío si es por producto)' }).fill('500');

@@ -91,6 +91,88 @@ Estado: **implementación y verificación ejecutadas; integración PostgreSQL y 
 - Commit atómico de la tarea: `mismo commit`.
 - Sin push ni despliegue.
 
+## TASK-DA-E1-02 — Shell administrativo
+
+Estado: **shell estructural aceptado por el responsable el 2026-11-24; identidad visual/DA-D08 diferida a una tarea posterior; commit `mismo commit`**.
+
+### Archivos
+
+- `frontend/unified/src/features/terminal/admin/AdminPage.tsx`: navegación lateral con enlaces a rutas existentes, foco del título y etiquetas de grupo sin `h2` antes del `h1`.
+- `frontend/unified/src/styles/base.css`: shell de dos columnas, estado activo y colapso a una columna.
+- `frontend/unified/src/features/terminal/admin/AdminPage.component.test.tsx`: navegación, `aria-current`, un solo `main`, foco inicial y foco tras navegar.
+- `frontend/unified/src/App.component.test.tsx`: regresión de la ruta administrativa existente.
+- `frontend/unified/e2e/admin.spec.ts`: enlaces laterales y flujo por teclado.
+- No se añadió un alias de ruta nuevo: la revisión retiró `/terminal/administracion/dashboard` para no introducir una decisión DA-D01 no aprobada.
+
+### Comandos ejecutados en `frontend/unified/`
+
+| Comando | Resultado |
+| --- | --- |
+| `npm run typecheck` | Correcto. |
+| `npm run lint` | Correcto. |
+| `npm run test` | 285/285 en 32 archivos. |
+| `npm run test:e2e` | 59/59 Chromium, incluida Electron y axe de administración. |
+| `npm run build` | Correcto; advertencia existente de chunk >500 kB, no bloqueante. |
+| `git diff --check` | Correcto. |
+
+### Cobertura
+
+- ADMINISTRADOR entra; CAJERO/PREPARACION siguen bloqueados por guarda y pruebas existentes.
+- Navegación lateral con `aria-current="page"`, enlaces a Inicio, Ventas, Caja, Catálogo, Categorías, Grupos, Valores y Personal.
+- Un solo `main`; foco en el título al entrar y después de navegar por el menú.
+- Sin rutas nuevas ni enlaces a rutas inexistentes; catálogo, personal, caja e historial conservan sus rutas.
+- Axe WCAG 2.1 A/AA de administración y prueba E2E por teclado pasan.
+
+### Revisión independiente
+
+- Sin bloqueantes de código, permisos, rutas ni doble `main`.
+- Se retiró el alias de Inicio no aprobado y se corrigió el orden de encabezados; se añadió prueba de foco tras navegación.
+- Riesgos residuales: el enlace «Saltar al contenido» apunta al `main` que contiene el sidebar; la validación manual de teclado debe confirmarlo. Una subruta administrativa desconocida sigue mostrando Inicio, comportamiento preexistente.
+
+### Aceptación y evidencia visual
+
+- El responsable revisó capturas a 1280, 768 y 390 px y aceptó el shell estructural el 2026-11-24.
+- Las capturas se generaron con API simulada en archivos temporales, no versionados: `admin-shell-1280.png`, `admin-shell-768.png`, `admin-shell-390.png`.
+- La identidad visual café/crema del PDF, la comparación formal contra el wireframe y DA-D08 quedan diferidas a una tarea posterior. No se declaran aplicadas.
+- Revisión independiente: sin bloqueantes de código. Se retiró el alias no aprobado y se corrigió la jerarquía de encabezados.
+- Commit: `mismo commit`.
+
+## TASK-DA-E1-03 — Periodos de negocio y presentación exacta
+
+Estado: **terminada técnicamente; re-revisión final realizada sin bloqueantes; commit `mismo commit`**.
+
+### Archivos
+
+- `frontend/unified/src/features/terminal/admin/dashboard/periods.ts`: reloj inyectable, `America/Tijuana`, presets, custom inclusivo, límites UTC semiabiertos, máximo 366 días, conteos/porcentajes exactos.
+- `frontend/unified/src/features/terminal/admin/dashboard/periods.unit.test.ts`: 12 pruebas unitarias.
+
+### Comandos ejecutados en `frontend/unified/`
+
+| Comando | Resultado |
+| --- | --- |
+| `npm run test` | 297/297 en 33 archivos. |
+| `npm run typecheck` | Correcto. |
+| `npm run lint` | Correcto. |
+| `npm run build` | Correcto; advertencia existente de chunk >500 kB, no bloqueante. |
+| `git diff --check` | Correcto. |
+
+### Cobertura ejecutada
+
+- Hoy por defecto, incluida medianoche local antes de medianoche UTC.
+- Últimos 7 y 30 días incluyendo hoy; cambio de mes/año y febrero bisiesto.
+- DST de Tijuana: 23 h en primavera, 25 h en otoño y 30 días con desplazamiento de una hora.
+- Custom con fecha final inclusiva convertida a fin exclusivo.
+- Rechazo de fechas inexistentes, inicio posterior al fin, más de 366 días y límites no UTC.
+- Límite exacto de 366 días aceptado.
+- Conteos con BigInt y porcentajes `0.00`, `0.50`, `-0.50`, `10.00`, `-10.00`; rechazo de `-0.00` y formatos inválidos.
+
+### Revisión independiente
+
+- Revisión inicial: sin bloqueante de código; solicitó casos de medianoche local, fin de mes/año, límite exacto, entero grande, `0.50` e inválidos, y validación UTC en `periodQuery`.
+- Correcciones aplicadas: pruebas añadidas, validación UTC y comprobación final de convergencia de medianoche.
+- Re-revisión final: sin bloqueantes de código ni prueba. Se alineó el patrón UTC con el contrato (1–6 decimales) y se probó un límite con microsegundos.
+- Commit: `mismo commit`.
+
 ## Siguiente puerta
 
 `TASK-DA-E1-02` (shell), `TASK-DA-E1-04` (adaptador) y el resto de E1 no se inician automáticamente. E1-01 está verificada técnica y funcionalmente; solo queda la aceptación formal y la autorización de commit. La integración real ya se ejecutó (146/146) y `db:verify` pasó (22 comprobaciones).
