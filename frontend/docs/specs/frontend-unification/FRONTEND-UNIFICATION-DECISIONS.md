@@ -31,6 +31,12 @@ Complementa la [spec](./FRONTEND-UNIFICATION-SPEC.md), el [plan](./FRONTEND-UNIF
 | D-25 | TASK-20 / 2026-11-23 | Vigente | Añadir `electron@44.4.5` y `electron-builder@26.15.3` al paquete `frontend/unified/`, con entry `electron/main.cjs`, scripts de desarrollo y empaquetado Windows (`portable` y `nsis` x64, sin firma) y configuración macOS documentada pero no construible en Windows. `release/` queda ignorado. No se empaqueta `dist/` como respaldo ni se habilita `file://`. |
 | D-26 | TASK-20/TASK-21-FIX / 2026-11-23 | Vigente | El responsable no requiere build ni distribución macOS por ahora; se considera fuera de alcance sin eliminar su configuración. La aceptación de Windows queda pendiente de validar en un entorno desplegado el origen HTTPS, `FRONTEND_ORIGIN` y el fallback History API de `/terminal/**`. Se espera que el empaquetado en `release/` funcione fuera de OneDrive, aunque no se verificó en este entorno. Las validaciones reales de registro QR y accesibilidad automatizada ya ejecutadas no requieren reabrir el alcance. |
 
+## Ajuste de proceso visual — autorización en conversación
+
+| ID | Alcance | Estado | Decisión aceptada y límites |
+| --- | --- | --- | --- |
+| D-27 | SPEC-FE-VIS-001 / PLAN-FE-VIS-001 / HYB-01 a HYB-25 | Vigente | El responsable solicitó aplicar el enfoque híbrido recomendado y autorizó modificar también la spec si era necesario: lote representativo aprobado por área, portado por bloques desde componentes/CSS/recursos originales, referencias heredadas trazables para pantallas estándar y comparativas con aceptación de sus superficies al terminar cada bloque. Login staff, caja/cobro/ticket/reimpresión, cuenta, registro, superficies sin equivalente y diferencias de flujo mantienen aprobación previa específica; patrón nuevo o ambiguo requiere decisión puntual. Sustituye la exigencia procedimental anterior de captura previa aprobada individual para toda pantalla estándar, sin sustituir ninguna decisión funcional D-01 a D-26. No autoriza ejecutar tasks, elegir temas/capturas en nombre del responsable, omitir pruebas ni rediseñar colores/flujos. |
+
 ## Regla obligatoria para decisiones futuras
 
 1. Antes de implementar una recomendación que cambie contrato, seguridad, persistencia, permisos o alcance, presentarla como **propuesta**, indicando task, alternativas y consecuencia. No tratar silencio ni una sugerencia del agente como aprobación.
