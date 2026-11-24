@@ -5,7 +5,7 @@ import { principal } from '../auth/auth.http.js';
 import { privateCashResponse } from '../cash/cash.routes.js';
 import { jsonValue } from '../../shared/http/serialization.js';
 import { invalidInput } from '../../shared/http/problem.js';
-import { salesFilters, salesQuery } from './sales.validation.js';
+import { dashboardSummaryQuery, salesFilters, salesQuery } from './sales.validation.js';
 import type { SalesService } from './sales.service.js';
 export function salesRoutes(auth: AuthService, service: SalesService) {
   const router = Router();
@@ -23,5 +23,23 @@ export function salesRoutes(auth: AuthService, service: SalesService) {
     if (input.from && input.to && new Date(input.from) >= new Date(input.to)) throw invalidInput();
     res.json(jsonValue(await service.summary(principal(res), input)));
   });
+  router.get(
+    '/admin/dashboard/summary',
+    privateCashResponse,
+    authenticate(auth),
+    authorize('ADMINISTRADOR'),
+    async (req, res) => {
+      if (req.headers['transfer-encoding'] || Number(req.headers['content-length'] ?? 0))
+        throw invalidInput();
+      res.json(
+        jsonValue(
+          await service.administrativeSummary(
+            principal(res),
+            dashboardSummaryQuery.parse(req.query),
+          ),
+        ),
+      );
+    },
+  );
   return router;
 }

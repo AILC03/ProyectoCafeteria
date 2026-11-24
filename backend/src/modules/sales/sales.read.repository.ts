@@ -4,7 +4,18 @@ import type { Position } from '../../shared/http/pagination.js';
 import { OrdersTransaction } from '../orders/orders.repository.js';
 import { forbidden } from '../auth/auth.tokens.js';
 import type { Principal } from '../auth/auth.types.js';
-import type { SalesFilters } from './sales.validation.js';
+import type { DashboardSummaryQuery, SalesFilters } from './sales.validation.js';
+
+type DashboardAggregateRow = {
+  ticketCount: string;
+  totalCents: string;
+  cashCents: string;
+  stripeCents: string;
+  unitsSold: string;
+  previousTicketCount: string;
+  previousTotalCents: string;
+  previousUnitsSold: string;
+};
 
 export class SalesRepository {
   constructor(private db: PrismaClient) {}
@@ -56,6 +67,53 @@ export class SalesRepository {
         coalesce(sum(s.total_cents) FILTER (WHERE p.method='STRIPE'),0)::text AS "stripeCents"
         FROM sales s JOIN payments p ON p.id=s.payment_id WHERE ${this.where(input)}`);
       return { data: row! };
+    });
+  }
+  administrativeSummary(actor: Principal, input: DashboardSummaryQuery) {
+    const from = new Date(input.from);
+    const to = new Date(input.to);
+    const previousFrom = new Date(from.getTime() - (to.getTime() - from.getTime()));
+    const method = input.method ? Prisma.sql`AND p.method::text=${input.method}` : Prisma.empty;
+    return this.read(actor, async (tx) => {
+      const [row] = await tx.$queryRaw<DashboardAggregateRow[]>(Prisma.sql`
+        WITH params AS (
+          SELECT ${from}::timestamptz AS from_ts,
+                 ${to}::timestamptz AS to_ts,
+                 ${previousFrom}::timestamptz AS previous_from_ts
+        ),
+        current_sales AS (
+          SELECT s.order_id, s.total_cents, p.method
+          FROM sales s JOIN payments p ON p.id=s.payment_id, params
+          WHERE s.sold_at >= params.from_ts AND s.sold_at < params.to_ts ${method}
+        ),
+        previous_sales AS (
+          SELECT s.order_id, s.total_cents
+          FROM sales s JOIN payments p ON p.id=s.payment_id, params
+          WHERE s.sold_at >= params.previous_from_ts AND s.sold_at < params.from_ts ${method}
+        ),
+        current_totals AS (
+          SELECT count(*)::text AS "ticketCount",
+                 coalesce(sum(total_cents),0)::text AS "totalCents",
+                 coalesce(sum(total_cents) FILTER (WHERE method='CASH'),0)::text AS "cashCents",
+                 coalesce(sum(total_cents) FILTER (WHERE method='STRIPE'),0)::text AS "stripeCents"
+          FROM current_sales
+        ),
+        current_units AS (
+          SELECT coalesce(sum(oi.quantity),0)::text AS "unitsSold"
+          FROM current_sales cs JOIN order_items oi ON oi.order_id=cs.order_id
+        ),
+        previous_totals AS (
+          SELECT count(*)::text AS "previousTicketCount",
+                 coalesce(sum(total_cents),0)::text AS "previousTotalCents"
+          FROM previous_sales
+        ),
+        previous_units AS (
+          SELECT coalesce(sum(oi.quantity),0)::text AS "previousUnitsSold"
+          FROM previous_sales ps JOIN order_items oi ON oi.order_id=ps.order_id
+        )
+        SELECT * FROM current_totals, current_units, previous_totals, previous_units`);
+      if (!row) throw new Error('No se pudo calcular el resumen administrativo');
+      return row;
     });
   }
 }

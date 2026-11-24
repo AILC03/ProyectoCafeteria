@@ -248,4 +248,9 @@ Ejecutar después de verificar la analítica E2 seleccionada. E2 no se declara c
 
 ## Registro de ejecución
 
-Spec y plan aprobados; **no hay tareas de este backlog implementadas ni contratos nuevos aprobados todavía**. No se ejecutaron pruebas de aplicación por redactarlo. Al cerrar una tarea, registrar identificador, alcance, decisiones aceptadas, comandos/resultados, bloqueos, revisión independiente y autorización de cualquier commit; no atribuir ejecución a este documento.
+| Tarea | Estado | Evidencia |
+| --- | --- | --- |
+| TASK-DA-E1-00 | Terminada | OpenAPI `approved-2026-11-24`, 66 ejemplos conformes, Prettier y `git diff --check` correctos. Revisión y re-revisión independientes; B1 cerrado. Commit `mismo commit`. |
+| TASK-DA-E1-01 | Terminada | `format:check`, `typecheck`, `lint`, `test` (120/266), `api:validate`, `db:validate`, `build`, `test:integration` (146/146 en 7 suites) y `db:verify` (PG 17.11, 22 comprobaciones) correctos. Revisión inicial corrigió `changePercent`; re-revisión corrigió fixture CASH; revisión final sin bloqueantes. Detalle en [validation.md](./validation.md). Commit `mismo commit`. |
+
+No se han iniciado E1-02 ni tareas posteriores. Las pruebas de integración omitidas no se contabilizan como aprobadas. Cualquier commit requiere autorización explícita.

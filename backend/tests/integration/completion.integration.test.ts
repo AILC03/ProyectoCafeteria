@@ -263,7 +263,12 @@ describe.skipIf(!target)('FIN-01: cierre con HTTP y PostgreSQL aislado', () => {
     await db?.$disconnect();
   });
   it('limita ventas/cuentas por rol y CSRF, no acepta body en lecturas', async () => {
-    for (const path of ['/api/v1/sales', '/api/v1/sales/summary', '/api/v1/admin/employees']) {
+    for (const path of [
+      '/api/v1/sales',
+      '/api/v1/sales/summary',
+      '/api/v1/admin/employees',
+      '/api/v1/admin/dashboard/summary?from=2026-11-24T08:00:00.000Z&to=2026-11-25T08:00:00.000Z',
+    ]) {
       expect((await request(app).get(path)).status).toBe(401);
       expect((await request(app).get(path).set('Cookie', alice.cookie)).status).toBe(403);
     }
@@ -674,6 +679,239 @@ describe.skipIf(!target)('FIN-01: cierre con HTTP y PostgreSQL aislado', () => {
       (await get(`/api/v1/sales?method=CASH&cursor=${first.body.page.nextCursor}`)).status,
     ).toBe(400);
     expect((await get('/api/v1/sales?customerId=1')).status).toBe(400);
+  });
+  it('resumen administrativo: rango, unidades, comparación, mezcla y permisos', async () => {
+    const from = new Date(time - 24 * 3600000);
+    const to = new Date(time + 24 * 3600000);
+    const base = `/api/v1/admin/dashboard/summary?from=${from.toISOString()}&to=${to.toISOString()}`;
+    // Fixture directa para agregación CASH; no sustituye el flujo de cobro.
+    const cashOrder = await db.order.create({
+      data: {
+        folio: `DASH-CASH-${randomUUID().slice(0, 8)}`,
+        source: 'CASHIER',
+        status: 'EN_PREPARACION',
+        paymentMethod: 'CASH',
+        totalCents: 2468n,
+        cashQrTokenHash: randomBytes(32).toString('hex'),
+        paymentExpiresAt: new Date(time + 3600000),
+        paidAt: new Date(time),
+      },
+    });
+    await db.orderItem.create({
+      data: {
+        orderId: cashOrder.id,
+        productId: BigInt(water),
+        productNameSnapshot: 'Agua (demo)',
+        basePriceCentsSnapshot: 1234n,
+        unitPriceCents: 1234n,
+        quantity: 2,
+        lineTotalCents: 2468n,
+      },
+    });
+    const openCash =
+      (await db.cashSession.findFirst({ where: { closedAt: null } })) ??
+      (await db.cashSession.create({
+        data: { employeeId: cashier.principal.userId, openingAmountCents: 0n },
+      }));
+    const cashPayment = await db.payment.create({
+      data: {
+        orderId: cashOrder.id,
+        method: 'CASH',
+        status: 'SUCCEEDED',
+        amountCents: 2468n,
+        cashierId: cashier.principal.userId,
+        cashSessionId: openCash.id,
+        cashReceivedCents: 3000n,
+        changeCents: 532n,
+        confirmedAt: new Date(time),
+      },
+    });
+    await db.sale.create({
+      data: {
+        saleNumber: `DASH-${randomUUID().slice(0, 8)}`,
+        orderId: cashOrder.id,
+        paymentId: cashPayment.id,
+        totalCents: 2468n,
+        soldAt: new Date(time),
+      },
+    });
+    async function seedSale(
+      method: 'CASH' | 'STRIPE',
+      soldAt: Date,
+      totalCents: bigint,
+      quantity: number,
+    ) {
+      const order = await db.order.create({
+        data: {
+          folio: `DASH-${randomUUID().slice(0, 8)}`,
+          source: 'CASHIER',
+          status: 'EN_PREPARACION',
+          paymentMethod: method,
+          totalCents,
+          cashQrTokenHash: method === 'CASH' ? randomBytes(32).toString('hex') : null,
+          paymentExpiresAt: new Date(soldAt.getTime() + 3600000),
+          paidAt: soldAt,
+        },
+      });
+      await db.orderItem.create({
+        data: {
+          orderId: order.id,
+          productId: BigInt(water),
+          productNameSnapshot: 'Agua (demo)',
+          basePriceCentsSnapshot: 1000n,
+          unitPriceCents: 1000n,
+          quantity,
+          lineTotalCents: 1000n * BigInt(quantity),
+        },
+      });
+      const payment = await db.payment.create({
+        data: {
+          orderId: order.id,
+          method,
+          status: 'SUCCEEDED',
+          amountCents: totalCents,
+          ...(method === 'CASH'
+            ? {
+                cashierId: cashier.principal.userId,
+                cashSessionId: openCash.id,
+                cashReceivedCents: totalCents,
+                changeCents: 0n,
+              }
+            : {}),
+          confirmedAt: soldAt,
+        },
+      });
+      await db.sale.create({
+        data: {
+          saleNumber: `DASH-${randomUUID().slice(0, 8)}`,
+          orderId: order.id,
+          paymentId: payment.id,
+          totalCents,
+          soldAt,
+        },
+      });
+    }
+    const response = await request(app).get(base).set('Cookie', admin.cookie);
+    expect(response.status).toBe(200);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.headers['referrer-policy']).toBe('no-referrer');
+    conform('/api/v1/admin/dashboard/summary', 'get', '200', response.body);
+
+    const totals = await db.sale.aggregate({
+      _sum: { totalCents: true },
+      _count: true,
+      where: { soldAt: { gte: from, lt: to } },
+    });
+    const [units] = await db.$queryRaw<{ units: string }[]>`
+      SELECT coalesce(sum(oi.quantity),0)::text AS units
+      FROM sales s JOIN order_items oi ON oi.order_id=s.order_id
+      WHERE s.sold_at >= ${from} AND s.sold_at < ${to}`;
+    expect(response.body.data.ticketCount).toBe(totals._count.toString());
+    expect(response.body.data.totalCents).toBe((totals._sum.totalCents ?? 0n).toString());
+    expect(response.body.data.unitsSold).toBe(units!.units);
+    expect(
+      BigInt(response.body.data.paymentMix.cashCents) +
+        BigInt(response.body.data.paymentMix.stripeCents),
+    ).toBe(BigInt(response.body.data.totalCents));
+    expect(response.body.data.comparison.totalCents.previous).toBe('0');
+    expect(response.body.data.comparison.totalCents.changePercent).toBeNull();
+
+    const sale = await db.sale.findFirstOrThrow({
+      where: { soldAt: { gte: from, lt: to } },
+      orderBy: [{ soldAt: 'desc' }, { id: 'desc' }],
+    });
+    await db.refund.create({
+      data: {
+        paymentId: sale.paymentId,
+        amountCents: 1n,
+        reason: 'Fixture de reembolso; el bruto no se reduce',
+        status: 'SUCCEEDED',
+      },
+    });
+    const afterRefund = await request(app).get(base).set('Cookie', admin.cookie);
+    expect(afterRefund.body.data.totalCents).toBe(response.body.data.totalCents);
+
+    await seedSale('CASH', new Date(time - 36 * 3600000), 1000n, 1);
+    await seedSale('STRIPE', new Date(time - 36 * 3600000), 3000n, 3);
+    const withPrevious = await request(app).get(base).set('Cookie', admin.cookie);
+    expect(withPrevious.body.data.totalCents).toBe(response.body.data.totalCents);
+    expect(withPrevious.body.data.comparison.totalCents.previous).toBe('4000');
+    expect(withPrevious.body.data.comparison.ticketCount.previous).toBe('2');
+    expect(withPrevious.body.data.comparison.unitsSold.previous).toBe('4');
+
+    const previousCash = await request(app).get(`${base}&method=CASH`).set('Cookie', admin.cookie);
+    expect(previousCash.body.data.comparison.totalCents.previous).toBe('1000');
+    expect(previousCash.body.data.comparison.ticketCount.previous).toBe('1');
+    expect(previousCash.body.data.comparison.unitsSold.previous).toBe('1');
+
+    const previousStripe = await request(app)
+      .get(`${base}&method=STRIPE`)
+      .set('Cookie', admin.cookie);
+    expect(previousStripe.body.data.comparison.totalCents.previous).toBe('3000');
+    expect(previousStripe.body.data.comparison.ticketCount.previous).toBe('1');
+    expect(previousStripe.body.data.comparison.unitsSold.previous).toBe('3');
+
+    const dst = await request(app)
+      .get(
+        '/api/v1/admin/dashboard/summary?from=2026-03-08T10:00:00.000Z&to=2026-03-09T09:00:00.000Z',
+      )
+      .set('Cookie', admin.cookie);
+    expect(dst.status).toBe(200);
+    conform('/api/v1/admin/dashboard/summary', 'get', '200', dst.body);
+    expect(dst.body.data.period.previousFrom).toBe('2026-03-07T11:00:00.000Z');
+    expect(dst.body.data.totalCents).toBe('0');
+
+    const stripeBase = `${base}&method=STRIPE`;
+    const dashboardStripe = await request(app).get(stripeBase).set('Cookie', admin.cookie);
+    const salesStripe = await request(app)
+      .get(`/api/v1/sales/summary?from=${from.toISOString()}&to=${to.toISOString()}&method=STRIPE`)
+      .set('Cookie', admin.cookie);
+    expect(dashboardStripe.status).toBe(200);
+    expect(salesStripe.status).toBe(200);
+    expect(dashboardStripe.body.data.totalCents).toBe(salesStripe.body.data.totalCents);
+    expect(dashboardStripe.body.data.ticketCount).toBe(salesStripe.body.data.count);
+    expect(dashboardStripe.body.data.paymentMix.cashCents).toBe('0');
+
+    const cashBase = `${base}&method=CASH`;
+    const dashboardCash = await request(app).get(cashBase).set('Cookie', admin.cookie);
+    const salesCash = await request(app)
+      .get(`/api/v1/sales/summary?from=${from.toISOString()}&to=${to.toISOString()}&method=CASH`)
+      .set('Cookie', admin.cookie);
+    const [cashTotals] = await db.$queryRaw<{ total: string; count: string }[]>`
+      SELECT coalesce(sum(s.total_cents),0)::text AS total, count(*)::text AS count
+      FROM sales s JOIN payments p ON p.id=s.payment_id
+      WHERE s.sold_at >= ${from} AND s.sold_at < ${to} AND p.method='CASH'`;
+    expect(dashboardCash.status).toBe(200);
+    expect(salesCash.status).toBe(200);
+    expect(dashboardCash.body.data.totalCents).toBe(cashTotals!.total);
+    expect(dashboardCash.body.data.ticketCount).toBe(cashTotals!.count);
+    expect(dashboardCash.body.data.paymentMix.cashCents).toBe(cashTotals!.total);
+    expect(dashboardCash.body.data.paymentMix.stripeCents).toBe('0');
+    expect(dashboardCash.body.data.totalCents).toBe(salesCash.body.data.totalCents);
+    expect(BigInt(cashTotals!.total)).toBeGreaterThanOrEqual(2468n);
+
+    expect((await request(app).get(base).set('Cookie', cashier.cookie)).status).toBe(403);
+    expect((await request(app).get(base).set('Cookie', prep.cookie)).status).toBe(403);
+    expect(
+      (
+        await request(app)
+          .get('/api/v1/admin/dashboard/summary?to=2026-11-25T08:00:00.000Z')
+          .set('Cookie', admin.cookie)
+      ).status,
+    ).toBe(400);
+    expect((await request(app).get(`${base}&limit=20`).set('Cookie', admin.cookie)).status).toBe(
+      400,
+    );
+    expect(
+      (
+        await request(app)
+          .get(
+            '/api/v1/admin/dashboard/summary?from=2026-11-25T08:00:00.000Z&to=2026-11-24T08:00:00.000Z',
+          )
+          .set('Cookie', admin.cookie)
+      ).status,
+    ).toBe(400);
+    expect((await request(app).get(base).set('Cookie', admin.cookie).send({})).status).toBe(400);
   });
   it('reset presencial exige última compra asociada, audita sin NIP y fuerza cambio', async () => {
     const sale = await db.sale.findFirstOrThrow({

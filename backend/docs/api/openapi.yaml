@@ -6204,6 +6204,238 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
+  /api/v1/admin/dashboard/summary:
+    get:
+      x-contract-status: approved-2026-11-24
+      tags:
+        - DashboardAdmin
+      summary: summarizeAdministrativeDashboard
+      description: >-
+        APROBADO DA-001 el 2026-11-24. Implementación backend presente; verificación de integración
+        real pendiente. Solo ADMINISTRADOR. Resumen
+        agregado de ventas pagadas para un periodo UTC semiabierto [from,to) y método opcional.
+        Incluye total bruto, tickets, promedio, unidades, mezcla por importe y comparación contra
+        el periodo anterior de igual duración. No resta reembolsos, no incluye órdenes sin venta
+        y no sustituye a `/sales/summary`. La caja actual se consulta aparte mediante
+        `/cash-sessions/current` y no se filtra por este periodo. Entradas estrictas, sin body,
+        query extra ni cursor. Respuesta privada no-store. Todos los importes son centavos MXN
+        en cadenas; no usar Number para IDs/importes. Periodo máximo propuesto: 366 días.
+      operationId: summarizeAdministrativeDashboard
+      security:
+        - accessCookie: []
+        - productionAccessCookie: []
+      parameters:
+        - name: from
+          in: query
+          required: true
+          description: Inicio inclusivo en UTC, ISO 8601 con Z.
+          schema:
+            type: string
+            format: date-time
+            pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?Z$
+            example: '2026-11-24T08:00:00.000Z'
+        - name: to
+          in: query
+          required: true
+          description: Fin exclusivo en UTC, estrictamente posterior a from; intervalo máximo 366 días.
+          schema:
+            type: string
+            format: date-time
+            pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?Z$
+            example: '2026-11-25T08:00:00.000Z'
+        - name: method
+          in: query
+          required: false
+          description: Filtro opcional por método de pago; omitido incluye CASH y STRIPE.
+          schema:
+            type: string
+            enum:
+              - CASH
+              - STRIPE
+      responses:
+        '200':
+          description: Resumen del periodo. Cache-Control no-store; sin datos personales.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              example: no-store
+            Referrer-Policy:
+              schema:
+                type: string
+              example: no-referrer
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: false
+                    properties:
+                      generatedAt:
+                        type: string
+                        format: date-time
+                        description: Instante UTC de generación de la respuesta.
+                      currency:
+                        type: string
+                        enum:
+                          - MXN
+                      period:
+                        type: object
+                        additionalProperties: false
+                        properties:
+                          from:
+                            type: string
+                            format: date-time
+                          to:
+                            type: string
+                            format: date-time
+                          timeZone:
+                            type: string
+                            enum:
+                              - America/Tijuana
+                          previousFrom:
+                            type: string
+                            format: date-time
+                          previousTo:
+                            type: string
+                            format: date-time
+                        required:
+                          - from
+                          - to
+                          - timeZone
+                          - previousFrom
+                          - previousTo
+                      totalCents:
+                        type: string
+                        pattern: ^(0|[1-9][0-9]{0,18})$
+                        description: Suma bruta de ventas pagadas; no descuenta reembolsos.
+                      ticketCount:
+                        type: string
+                        pattern: ^(0|[1-9][0-9]{0,18})$
+                        description: Número de ventas pagadas; cada venta es un ticket.
+                      averageTicketCents:
+                        type: string
+                        pattern: ^(0|[1-9][0-9]{0,18})$
+                        description: totalCents/ticketCount redondeado al centavo más cercano (mitades hacia arriba); 0 sin tickets.
+                      unitsSold:
+                        type: string
+                        pattern: ^(0|[1-9][0-9]{0,18})$
+                        description: Suma de OrderItem.quantity de las ventas filtradas; no multiplica por opciones.
+                      paymentMix:
+                        type: object
+                        additionalProperties: false
+                        properties:
+                          cashCents:
+                            type: string
+                            pattern: ^(0|[1-9][0-9]{0,18})$
+                          stripeCents:
+                            type: string
+                            pattern: ^(0|[1-9][0-9]{0,18})$
+                        required:
+                          - cashCents
+                          - stripeCents
+                      comparison:
+                        type: object
+                        additionalProperties: false
+                        properties:
+                          totalCents:
+                            $ref: '#/components/schemas/DashboardComparisonMetric'
+                          ticketCount:
+                            $ref: '#/components/schemas/DashboardComparisonMetric'
+                          averageTicketCents:
+                            $ref: '#/components/schemas/DashboardComparisonMetric'
+                          unitsSold:
+                            $ref: '#/components/schemas/DashboardComparisonMetric'
+                        required:
+                          - totalCents
+                          - ticketCount
+                          - averageTicketCents
+                          - unitsSold
+                    required:
+                      - generatedAt
+                      - currency
+                      - period
+                      - totalCents
+                      - ticketCount
+                      - averageTicketCents
+                      - unitsSold
+                      - paymentMix
+                      - comparison
+                required:
+                  - data
+              example:
+                data:
+                  generatedAt: '2026-11-24T18:30:00.000Z'
+                  currency: MXN
+                  period:
+                    from: '2026-11-24T08:00:00.000Z'
+                    to: '2026-11-25T08:00:00.000Z'
+                    timeZone: America/Tijuana
+                    previousFrom: '2026-11-23T08:00:00.000Z'
+                    previousTo: '2026-11-24T08:00:00.000Z'
+                  totalCents: '1234500'
+                  ticketCount: '42'
+                  averageTicketCents: '29393'
+                  unitsSold: '87'
+                  paymentMix:
+                    cashCents: '800000'
+                    stripeCents: '434500'
+                  comparison:
+                    totalCents:
+                      previous: '1000000'
+                      change: '234500'
+                      changePercent: '23.45'
+                    ticketCount:
+                      previous: '38'
+                      change: '4'
+                      changePercent: '10.53'
+                    averageTicketCents:
+                      previous: '26316'
+                      change: '3077'
+                      changePercent: '11.69'
+                    unitsSold:
+                      previous: '80'
+                      change: '7'
+                      changePercent: '8.75'
+        '400':
+          description: VALIDATION_ERROR. Query/body extra, from/to inválidos, to<=from o rango >366 días.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / PIN_CHANGE_REQUIRED / ORIGIN_NOT_ALLOWED. No admite CAJERO.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
   /api/v1/admin/employees:
     get:
       tags:
@@ -7278,6 +7510,8 @@ tags:
     description: Administración protegida, solo disponibilidad admite CAJERO.
   - name: CustomerRegistration
     description: Alta de cliente solo con token de registro de ticket pagado; no registro abierto.
+  - name: DashboardAdmin
+    description: Propuesta DA-001 para Inicio administrativo; contrato pendiente de aceptación.
 components:
   responses:
     ForbiddenOrigin:
@@ -7418,6 +7652,30 @@ components:
             Cursor opaco base64url emitido por servidor; usarlo sin interpretar. Corresponde a los
             filtros de la solicitud original.
           example: null
+    DashboardComparisonMetric:
+      type: object
+      additionalProperties: false
+      description: >-
+        Comparación propuesta contra el periodo anterior de igual duración. change y previous son
+        cadenas enteras; changePercent es porcentaje con dos decimales o null si previous=0.
+      properties:
+        previous:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+        change:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18}|-[1-9][0-9]{0,18})$
+        changePercent:
+          type: string
+          nullable: true
+          pattern: ^(?:(?:0|[1-9][0-9]*)\.[0-9]{2}|-(?:0\.(?:0[1-9]|[1-9][0-9])|[1-9][0-9]*\.[0-9]{2}))$
+          description: >-
+            Variación porcentual redondeada a dos decimales, mitades hacia arriba; null si la base
+            anterior es cero (la interfaz muestra «Sin comparación»).
+      required:
+        - previous
+        - change
+        - changePercent
     Problem:
       type: object
       required:
