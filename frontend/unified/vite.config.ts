@@ -21,7 +21,7 @@ export default defineConfig(({ mode }) => {
           extends: true,
           test: {
             name: 'unit',
-            include: ['src/**/*.unit.test.{ts,tsx}'],
+            include: ['src/**/*.unit.test.{ts,tsx}', 'electron/**/*.unit.test.ts'],
           },
         },
         {

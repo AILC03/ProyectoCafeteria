@@ -8,6 +8,7 @@ import {
   type RouteObject,
 } from 'react-router-dom';
 import { ClientAccessGuard, ClientPublicGuard, TerminalAccessGuard } from './guards';
+import { isDesktopTerminalOnly } from './desktop';
 import { ClientAuthPage } from '../features/clientes/auth/ClientAuthPage';
 import { TicketRegistrationPage } from '../features/clientes/registration/TicketRegistrationPage';
 import { exitGuestMode, useGuestSession } from '../features/clientes/auth/guestSession';
@@ -86,13 +87,18 @@ function NotFoundPage() {
   return <main id="main-content" tabIndex={-1}><NotFoundContent /></main>;
 }
 
+function ClientAreaRoute() {
+  if (isDesktopTerminalOnly()) return <Navigate to="/terminal" replace />;
+  return <ClientLayout />;
+}
+
 export const appRoutes: RouteObject[] = [
   { element: <PinChangeGate />, children: [
     { path: '/', element: <LandingPage /> },
     { path: '/cambiar-nip', element: <PinChangeRequiredPage /> },
     {
       path: '/cliente',
-      element: <ClientLayout />, children: [
+      element: <ClientAreaRoute />, children: [
       { index: true, element: <Navigate to="menu" replace /> },
        { path: 'iniciar-sesion', element: <ClientAuthPage /> },
        { path: 'registro-ticket', element: <TicketRegistrationPage /> },

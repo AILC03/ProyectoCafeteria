@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { ActorAreaLink } from '../shared/auth/ActorAreaLink';
 import { useSession, useSessionManager } from '../shared/auth/SessionProvider';
+import { isDesktopTerminalOnly } from '../app/desktop';
 
 export function TerminalLayout() {
   const session = useSession();
@@ -29,7 +30,7 @@ export function TerminalLayout() {
       <a className="skip-link" href="#main-content">Saltar al contenido principal</a>
       <header>
         <p>Terminal</p>
-        <nav aria-label="Navegación de terminal"><NavLink end to="/terminal">Inicio</NavLink><NavLink to="/terminal/pos">POS</NavLink>{canSeeKitchen && <NavLink to="/terminal/cocina">Cocina</NavLink>}<NavLink to="/terminal/caja">Caja</NavLink>{canSeeAvailability && <NavLink to="/terminal/disponibilidad">Disponibilidad</NavLink>}{canSeeHistory && <NavLink to="/terminal/historial">Historial</NavLink>}{canSeeAdmin && <NavLink to="/terminal/administracion">Administración</NavLink>}<ActorAreaLink destination="client" to="/cliente/iniciar-sesion">Cliente</ActorAreaLink></nav>
+        <nav aria-label="Navegación de terminal"><NavLink end to="/terminal">Inicio</NavLink><NavLink to="/terminal/pos">POS</NavLink>{canSeeKitchen && <NavLink to="/terminal/cocina">Cocina</NavLink>}<NavLink to="/terminal/caja">Caja</NavLink>{canSeeAvailability && <NavLink to="/terminal/disponibilidad">Disponibilidad</NavLink>}{canSeeHistory && <NavLink to="/terminal/historial">Historial</NavLink>}{canSeeAdmin && <NavLink to="/terminal/administracion">Administración</NavLink>}{!isDesktopTerminalOnly() && <ActorAreaLink destination="client" to="/cliente/iniciar-sesion">Cliente</ActorAreaLink>}</nav>
         {session.status === 'authenticated' && (
           <div className="terminal-session">
             <span>Sesión: {session.actor.name}</span>

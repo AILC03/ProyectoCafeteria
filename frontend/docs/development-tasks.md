@@ -1,11 +1,12 @@
 # Backlog de desarrollo del frontend
 
-## Unificación en curso — TASK-19 (2026-11-23)
+## Unificación en curso — TASK-20 (2026-11-23)
 
-En `frontend/unified/`, TASK-19 conecta dashboard, catálogo, opciones y personal
-administrativo con el contrato `/api/v1`; el corte usa la vista de caja ya migrada.
-TASK-20 (Electron) sigue pendiente de un origen HTTPS y un entorno autorizado
-para validar fallback, cookies y CSRF. Los renglones
+En `frontend/unified/`, TASK-20 migra el contenedor Electron a una URL HTTP(S)
+configurada en `/terminal`, sin `file://` ni respaldo offline, con bloqueo del
+área cliente y empaquetado Windows. La validación de login y mutación CSRF se
+ejecutó contra backend local; siguen pendientes un origen HTTPS de distribución
+con fallback SPA y el build macOS. Los renglones
 inferiores son la auditoría histórica de
 `frontend/clientes/` y `frontend/empleados/`, no el estado del paquete
 unificado; el avance verificable está en el
