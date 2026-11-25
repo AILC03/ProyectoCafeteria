@@ -449,4 +449,11 @@ El cierre de DA-D08 se hace con el diseño actual aprobado por el responsable, n
 
 ## Siguiente puerta
 
-E1 queda cerrada. E2/E3/E4 y las tareas CSV no se inician automáticamente. Commit de cierre `mismo commit`; sin push ni despliegue.
+E1 queda cerrada. E3/E4 no se inician automáticamente. La autorización posterior de secuencia E2/CSV se registra a continuación; no modifica el cierre E1. Commit de cierre E1 `mismo commit`; sin push ni despliegue.
+
+## Backlog E2 — aceptación y siguiente tarea autorizada
+
+- El responsable indicó «haz commit y empieza con las tareas»: bloque TASK-DA-E2-00…15 y dependencias CSV aceptados, con ejecución secuencial en el orden series → ranking → activos sin movimiento → categorías → CSV, una tarea a la vez, tras cierre verificado/revisado de la anterior. Cada contrato nuevo requiere aceptación explícita antes de runtime; aceptar backlog no acepta DTO ni decisiones pendientes.
+- Backlog redactado en `tasks.md`; investigación y revisión sin bloqueantes reportadas. `git diff --check` reportado correcto por el implementador (aviso LF→CRLF); verificación del verificador denegada por permisos, sin rodear la denegación ni atribuirle ejecución exitosa. Esta actualización no reejecuta comandos denegados.
+- Sin runtime ni suites runtime en este encargo documental. Al commit del backlog todas las tareas E2/CSV siguen no iniciadas, ningún contrato E2 queda aceptado ni tarea implementada. Commit backlog: `mismo commit`, autorizado al coordinador y no creado por este encargo; sin push/despliegue.
+- Siguiente autorizada: **TASK-DA-E2-00**, solo propuesta documental de contrato de series. Autor: `dashboard-backend-implementer`; verificación: `dashboard-verifier`; revisión independiente: `dashboard-reviewer`. No se inicia el contrato en esta actualización. Persisten DA-D04/06 por capacidad, precisión temporal, límites/coste, referencia visual y autorizaciones de entorno aplicables.

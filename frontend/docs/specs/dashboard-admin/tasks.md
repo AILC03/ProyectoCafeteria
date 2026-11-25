@@ -2,9 +2,9 @@
 
 Actualizado: 2026-11-24. Fuentes: [spec.md](./spec.md) y [plan.md](./plan.md), **aprobados por el responsable en esta conversación el 2026-11-24**.
 
-Estado de este backlog: **aceptado explícitamente por el responsable en esta conversación el 2026-11-24**, junto con spec y plan. El registro de ejecución al final refleja el estado real: E1-00…E1-08 cerradas técnicamente y E1-09 cerrada y aceptada el 2026-11-24. Se requiere selección explícita de cada tarea que se ejecutará, respetando sus precondiciones y las aprobaciones de contrato pendientes.
+Estado del backlog: **aceptado explícitamente por el responsable el 2026-11-24**, junto con spec y plan; la descomposición TASK-DA-E2-00…15 fue aceptada posteriormente con la instrucción «haz commit y empieza con las tareas». Se autoriza ejecución secuencial E2 en el orden indicado abajo, una tarea a la vez y respetando precondiciones, verificación y revisión independiente. Los contratos nuevos siguen requiriendo aceptación explícita antes de runtime. Al commit del backlog las tareas E2 aún no están iniciadas; la primera autorizada es TASK-DA-E2-00. E1 conserva su cierre aceptado. El commit del backlog corresponde al coordinador; esta actualización documental no inicia el contrato ni crea el commit.
 
-Ampliación aceptada dentro del backlog: exportación **solo CSV obligatoria al cierre de E2**, incluyendo ventas filtradas y datos de analítica implementada. Las tareas CSV están aceptadas en su alcance; no se aprueban automáticamente contratos ni se inicia su ejecución. PNG/XLSX e histórico global no se incluyen.
+Ampliación aceptada dentro del backlog: exportación **solo CSV obligatoria al cierre de E2**, incluyendo ventas filtradas y datos de analítica implementada. Las tareas CSV mantienen su alcance aceptado y forman parte de la secuencia autorizada tras las aceptaciones analíticas; sus contratos no quedan aprobados ni su ejecución iniciada por este registro. PNG/XLSX e histórico global no se incluyen.
 
 ## Reglas de ejecución y sustitución del backlog anterior
 
@@ -14,6 +14,7 @@ Ampliación aceptada dentro del backlog: exportación **solo CSV obligatoria al 
 - Asignaciones propuestas: Ángel backend/contrato, Enrique frontend, Leonel datos; confirmar ejecutor y revisor nominal antes de iniciar cada tarea. El revisor debe ser independiente del autor. Ningún nombre propuesto equivale a asignación aceptada.
 - Las decisiones de detalle pendientes de la spec conservan ese estado hasta aceptación explícita registrada. No reabrir el alcance aprobado por rutina ni marcar propuestas como aceptadas.
 - Los commits indicados son mensajes esperados, **no autorización de commit/push/despliegue**.
+- Decisión posterior E2: el responsable aceptó el bloque y autorizó la secuencia 00…15 → CSV-00…03, sin paralelismo y con las puertas contractuales vigentes. Para TASK-DA-E2-00 quedan confirmados autor `dashboard-backend-implementer`, verificación `dashboard-verifier` y revisión independiente `dashboard-reviewer`; las asignaciones restantes se confirman antes de cada tarea. El commit del backlog fue autorizado al coordinador, no se ejecuta en este encargo documental ni autoriza push/despliegue.
 
 ### Sustitución explícita — no son tareas ejecutables vigentes
 
@@ -172,15 +173,228 @@ E1-00…08 cerradas → E1-09 (aceptación real)
 
 El grafo expresa dependencias, no autorización de paralelismo ni de ejecución. E1-02 y E1-08 pueden adelantarse por selección explícita del responsable, sin evitar la aprobación del contrato para adaptador/backend.
 
-## E2–E4 — Épicas pendientes de descomposición
+## E2 — Analítica: backlog aceptado, ejecución secuencial autorizada
+
+El responsable aceptó este bloque y autorizó ejecutar el orden recomendado: series (00…03) → ranking (04…07) → activos sin movimiento (08…11) → categorías (12…15) → CSV-00…03. **Una tarea a la vez, sin paralelismo**; avanzar solo tras satisfacer precondiciones y cerrar la anterior con verificación/revisión, deteniéndose en cada contrato nuevo hasta su aceptación explícita antes de runtime. No hace falta otra selección rutinaria dentro de esta secuencia autorizada; cambios de alcance o decisiones pendientes requieren resolución propia. Al commit del backlog ninguna tarea está iniciada ni contrato E2 aceptado. La siguiente autorizada es TASK-DA-E2-00, que no se inicia en esta edición documental. Las tareas de contrato solo redactan propuestas; ni su ejecución ni su revisión técnica autoaprueban el DTO resultante.
+
+### Sustitución histórica E2
+
+| Identificador anterior | Sustitución aceptada / motivo |
+| --- | --- |
+| EP-DA-E2-01 (antes EP-DA-11) | TASK-DA-E2-00…03: contrato, backend, frontend y aceptación real de series |
+| EP-DA-E2-02 (antes EP-DA-12), ranking | TASK-DA-E2-04…07: ranking de productos con movimiento |
+| EP-DA-E2-02 (antes EP-DA-12), sin movimiento | TASK-DA-E2-08…11: universo activo y contrato separados; no top de ceros |
+| EP-DA-E2-03 (antes EP-DA-13) | TASK-DA-E2-12…15: categorías, ampliación de alcance ya aceptada, detalles pendientes |
+
+Las épicas sustituidas se conservan como trazabilidad, no como tareas ejecutables ni como trabajo terminado. TASK-DA-E2-CSV-00…03 mantienen sus definiciones y función: CSV-03 es la única aceptación final y cierre E2; E2-03/07/11/15 aceptan capacidades, no cierran la entrega.
+
+### Condiciones y criterios comunes E2 (parte obligatoria de cada tarea 00…15)
+
+- **C-PRE:** backlog revisado/aceptado y secuencia autorizada por el responsable; iniciar cada tarea solo cuando corresponda en esa secuencia y sus precondiciones estén satisfechas. Autor y revisor nominales independientes se confirman antes de cada tarea: para E2-00 están confirmados `dashboard-backend-implementer` (autor), `dashboard-verifier` (verificación) y `dashboard-reviewer` (revisión independiente); las demás asignaciones siguen pendientes. DA-D04/06 se cierran por capacidad sin extrapolar el contrato E1. Las rutas de la spec son candidatas, no contratos aceptados; la ruta separada de sin movimiento también debe acordarse. En contratos se inspeccionan vecinos antes de redactar; backend/frontend/aceptación requieren aceptación explícita del contrato resultante, no solo de la tarea documental.
+- **C-CONTRACT:** OpenAPI aditivo por capacidad: método/ruta, parámetros/query estrictos, body extra rechazado, DTO/ejemplos de éxito/cero/enteros grandes, metadatos de filtros, moneda/zona, `generatedAt` y consistencia; límites de rango/volumen y errores Problem Details saneados, incluidos 400/401/403/429/503 aplicables. Solo ADMINISTRADOR; sin sesión 401 y CLIENTE/CAJERO/PREPARACION 403; `Cache-Control: no-store` y `Referrer-Policy` según contrato acordado. Cookies/infraestructura existente, sin CSRF nuevo para lecturas ni ampliación de permisos antiguos. IDs/importes/conteos como strings decimales exactos, dinero en centavos; sin `Number` para IDs/importes. Resolver explícitamente precisión de límites con microsegundos frente a `Date` antes del runtime: el backlog no decide truncar, redondear ni cambiar E1. Registrar propuesta y aceptación o cambios solicitados, nunca autoaprobar.
+- **C-DATA:** agregados sobre conjunto filtrado completo de ventas pagadas y método soportado, importe bruto sin descontar reembolsos, históricos intactos; excluir pendientes/fallidas/expiradas. Sin joins multiplicadores de opciones/intentos de pago, N+1, estadísticas desde páginas visibles ni precios actuales sustituyendo importes históricos. Backend calcula métricas, unidades, promedio, comparación o porcentajes aplicables; frontend solo presenta. Medir coste con volumen representativo autorizado y documentar plan/límites; no prometer latencia sin evidencia ni introducir índices por extensión.
+- **C-UI:** reutilizar `frontend/unified/src/shared/api/client.ts`, guardas y sesión única; `shared/auth/` intacto. Parser estricto antes de renderizar; filtros inválidos no consultan, cancelación/descarte de respuestas antiguas al cambiar filtros/desmontar/logout. Estados carga/cero/error/DTO inválido/no disponible por panel y fallo parcial sin borrar paneles correctos ni inventar ceros. 401/403/429 sin refresh paralelo ni bucle de reintentos; recarga manual, sin polling nuevo. Formato exacto MXN/es-MX/Tijuana; alternativa tabular/textual, teclado/foco/axe y navegador/Electron sin debilitar aislamiento. No sumar ni recalcular agregados en UI; cualquier conversión acotada para dibujo necesita prueba y nunca es fuente de totales.
+- **C-VIS/REAL:** baseline actual de E1 aprobado, no plantilla nueva por defecto. La composición E2 requiere referencia accesible acordada y V-VIS con capturas 1280/768/390, altura/fixture/reloj/estado comparables y aceptación humana propia. Cada aceptación real requiere autorización adecuada de API/BD/dataset controlado estable y usuarios QA; E1 no autoriza entornos nuevos, proveedores ni acceso a datos reales. Live sin mocks/intercepción, separado de `e2e/` en `e2e-live/`; omitidos no cuentan como aprobados. No inferir HTTPS/distribución por build local ni reutilizar evidencia E1 como aceptación E2.
+- **C-LIMIT:** todas aplican V-DOC y registran RF → criterio → prueba/evidencia, comandos/resultados, omitidos, bloqueos y revisión en `validation.md` al cierre futuro. Sin dependencias, migraciones/índices, proveedores reales, reescritura histórica, cambios de negocio, contratos existentes, `.env`, STATUS de unificación ni commits por extensión. Los archivos nuevos indicados abajo son nombres propuestos concretos, a confirmar tras inspección; no autorizan refactor ajeno. Los mensajes de commit son esperados, **NO autorización** de commit/push/despliegue.
+
+### TASK-DA-E2-00 — Contrato documental de series horarias/diarias
+
+- Objetivo RF: RF-12 y RNF-02/04/06, con RF-01/03/11/19.
+- Precondiciones: C-PRE; tarea autorizada como primera de la secuencia, aún no iniciada al commit del backlog; autor `dashboard-backend-implementer`, verificación `dashboard-verifier`, revisión independiente `dashboard-reviewer` confirmados. Revisar resumen E1, filtros/consultas de ventas y precisión temporal existente; DA-D04/06 de series pendientes.
+- Alcance / exclusiones: C-CONTRACT y matriz de escenarios de series; solo documentación, sin rutas runtime, SQL ejecutable, UI ni contrato CSV.
+- Archivos esperados: `backend/docs/api/openapi.yaml`, `frontend/docs/specs/dashboard-admin/contracts/E2-series-contract.md`, `validation.md` para registro futuro.
+- Criterios de aceptación: definir `from` UTC inclusivo/`to` exclusivo y America/Tijuana, granularidad hora/día, métricas soportadas (importe/tickets/unidades), orden, buckets vacíos y parciales, rango máximo y máximo de buckets por granularidad. Definir identidad inequívoca de hora repetida/ausente en DST y días 23/25 h sin offset fijo; límites efectivos y metadatos/generatedAt/consistencia. Matriz exige que suma de buckets concilie con resumen completo para mismo método/dataset, sin duplicar tickets o unidades; incluir cero, bordes exactos y microsegundos. C-CONTRACT/C-DATA obligatorios; aceptación del responsable pendiente tras revisión.
+- Verificación: V-DOC + V-CONTRACT; revisión documental de ejemplos DST primavera/otoño, rango parcial/máximo/excedido, body/query extra y enteros grandes; no atribuir HTTP real a ejemplos.
+- Revisor: `dashboard-reviewer`, independiente del autor `dashboard-backend-implementer`; verificación por `dashboard-verifier`, con coordinación datos/frontend para el contrato. La aceptación del contrato corresponde al responsable.
+- Commit esperado (no autorizado): `docs(dashboard-admin): define E2 sales series contract`.
+
+### TASK-DA-E2-01 — Backend de series
+
+- Objetivo RF: RF-12, RF-01/03/19 y RNF-02/06.
+- Precondiciones: C-PRE; E2-00 revisada y contrato de series explícitamente aceptado, decisiones temporales/límites resueltas y BD aislada autorizada.
+- Alcance / exclusiones: ruta/validación, servicio/repositorio y pruebas HTTP/BD del contrato; sin UI, CSV, migraciones ni cambios del resumen E1.
+- Archivos esperados: `backend/src/modules/sales/{sales.routes.ts,sales.validation.ts,sales.service.ts,sales.read.repository.ts}`, `backend/tests/dashboard-series.test.ts`, `backend/tests/integration/dashboard-series.integration.test.ts`; referencia/regresión en `backend/tests/integration/completion.integration.test.ts`.
+- Criterios de aceptación: ejecutar todos los escenarios aceptados E2-00 y C-CONTRACT/C-DATA; conciliación exacta de sumas de importe/tickets/unidades con resumen completo por CASH/STRIPE y sin método sobre dataset estable. Probar buckets vacíos/parciales, orden, máximos/exceso, DST 23/25 h y hora repetida/ausente, límites y precisión acordada; fixtures con varias líneas/opciones/intentos/reembolso sin multiplicar. Roles negativos/cabeceras/body/query extra/fallo saneado y coste sin N+1 acreditados.
+- Verificación: V-DOC + V-BE, unitarias y PostgreSQL aislado con matriz RF → escenarios E2-00; pruebas omitidas de integración bloquean cierre.
+- Revisor: backend independiente y revisión de consultas por datos, por confirmar antes de ejecución.
+- Commit esperado (no autorizado): `feat(dashboard-admin): implement E2 sales series API`.
+
+### TASK-DA-E2-02 — Frontend de series y alternativa accesible
+
+- Objetivo RF: RF-12/03/11/19, RNF-02/03/04/05/06/07.
+- Precondiciones: C-PRE; contrato E2-00 explícitamente aceptado y composición/referencia E2 acordadas. E2-01 requerida para integración real; MSW no acredita disponibilidad.
+- Alcance / exclusiones: adaptador validado, selector hora/día y panel/tabla accesible; C-UI/C-VIS; sin nuevo cliente/sesión, biblioteca gráfica ni recálculo de buckets.
+- Archivos esperados: `frontend/unified/src/features/terminal/admin/analytics/{seriesApi.ts,seriesApi.unit.test.ts,SalesSeries.tsx,SalesSeries.component.test.tsx}`, integración acotada en `admin/dashboard/DashboardSummary.tsx`, estilos en `src/styles/base.css`, `frontend/unified/e2e/dashboard-series.spec.ts`.
+- Criterios de aceptación: representar métricas/buckets/metadatos del contrato sin sumar páginas ni rellenar huecos con datos inferidos; distinguir horas repetidas y días 23/25 h, parciales/vacíos y límites. Parser rechaza DTO/orden/identidad/filtros incompatibles según contrato; strings grandes exactos y alternativa textual equivalente. C-UI completo, pruebas de carreras/aborto, fallo parcial, roles y errores; capturas propias revisadas y aceptación visual humana pendiente/registrada, no heredada de E1.
+- Verificación: V-DOC + V-FE + V-VIS; fixtures MSW exactas E2-00, DST, cero/grandes/errores/429 y respuesta antigua; V-REAL se acredita en E2-03.
+- Revisor: frontend independiente con validación temporal por backend/datos y aceptación visual del responsable, por confirmar antes de ejecución.
+- Commit esperado (no autorizado): `feat(dashboard-admin): present E2 sales series`.
+
+### TASK-DA-E2-03 — Aceptación real de series
+
+- Objetivo RF: acreditar RF-12 y RNF-02/04/06, más RF/RNF transversales de series.
+- Precondiciones: C-PRE; E2-00…02 revisadas, contrato aceptado, referencia visual y entorno/dataset autorizados específicamente según C-VIS/REAL.
+- Alcance / exclusiones: conciliación navegador→API/BD, regresión y acta de series; no cerrar E2 ni agregar funcionalidades/correcciones mayores sin tarea propia.
+- Archivos esperados: `frontend/unified/e2e-live/dashboard-series-acceptance.spec.ts`, `e2e-live/README.md`, `backend/tests/integration/dashboard-series.integration.test.ts` si falta evidencia y `frontend/docs/specs/dashboard-admin/validation.md`.
+- Criterios de aceptación: evidencia sin mocks de suma de buckets igual a resumen completo (importe/tickets/unidades, mismo método y dataset), DST ambas transiciones/hora repetida, cero/parciales/máximos y precisión aprobada. Probar roles 401/403, cabeceras, errores/fallo parcial/cancelación y sesión sin regresión; coste documentado. V-VIS/teclado/alternativa y navegador/Electron acreditados; revisión independiente y aceptación humana de capacidad, sin sustituir CSV-03.
+- Verificación: V-DOC + V-BE + V-FE + V-VIS + V-REAL; registrar comandos live dirigidos, dataset esperado y resultados sin PII/secretos; entorno ausente bloquea aceptación.
+- Revisor: backend/frontend independientes, datos para conciliación y responsable para aceptación, por confirmar antes de ejecución.
+- Commit esperado (no autorizado): `test(dashboard-admin): validate E2 sales series integration`.
+
+### TASK-DA-E2-04 — Contrato documental de ranking
+
+- Objetivo RF: RF-13, RF-01/03/19 y RNF-02/06.
+- Precondiciones: C-PRE; DA-D04/06 ranking pendientes; inspeccionar líneas/snapshots y reglas de bajas del catálogo.
+- Alcance / exclusiones: C-CONTRACT y escenarios de más/menos vendidos; sin runtime/UI/CSV ni incluir ceros activos como menos vendidos.
+- Archivos esperados: `backend/docs/api/openapi.yaml`, `frontend/docs/specs/dashboard-admin/contracts/E2-ranking-contract.md`, `validation.md` para registro futuro.
+- Criterios de aceptación: agrupar por `productId`, no nombre; ventas pagadas/brutas, unidades de cantidades e importe de líneas histórico (`lineTotalCents`), no precios actuales. Métrica unidades/importe, más/menos, top 5 default y opciones 5/10/20; menos excluye ceros. Definir direcciones de orden/desempates estables, tratamiento de inactivos/bajas y nombre vigente con fallback snapshot determinista; no dar esas propuestas por aceptadas. Agregar conjunto completo antes de top N; precisar metadatos/límites/consistencia y escenarios de empates/nombres iguales/cambios de precio/reembolso/varias páginas. C-CONTRACT/C-DATA y aceptación explícita posterior obligatorios.
+- Verificación: V-DOC + V-CONTRACT; ejemplos de ambas métricas/direcciones/tops, cero/grandes y negativos de entrada/roles/coste.
+- Revisor: backend independiente con datos/frontend, por confirmar antes de ejecución.
+- Commit esperado (no autorizado): `docs(dashboard-admin): define E2 product ranking contract`.
+
+### TASK-DA-E2-05 — Backend de ranking
+
+- Objetivo RF: RF-13, RF-01/19 y RNF-02/06.
+- Precondiciones: C-PRE; E2-04 revisada y contrato explícitamente aceptado; desempates/snapshots/bajas resueltos y BD de prueba autorizada.
+- Alcance / exclusiones: consulta agregada, servicio/validación/ruta y pruebas; sin lista de sin movimiento, UI ni CSV.
+- Archivos esperados: `backend/src/modules/sales/{sales.routes.ts,sales.validation.ts,sales.service.ts,sales.read.repository.ts}`, `backend/tests/dashboard-ranking.test.ts`, `backend/tests/integration/dashboard-ranking.integration.test.ts`; regresión `completion.integration.test.ts` si procede.
+- Criterios de aceptación: matriz E2-04 completa y C-CONTRACT/C-DATA; probar agrupación por ID con nombres iguales/cambiados, importe histórico frente a precio actual, sumas sin multiplicar opciones/intentos y reembolsos no restados. Ambas métricas, más/menos, tops 5/10/20/default, empates repetibles e inactivos/bajas/fallback aprobados. Fixture mayor al top y a una página acredita agregado previo al corte; menos nunca devuelve ceros. Método/rango/precisión/cabeceras/permisos/errores y coste verificados.
+- Verificación: V-DOC + V-BE; unitarias y HTTP/PostgreSQL aislado de todos los escenarios E2-04, sin N+1.
+- Revisor: backend independiente con revisión de consultas por datos, por confirmar antes de ejecución.
+- Commit esperado (no autorizado): `feat(dashboard-admin): implement E2 product ranking API`.
+
+### TASK-DA-E2-06 — Frontend de ranking
+
+- Objetivo RF: RF-13/03/11/19, RNF-02/03/04/05/06/07.
+- Precondiciones: C-PRE; contrato E2-04 aceptado y referencia/composición acordadas; E2-05 necesaria para integración real.
+- Alcance / exclusiones: adaptador/parser, panel y alternativa tabular con selectores métrica/más-menos/top; sin ranking local, sin mezclar sin movimiento ni nuevo stack.
+- Archivos esperados: `frontend/unified/src/features/terminal/admin/analytics/{rankingApi.ts,rankingApi.unit.test.ts,ProductRanking.tsx,ProductRanking.component.test.tsx}`, integración en `admin/dashboard/DashboardSummary.tsx`, estilos acotados `src/styles/base.css`, `frontend/unified/e2e/dashboard-ranking.spec.ts`.
+- Criterios de aceptación: top 5 inicial y 5/10/20 con métrica inequívoca, orden/nombres/fallback recibidos sin reagrupar/ordenar por nombre; ceros excluidos de menos y sin movimiento separado. IDs/importes exactos, parser rechaza respuesta incompatible con filtros/contrato, no completar top con ceros ficticios. C-UI y C-VIS, estados/429/carreras/limpieza, accesibilidad y metadatos/actualización probados. Medir ranking <15 s en prueba guiada de aceptación, sin afirmar aquí resultado.
+- Verificación: V-DOC + V-FE + V-VIS; MSW de métricas/tops/direcciones/empates/bajas/cero/grandes/errores; V-REAL en E2-07.
+- Revisor: frontend independiente con datos/backend y aceptación visual humana, por confirmar antes de ejecución.
+- Commit esperado (no autorizado): `feat(dashboard-admin): present E2 product rankings`.
+
+### TASK-DA-E2-07 — Aceptación real de ranking
+
+- Objetivo RF: RF-13 y RF/RNF transversales de ranking; usabilidad de rankings E2.
+- Precondiciones: C-PRE; E2-04…06 revisadas/contrato aceptado, referencia y API/BD/dataset específicamente autorizados.
+- Alcance / exclusiones: conciliación real y acta de ranking; sin cierre E2 ni aceptación de sin movimiento por extensión.
+- Archivos esperados: `frontend/unified/e2e-live/dashboard-ranking-acceptance.spec.ts`, `e2e-live/README.md`, `backend/tests/integration/dashboard-ranking.integration.test.ts` si necesario y `frontend/docs/specs/dashboard-admin/validation.md`.
+- Criterios de aceptación: ambas métricas/direcciones/tops coinciden con agregado independiente completo por ID/método/rango y corte posterior; empates, bajas/fallback, históricos, cero y grandes verificados. Roles/cabeceras/errores/carreras/fallo parcial/sesión y coste acreditados sin mocks. V-VIS/teclado/tabla/Electron y prueba guiada de ranking <15 s con resultado humano registrado, no supuesto; revisión y aceptación de capacidad independientes; CSV sigue pendiente.
+- Verificación: V-DOC + V-BE + V-FE + V-VIS + V-REAL; registrar comandos live, volumen y resultados reales; omisión/entorno no autorizado bloquean cierre de capacidad.
+- Revisor: frontend/backend independientes y datos, aceptación funcional del responsable, por confirmar antes de ejecución.
+- Commit esperado (no autorizado): `test(dashboard-admin): validate E2 ranking integration`.
+
+### TASK-DA-E2-08 — Contrato documental separado de activos sin movimiento
+
+- Objetivo RF: RF-13 (lista separada), RF-01/03/19 y RNF-02/06.
+- Precondiciones: C-PRE; DA-D04/06 propios pendientes; inspeccionar `Product`/`Category` y altas/bajas reales, sin asumir `Product.isActive`.
+- Alcance / exclusiones: contrato/escenarios de universo activo y ausencia de ventas del rango/método; sin runtime/UI/CSV ni redefinir menos vendidos.
+- Archivos esperados: `backend/docs/api/openapi.yaml`, `frontend/docs/specs/dashboard-admin/contracts/E2-no-movement-contract.md`, `validation.md` para registro futuro.
+- Criterios de aceptación: definir «activo» considerando que Product tiene `deletedAt`/`isAvailable`, no `isActive`, y Category tiene `isActive`/`deletedAt`; fijar instante del universo, altas dentro/después del rango, disponibilidad/categoría, límites y paginación/orden estable. Definir efecto del método: vendido fuera del rango u otro método no implica movimiento dentro del filtro; ausencia en rango NO ausencia global. No limitar universo a catálogo visible, página o top N ni mezclar con ranking de ceros. DTO separado, metadatos/consistencia y C-CONTRACT/C-DATA; ejemplos más de una página, cero activos, altas y bordes. Aceptación explícita del detalle pendiente.
+- Verificación: V-DOC + V-CONTRACT; revisión datos/catálogo de matriz activo/no activo × alta × método × venta dentro/fuera, coste y privacidad.
+- Revisor: backend independiente con catálogo/datos/frontend, por confirmar antes de ejecución.
+- Commit esperado (no autorizado): `docs(dashboard-admin): define E2 no-movement contract`.
+
+### TASK-DA-E2-09 — Backend de activos sin movimiento
+
+- Objetivo RF: RF-13, RF-01/19 y RNF-02/06.
+- Precondiciones: C-PRE; E2-08 revisada y contrato explícitamente aceptado, definición de activo/altas/método/paginación resuelta; BD aislada autorizada.
+- Alcance / exclusiones: ruta separada, validación/servicio/repositorio y pruebas; sin modificar flags de catálogo ni agregar esquema, top de ceros o CSV.
+- Archivos esperados: `backend/src/modules/sales/{sales.routes.ts,sales.validation.ts,sales.service.ts,sales.read.repository.ts}`, `backend/tests/dashboard-no-movement.test.ts`, `backend/tests/integration/dashboard-no-movement.integration.test.ts`; lectura de catálogo existente sin reescritura.
+- Criterios de aceptación: universo/ausencia según E2-08 sobre conjunto completo; fixtures de venta fuera de rango y por otro método, altas dentro/después, disponible/agotado/baja y categoría inactiva/baja según reglas aceptadas. Más de una página sin omitir/duplicar ni truncar a top N; orden/cursor/límites/filtros estrictos y bordes temporales aprobados. C-CONTRACT/C-DATA, roles/cabeceras/errores, precisión y coste sin N+1 comprobados.
+- Verificación: V-DOC + V-BE; matriz E2-08 en unitarias y HTTP/PostgreSQL aislado, permisos negativos y paginación estable.
+- Revisor: backend independiente con datos/catálogo, por confirmar antes de ejecución.
+- Commit esperado (no autorizado): `feat(dashboard-admin): implement E2 no-movement API`.
+
+### TASK-DA-E2-10 — Frontend de lista separada sin movimiento
+
+- Objetivo RF: RF-13/03/11/19, RNF-02/03/04/05/06/07.
+- Precondiciones: C-PRE; E2-08 y contrato explícitamente aceptados, composición/referencia acordadas; E2-09 para integración real.
+- Alcance / exclusiones: adaptador/parser, lista/paginación y explicación del universo/filtros; sin calcular ausencias descargando ventas/catálogo ni reutilizar top N como límite.
+- Archivos esperados: `frontend/unified/src/features/terminal/admin/analytics/{noMovementApi.ts,noMovementApi.unit.test.ts,NoMovementProducts.tsx,NoMovementProducts.component.test.tsx}`, integración `admin/dashboard/DashboardSummary.tsx`, estilos acotados `src/styles/base.css`, `frontend/unified/e2e/dashboard-no-movement.spec.ts`.
+- Criterios de aceptación: lista separada de menos vendidos y etiqueta «sin movimiento en el rango/método» sin afirmar ausencia global; mostrar definición activa aprobada y paginación sin ocultar conjunto. Cursor opaco/filtros reiniciados, sin límites top N ni datos deducidos; parser estricto/IDs grandes y C-UI completos. C-VIS con tabla/teclado/estados, fallo parcial y carreras; no llamar APIs antes de guarda ni cambiar sesión.
+- Verificación: V-DOC + V-FE + V-VIS; MSW de varias páginas, vacío/altas/método/errores/429/respuestas antiguas, V-REAL en E2-11.
+- Revisor: frontend independiente con datos/catálogo y aceptación visual humana, por confirmar antes de ejecución.
+- Commit esperado (no autorizado): `feat(dashboard-admin): present E2 no-movement products`.
+
+### TASK-DA-E2-11 — Aceptación real de activos sin movimiento
+
+- Objetivo RF: RF-13 y RF/RNF transversales de esta lista separada.
+- Precondiciones: C-PRE; E2-08…10 revisadas y contrato aceptado; entorno/dataset y referencia autorizados específicamente.
+- Alcance / exclusiones: demostrar universo/ausencia/paginación reales y registrar acta; no cierre E2 ni cambios de reglas del catálogo.
+- Archivos esperados: `frontend/unified/e2e-live/dashboard-no-movement-acceptance.spec.ts`, `e2e-live/README.md`, `backend/tests/integration/dashboard-no-movement.integration.test.ts` si necesario y `frontend/docs/specs/dashboard-admin/validation.md`.
+- Criterios de aceptación: conciliar lista completa con universo activo acordado y ausencia solo en rango/método; acreditar vendidos fuera/otro método, altas dentro/después, bajas/categorías y más de una página sin corte top N. Roles/cabeceras/precisión/límites/errores/carreras/fallo parcial/sesión y coste con evidencia real; C-VIS/REAL, navegador/Electron, teclado y revisión independiente/aceptación humana. Sin mocks como sustituto ni inferir aceptación de CSV.
+- Verificación: V-DOC + V-BE + V-FE + V-VIS + V-REAL; comandos live dirigidos y resultados/omitidos registrados, sin entorno autorizado no cerrar.
+- Revisor: backend/frontend independientes con datos/catálogo, aceptación del responsable, por confirmar antes de ejecución.
+- Commit esperado (no autorizado): `test(dashboard-admin): validate E2 no-movement integration`.
+
+### TASK-DA-E2-12 — Contrato documental de participación por categorías
+
+- Objetivo RF: RF-12/14, ampliación E2 aceptada en alcance; RF-01/03/19 y RNF-02/06.
+- Precondiciones: C-PRE; DA-D04/06 de categorías pendientes; inspeccionar relaciones actuales y ausencia de snapshot de categoría.
+- Alcance / exclusiones: C-CONTRACT y escenarios de agrupación por categoría vigente; sin runtime/UI/CSV, snapshot nuevo ni filtro de categoría por extensión.
+- Archivos esperados: `backend/docs/api/openapi.yaml`, `frontend/docs/specs/dashboard-admin/contracts/E2-categories-contract.md`, `validation.md` para registro futuro.
+- Criterios de aceptación: documentar categoría vigente, no categoría histórica inexistente; definir métricas (importe/unidades y cualquier otra explícitamente aceptada), denominadores, representación/redondeo de porcentajes backend, base cero, ceros, orden, inactivas/bajas y reclasificación. Acordar conciliación de importes/unidades con resumen completo mismo método/dataset y comportamiento de residuos de redondeo sin forzar 100% silenciosamente. Advertencia UI sobre reclasificación obligatoria. C-CONTRACT/C-DATA, límites/coste/consistencia y ejemplos cambio de categoría/precio, grandes y cero. No enviar categoría a rutas antiguas ni introducir filtro nuevo sin acuerdo específico; aceptación de alcance no aprueba DTO/denominadores.
+- Verificación: V-DOC + V-CONTRACT; matriz de conciliación y porcentajes, revisión datos/backend/frontend; registrar aceptación explícita posterior.
+- Revisor: backend independiente con datos/catálogo/frontend, por confirmar antes de ejecución.
+- Commit esperado (no autorizado): `docs(dashboard-admin): define E2 category analytics contract`.
+
+### TASK-DA-E2-13 — Backend de participación por categorías
+
+- Objetivo RF: RF-12/14, RF-01/19 y RNF-02/06.
+- Precondiciones: C-PRE; E2-12 revisada/contrato explícitamente aceptado, denominadores/redondeo/bajas resueltos y BD aislada autorizada.
+- Alcance / exclusiones: ruta/validación/servicio/repositorio, porcentajes backend y pruebas; sin UI, snapshot categoría, filtro a rutas antiguas ni CSV.
+- Archivos esperados: `backend/src/modules/sales/{sales.routes.ts,sales.validation.ts,sales.service.ts,sales.read.repository.ts}`, `backend/tests/dashboard-categories.test.ts`, `backend/tests/integration/dashboard-categories.integration.test.ts`; regresión `completion.integration.test.ts` si procede.
+- Criterios de aceptación: C-CONTRACT/C-DATA y matriz E2-12; agrupar líneas históricas por relación vigente sin alterar históricos, conciliando importe/unidades completos con resumen por método. Reclasificación cambia grupo según contrato, no total; inactivas/bajas/ceros y denominadores/residuos de redondeo/base cero exactos, porcentajes calculados aquí. Pruebas de opciones/pagos/reembolsos y precios nuevos no modifican métricas; roles/cabeceras/body/query extra/precisión/coste sin N+1.
+- Verificación: V-DOC + V-BE; unitarias de porcentajes y HTTP/PostgreSQL aislado con todas las categorías, varias líneas y grandes; sin integración omitida como aprobada.
+- Revisor: backend independiente con datos/catálogo para consultas/conciliación, por confirmar antes de ejecución.
+- Commit esperado (no autorizado): `feat(dashboard-admin): implement E2 category analytics API`.
+
+### TASK-DA-E2-14 — Frontend de participación por categorías
+
+- Objetivo RF: RF-12/14/03/11/19, RNF-02/03/04/05/06/07.
+- Precondiciones: C-PRE; E2-12/contrato explícitamente aceptados y referencia/composición acordadas; E2-13 para integración real.
+- Alcance / exclusiones: adaptador/parser y panel/alternativa tabular; sin porcentajes/reclasificaciones calculados en FE ni filtro categoría añadido a rutas antiguas.
+- Archivos esperados: `frontend/unified/src/features/terminal/admin/analytics/{categoriesApi.ts,categoriesApi.unit.test.ts,CategoryParticipation.tsx,CategoryParticipation.component.test.tsx}`, integración en `admin/dashboard/DashboardSummary.tsx`, estilos acotados `src/styles/base.css`, `frontend/unified/e2e/dashboard-categories.spec.ts`.
+- Criterios de aceptación: advertencia visible de categoría vigente/reclasificación histórica; métricas/denominador/unidad inequívocos, porcentajes recibidos del backend sin recalcular ni normalizar a 100%. Cero/bajas/inactivas/redondeo según contrato; parser estricto/strings exactos, tabla equivalente sin color único. C-UI/C-VIS completos con límites/429/errores/fallo parcial/carreras/sesión; no peticiones con filtro categoría a contratos que no lo aceptan.
+- Verificación: V-DOC + V-FE + V-VIS; MSW de reclasificación, redondeos/cero/grandes/inválidos/respuestas antiguas y negativos de filtros; V-REAL en E2-15.
+- Revisor: frontend independiente con backend/datos y aceptación visual humana, por confirmar antes de ejecución.
+- Commit esperado (no autorizado): `feat(dashboard-admin): present E2 category participation`.
+
+### TASK-DA-E2-15 — Aceptación real de categorías
+
+- Objetivo RF: RF-12/14 y RF/RNF transversales de categorías, sin duplicar cierre E2.
+- Precondiciones: C-PRE; E2-12…14 revisadas y contrato aceptado; API/BD/dataset/referencia autorizados específicamente.
+- Alcance / exclusiones: conciliación real, regresión y acta de categorías; sin cierre E2, exportadores o cambios de catálogo/históricos por extensión.
+- Archivos esperados: `frontend/unified/e2e-live/dashboard-categories-acceptance.spec.ts`, `e2e-live/README.md`, `backend/tests/integration/dashboard-categories.integration.test.ts` si necesario y `frontend/docs/specs/dashboard-admin/validation.md`.
+- Criterios de aceptación: importes/unidades concilian resumen completo con mismo rango/método/dataset; porcentajes/denominadores/redondeo/base cero coinciden con esperado independiente. Acreditar categoría vigente, inactivas/bajas y reclasificación mediante fixture autorizado sin reescribir históricos; advertencia visible y ausencia de filtros nuevos en rutas antiguas. Roles/cabeceras/límites/precisión/errores/carreras/fallo parcial/sesión/coste y V-VIS/REAL con navegador/Electron; revisión independiente y aceptación humana propias. E2 sigue abierta hasta CSV-03.
+- Verificación: V-DOC + V-BE + V-FE + V-VIS + V-REAL; registrar comandos dirigidos, evidencia y bloqueos sin secretos; mocks no acreditan aceptación.
+- Revisor: backend/frontend independientes, datos/catálogo y aceptación funcional del responsable, por confirmar antes de ejecución.
+- Commit esperado (no autorizado): `test(dashboard-admin): validate E2 category analytics integration`.
+
+### Grafo de dependencias E2 aceptado y secuencia autorizada
+
+```text
+backlog aceptado + turno en secuencia autorizada + autor/revisor confirmados → cada tarea
+E1 cerrado + DA-D04/06 pendientes identificadas → tarea documental de contrato (proponer resolución)
+E2-00 → aceptación explícita contrato series → E2-01 + E2-02 → E2-03
+E2-04 → aceptación explícita contrato ranking → E2-05 + E2-06 → E2-07
+E2-08 → aceptación explícita contrato sin movimiento → E2-09 + E2-10 → E2-11
+E2-12 → aceptación explícita contrato categorías → E2-13 + E2-14 → E2-15
+E2-03 + E2-07 + E2-11 + E2-15 → CSV-00
+CSV-00 → aceptación explícita contratos CSV → CSV-01 → CSV-02
+E2-03 + E2-07 + E2-11 + E2-15 + CSV-00…02 revisadas → CSV-03 (único cierre E2)
+```
+
+El signo `+` expresa precondiciones conjuntas, no trabajo simultáneo autorizado. La autorización expresa del responsable fija ejecución secuencial 00…15 → CSV-00…03, una tarea a la vez, tras cierre verificado/revisado de la anterior y respetando cada aceptación contractual pendiente. El grafo muestra dependencias técnicas; la secuencia autorizada no permite saltar puertas ni ejecutar frontend en paralelo. Reusar datasets/semánticas aceptados al definir CSV; si se reduce alcance E2 debe aceptarse explícitamente antes de cambiar estas puertas, no omitir capacidades silenciosamente.
+
+## E3–E4 y opcionales — Épicas pendientes de descomposición
 
 Estos elementos **no son tareas atómicas ejecutables**. Antes de abordarlos, dividir cada capacidad en contrato aprobado (si cambia API), backend probado, frontend probado y aceptación real, con alcance, RF, archivos, comandos, decisiones, revisor y aprobación propios. Endpoints candidatos de la spec no son contratos aceptados. No aprobar toda una épica como un commit masivo.
 
 | ID | Capacidad / requisitos | Dependencias y archivos previstos | Aceptación y revisión propuestas |
 | --- | --- | --- | --- |
-| EP-DA-E2-01 | Series hora/día; RF-12, RNF-02/04/06 | Contrato/límites/buckets y DST; OpenAPI, agregación backend, `admin/analytics/` | Conciliar buckets, cero y periodos DST; alternativa textual; V-CONTRACT/V-BE/V-FE/V-VIS/V-REAL; revisión datos/backend/frontend |
-| EP-DA-E2-02 | Ranking y sin movimiento; RF-13 | Contrato y DA-D04/06 por capacidad; consultas/parsers/UI | ProductId, pagadas, métrica explícita, top 5/10/20, empates estables/inactivos/snapshots; ceros activos aparte; mismas verificaciones y revisores E2-01 |
-| EP-DA-E2-03 | Categorías, ampliación explícita; RF-12/14 | Semántica vigente/denominadores/filtros completos acordados; OpenAPI/backend/analytics | Advertencia de reclasificación, totales conciliados, sin enviar filtro a rutas antiguas; V-BE/V-FE/V-REAL; revisión datos/backend/frontend |
 | EP-DA-E3-01 | Listado administrativo de órdenes; RF-15 | Contrato nuevo, filtros/cursor y DTO mínimo; módulos orders y UI administrativa | Roles/estados/paginación, LISTO solo pagada/en preparación, sin cancelación/cobro ajeno; V-BE/V-FE/V-REAL; revisión backend/frontend |
 | EP-DA-E4-01 | Consulta mínima de clientes; RF-16 | DTO nuevo mínimo, búsqueda exacta actual diferenciada de listado; OpenAPI/accounts/customers/UI | Sin correo/NIP/favoritos/historial personal; permisos negativos/cursor; V-BE/V-FE/V-REAL; revisión privacidad/backend/frontend |
 | EP-DA-E4-02 | Corrección cliente; RF-16/20 | Identificación autorizada E4-01 o flujo vigente aprobado; PATCH actual | Motivo/auditoría/unicidad y compras intactas; sin escritura duplicada; V-FE/V-REAL y pruebas backend aplicables; revisión backend/frontend |
@@ -196,16 +410,16 @@ Estos elementos **no son tareas atómicas ejecutables**. Antes de abordarlos, di
 | EP-DA-OPT-01 | Histórico global, sin CSV incluido por extensión | Alcance/coste aprobados por separado; fuera del MVP | Acumulado desde inicio con límites y semántica acordados; V-BE/V-FE/V-REAL; revisión datos/backend |
 | EP-DA-OPT-02 | Cambio de contraseña adicional | Alcance específico y contrato `/auth/password`; fuera de configuración básica E1 | Contraseña actual/CSRF, revocación según contrato y sin persistencia/logs; V-FE/V-REAL; revisión seguridad/frontend/backend |
 
-Cada entrega E2/E3/E4 seleccionada termina con su propia tarea de aceptación y matriz RF/RNF, revisión independiente, pruebas reales/visuales aplicables y pendientes explícitamente aceptados. No se usa el cierre E1 como evidencia de funcionalidades posteriores.
+Cada entrega E3/E4 seleccionada termina con su propia tarea de aceptación y matriz RF/RNF, revisión independiente, pruebas reales/visuales aplicables y pendientes explícitamente aceptados. E2 tiene aceptaciones por capacidad y cierre único CSV-03. No se usa el cierre E1 como evidencia de funcionalidades posteriores.
 
-## Cierre E2 — Tareas CSV propuestas
+## Cierre E2 — Tareas CSV aceptadas, aún no iniciadas
 
 Ejecutar después de verificar la analítica E2 seleccionada. E2 no se declara completa sin estas tareas aceptadas. No incluyen exportación de imágenes ni XLSX; los CSV analíticos contienen los datos de las gráficas implementadas.
 
 ### TASK-DA-E2-CSV-00 — Contratos de exportación
 
 - Objetivo: cerrar RF-21–23 y detalle pendiente DA-D07.
-- Precondiciones: analítica seleccionada y contratos conocidos; aprobación explícita de esta tarea y revisor confirmado.
+- Precondiciones: E2-03/07/11/15 aceptadas y sus contratos/datasets conocidos; tarea incluida en la secuencia autorizada y revisor confirmado antes de ejecución. La dependencia fue aceptada con el bloque E2; CSV aún no está iniciada y el contrato resultante requerirá aceptación explícita.
 - Alcance / exclusiones: propuesta OpenAPI para ventas y datasets analíticos implementados, ejemplos y matriz de escenarios; sin runtime, UI, histórico global, imágenes ni dependencias nuevas.
 - Archivos esperados: `backend/docs/api/openapi.yaml`, documentación de contrato requerida por flujo backend y decisiones/matriz de escenarios del dashboard.
 - Criterios de aceptación: fuentes/columnas/orden/metadatos, UTF-8/delimitador, fechas/zona/importes/unidades y precisión definidos; filtro completo de ventas versus top N analítico distinguido; ADMINISTRADOR/no-store, cabeceras/nombre seguro, vacío/errores/rangos/filas máximas/consistencia; escape y antifórmulas; sin PII innecesaria. No truncar ni generar CSV desde páginas visibles. Responsable acepta explícitamente contrato antes de CSV-01/02.
@@ -216,7 +430,7 @@ Ejecutar después de verificar la analítica E2 seleccionada. E2 no se declara c
 ### TASK-DA-E2-CSV-01 — Backend de exportación CSV
 
 - Objetivo: exportadores seguros de RF-21–23 con consultas/agregados existentes.
-- Precondiciones: CSV-00 y contratos explícitamente aprobados; E2 analítica aplicable verificada; entorno BD autorizado; aprobación de esta tarea. Si contrato exige implementaciones independientes de mayor alcance, dividir esta tarea antes de ejecutar.
+- Precondiciones: CSV-00 y contratos explícitamente aprobados; E2-03/07/11/15 aceptadas; entorno BD autorizado; aprobación de esta tarea. Si contrato exige implementaciones independientes de mayor alcance, dividir esta tarea antes de ejecutar.
 - Alcance / exclusiones: rutas, validación, autorización, serialización y pruebas de ventas/datasets acordados; sin UI, colas, persistencia de archivos, proveedores o migraciones implícitas.
 - Archivos esperados: módulos backend de ventas/analítica acordados, serializador compartido solo con reutilización efectiva, pruebas HTTP/BD y artefactos contractuales aplicables.
 - Criterios de aceptación: todas las ventas filtradas incluidas dentro del límite; analítica idéntica a agregados con igual métrica/top N; fechas/importes exactos; permisos negativos, no-store/Content-Disposition/text-csv, escape y neutralización de fórmulas sin alterar importes válidos; límites/error explícitos sin CSV parcial presentado como completo.
@@ -227,7 +441,7 @@ Ejecutar después de verificar la analítica E2 seleccionada. E2 no se declara c
 ### TASK-DA-E2-CSV-02 — Descarga desde ventas y analítica
 
 - Objetivo: integrar controles de descarga de RF-21/22, preservando sesión y errores.
-- Precondiciones: CSV-00 aceptada y CSV-01 disponible para integración; componentes de ventas/analítica implementados; aprobación de esta tarea.
+- Precondiciones: CSV-00 aceptada y CSV-01 disponible para integración; componentes de ventas/analítica implementados y E2-03/07/11/15 aceptadas; aprobación de esta tarea.
 - Alcance / exclusiones: botones exportar ventas/datos analíticos y tratamiento seguro de respuesta CSV; sin reconstruir reportes en navegador, PNG/XLSX ni nuevo gestor de autenticación.
 - Archivos esperados: adaptador CSV y componentes de `frontend/unified/src/features/terminal/admin/`, cliente HTTP solo si una extensión acotada aprobada es necesaria, tests unitarios/componentes/E2E.
 - Criterios de aceptación: envía filtros vigentes y métrica/top N correctos; descarga autenticada sin token en URL; distingue errores de archivo, no descarga Problem Details como CSV; estado ocupado/error y prevención de duplicados; nombre seguro y liberación de recursos temporales; sin persistencia local de CSV.
@@ -238,7 +452,7 @@ Ejecutar después de verificar la analítica E2 seleccionada. E2 no se declara c
 ### TASK-DA-E2-CSV-03 — Aceptación real de exportación y cierre E2
 
 - Objetivo: acreditar RF-21–23 y cierre E2 sobre analítica seleccionada.
-- Precondiciones: CSV-00…02 y analítica E2 aplicable revisadas; API/dataset de ensayo autorizados; aprobación de esta tarea.
+- Precondiciones: CSV-00…02 revisadas y E2-03/07/11/15 aceptadas; API/dataset de ensayo autorizados específicamente para esta tarea (E1 no autoriza entornos nuevos); aprobación de esta tarea. Reutilizar escenarios/datasets de las cuatro capacidades para conciliar CSV completo según filtros/métrica/top N, no páginas visibles. CSV-03 sigue siendo la única tarea de aceptación final/cierre E2.
 - Alcance / exclusiones: conciliación de archivos reales, seguridad/regresión, evidencia y acta E2; no nuevas capacidades ni correcciones funcionales mayores sin tarea propia.
 - Archivos esperados: pruebas necesarias y acta/matriz en `frontend/docs/specs/dashboard-admin/validation.md`; no versionar exportaciones con datos privados.
 - Criterios de aceptación: CSV de ventas incluye filas fuera de la página visible; series/rankings/sin movimiento/categorías implementadas coinciden con filtros y datos; vacío/límites, precisión y fórmulas verificados; hoja de cálculo abre ejemplo controlado sin confundir CSV con gráfica; revisión independiente. No cierre E2 solo con mocks ni imágenes como sustituto del archivo de datos.
@@ -262,3 +476,16 @@ Ejecutar después de verificar la analítica E2 seleccionada. E2 no se declara c
 | TASK-DA-E1-09 | Terminada y aceptada | Entorno local real autorizado (Docker/PostgreSQL 17.11, backend y Vite). Backend 120/120, integración 146/146, `db:verify:docker` 22 comprobaciones y contrato 66 ejemplos; frontend 332/332, 60/60 simuladas y suite live 5/5 en cuatro corridas registradas más la revalidación de B1. Conciliación real, caja independiente, últimas ventas, ticket en un clic, roles 401/403, axe y Electron en vivo con backend real. Revisión: B1 cerrado. El responsable aprobó el diseño actual como baseline visual (DA-D08 cerrado con este diseño), aceptó el scroll horizontal de la tabla a 768/390 y reportó usabilidad en 7 s, teclado correcto y caja correcta. Limitaciones registradas: HTTPS/distribución y cobertura live de escritura. Detalle en [validation.md](./validation.md). Commit `mismo commit`. |
 
 E1 queda cerrada y aceptada por el responsable el 2026-11-24. La validación navegador→backend y Electron en vivo están acreditadas en local; el diseño actual se aprobó como baseline visual, el scroll horizontal de la tabla a 768/390 fue aceptado y la prueba guiada reportó 7 s, teclado correcto y caja correcta. Quedan registradas como limitaciones HTTPS/distribución y la cobertura live de escritura. Las pruebas de integración omitidas no se contabilizan como aprobadas. Cualquier commit requiere autorización explícita.
+
+### Registro E2 — backlog aceptado, sin ejecución al commit
+
+| Tareas | Estado real | Puerta pendiente |
+| --- | --- | --- |
+| TASK-DA-E2-00 | Aceptada y autorizada como siguiente; no iniciada | Autor `dashboard-backend-implementer`, verificación `dashboard-verifier`, revisión independiente `dashboard-reviewer`; redactar propuesta de contrato, sin runtime ni autoaceptación |
+| TASK-DA-E2-01 / 02 / 03 | Aceptadas en secuencia; no iniciadas | E2-00 revisada y contrato series explícitamente aceptado antes de runtime; confirmar asignaciones por tarea |
+| TASK-DA-E2-04 / 05 / 06 / 07 | Aceptadas en secuencia; no iniciadas | Turno tras series, asignaciones y contrato ranking; DA-D04/06 de capacidad pendientes |
+| TASK-DA-E2-08 / 09 / 10 / 11 | Aceptadas en secuencia; no iniciadas | Turno tras ranking, asignaciones y contrato sin movimiento; activo/altas/método/paginación pendientes |
+| TASK-DA-E2-12 / 13 / 14 / 15 | Aceptadas en secuencia; no iniciadas | Turno tras sin movimiento, asignaciones y contrato categorías; denominadores/redondeo/reclasificación pendientes |
+| TASK-DA-E2-CSV-00…03 | Aceptadas en secuencia; no iniciadas | Contratos CSV pendientes y dependencias E2 aceptadas arriba; CSV-03 cierra E2 tras todas las aceptaciones |
+
+Este registro acredita backlog redactado, investigación y revisión sin bloqueantes reportadas y aceptación del bloque/secuencia por el responsable. `git diff --check` fue reportado correcto por el implementador; el verificador tuvo una denegación de permiso y no se eludió ni se presenta como verificación ejecutada. Commit del backlog autorizado al coordinador: `mismo commit`, aún no creado en este encargo. No acredita contratos aceptados, tareas implementadas ni pruebas runtime. Pendientes comunes: detalle de rutas/DTO/límites/coste/precisión temporal por capacidad, referencia/composición visual E2 y autorizaciones de entorno/dataset para cada aceptación real. E1 y su evidencia histórica permanecen cerradas sin modificaciones.
