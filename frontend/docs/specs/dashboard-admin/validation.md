@@ -899,3 +899,52 @@ Estado actual: **implementado, verificado, corregido y aceptado visualmente por 
 - Revisión independiente sin bloqueantes técnicos; correcciones aplicadas y re-ejecutadas.
 - Residuales no bloqueantes documentados: uso acotado de `Number` para `top`/fechas (no IDs/importes), `unitsSold>0` más estricto que el patrón literal del DTO, fixtures de orden ya complementadas con vector literal, y `test:e2e` con `--pass-with-no-tests` (no ocurrió: 10/10 y 72/72 reales).
 - **No cierra E2 ni CSV**; E2-07 y CSV-03 siguen pendientes.
+
+## TASK-DA-E2-07 — Aceptación real de ranking
+
+Estado actual: **suite live implementada y verificada; capturas generadas; prueba guiada humana de 4 segundos y aceptación del responsable registradas el 2026-11-25. CERRADA como capacidad de ranking; commit pendiente de autorización. NO cierra E2/CSV.** V-REAL se ejecutó en local autorizado, no sustituye HTTPS/distribución.
+
+### Entorno y dataset
+
+- Docker local `cafeteria-local-postgres-1`, base dedicada `cafeteria_da_e2_07`, backend real `:3000` con código E2-05 y Vite `:5173`; `CATALOG_RATE_LIMIT=10000` local.
+- Dataset sintético congelado: 5 productos con movimiento, 6 ventas, **28 unidades / 143 500 centavos**; CASH `11/49 000/2 productos`, STRIPE `17/94 500/4 productos`; un producto renombrado (nombre actual), uno dado de baja con snapshot histórico y precios históricos de línea. Usuarios QA temporales; manifiesto fuera del repositorio y sin secretos versionados.
+- Base creada/migrada y seed temporal fuera del repo al terminar; no se tocaron `cafeteria` ni datos ajenos.
+
+### Archivos
+
+- `frontend/unified/e2e-live/dashboard-ranking-acceptance.spec.ts` (nuevo, 4 pruebas live).
+- `frontend/unified/e2e-live/README.md` (cobertura E2-07).
+- `frontend/docs/specs/dashboard-admin/validation.md` (este registro).
+- Sin cambios de backend, contrato, OpenAPI ni frontend de producto.
+
+### Comandos ejecutados
+
+| Comando | Resultado real |
+| --- | --- |
+| `$env:E2E_LIVE='1'; $env:E2E_LIVE_MANIFEST='...\da-e2-07\manifest.json'; npm.cmd run test:e2e:live -- dashboard-ranking-acceptance.spec.ts` | **4/4** en tres corridas (6.7 s, 6.4/6.2 s del verificador y 6.5 s final). |
+| `npm.cmd run typecheck` / `lint` | Correctos tras retirar una función no usada. |
+| `git diff --check` / `git status --short` | Limpios; solo suite nueva y README antes del registro. |
+
+### Cobertura real
+
+- Día principal: units/top/5, 5 filas reales, totales `28/143 500`, conciliación con `/admin/dashboard/summary` (`totalCents`, `unitsSold`, tickets, mezcla) y `/sales/summary`; cabeceras `no-store`/`no-referrer`; tabla y metadatos reales.
+- amount/top/10, bottom units y método CASH/STRIPE con totales `49 000/11/2` y `94 500/17/4`; nombres/IDs/baja snapshot.
+- Cero 2020, `top=05` → 400, CAJERO/PREPARACION 403 sin peticiones admin, anónimo 401, axe WCAG 2.1 A/AA.
+- Teclado (métrica) y carrera de top: prevalece la última selección, sin estado de carga final.
+
+### V-VIS y Electron
+
+- Capturas en `%TEMP%\opencode\da-e2-07\captures\`: `dashboard-ranking-1280.png` (1280×3612), `-768.png` (768×4256), `-390.png` (390×5754) y `dashboard-ranking-electron-1280.png` (1249×3627). Revisión visual: 5 filas y totales correctos; 768/390 con scroll horizontal dentro del contenedor.
+- Electron real con `_electron`: `nodeIntegration:false`, `contextIsolation:true`, `sandbox:true`, `webSecurity:true`. El PNG por sí solo no acredita Electron; se registra el log de flags.
+- **Aceptación visual y prueba guiada humanas registradas:** el responsable ejecutó la prueba guiada y reportó **4 segundos** y **«todo correcto»** el 2026-11-25, por debajo del objetivo de 15 s. Aceptación propia de ranking, no heredada de E1/series.
+
+### Limitaciones
+
+- Dataset con exactamente 5 productos: `top=5` no produce `truncated=true`; el corte posterior no se ejerce live. `top=10` devuelve el conjunto completo.
+- No se modificó el precio actual de un producto vendido en el seed; el importe histórico se verifica por contrato/unitarias/integración, no por una diferencia de precio live.
+- Enteros >2^53 no se ejercitan live; cubiertos por unitarias/integración.
+- Coste de ranking no se mide dentro de la suite; benchmark E2-05 (~48–49 ms con 20 000 ventas) es la referencia, no SLA.
+- CLIENTE/GERENTE no se prueban live; integración E2-05 cubre los 403. Aborto/descarte no se acredita con `requestfailed` en esta suite; sí la última selección y ausencia de spinner.
+- Fallo parcial y sesión en vivo no se inducen en esta suite: el fallo aislado del panel, 401/429 y limpieza de sesión están cubiertos por E2-06 (componente/E2E simulado) y por la integración E2-05; no se presentan como live de E2-07.
+- Electron no sustituye HTTPS/distribución. CSV-03 sigue siendo el cierre de E2.
+- **Cierre:** E2-07 aceptada como capacidad de ranking el 2026-11-25 (4 s, todo correcto) con las limitaciones anteriores; commit pendiente de autorización. E2 completa y CSV-03 siguen abiertos.

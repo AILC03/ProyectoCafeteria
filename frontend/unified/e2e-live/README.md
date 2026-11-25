@@ -1,4 +1,4 @@
-# Suite E2E live — TASK-DA-E1-09 y TASK-DA-E2-03
+# Suite E2E live — TASK-DA-E1-09, E2-03 y E2-07
 
 Suite de aceptación **contra backend real**, separada de la suite simulada de
 `frontend/unified/e2e`. No usa `page.route` ni `context.route`: el navegador
@@ -137,3 +137,20 @@ navegador:
   de TASK-DA-E2-03. La aceptación de capacidad/V-VIS y su alcance se registran en
   `frontend/docs/specs/dashboard-admin/validation.md`; el cierre de E2 corresponde
   a CSV-03, que no forma parte de esta tarea.
+
+## Cobertura E2-07
+
+`dashboard-ranking-acceptance.spec.ts` ejecuta la aceptación real de ranking:
+
+1. Día principal: ranking units/top/5, conciliación exacta con
+   `/admin/dashboard/summary` y `/sales/summary`, items/ID/nombres/baja snapshot,
+   cabeceras privadas y tabla real.
+2. amount/top/10, bottom units y método CASH/STRIPE con totales por método.
+3. Cero (2020), 400 de `top` inválido, roles CAJERO/PREPARACION 403, anónimo 401,
+   cabeceras privadas y axe WCAG 2.1 A/AA.
+4. Teclado y carrera de selección de métrica/top, sin estado de carga final.
+
+Variables y comando son los mismos de las tareas anteriores. Cada tarea usa su
+propio manifiesto; ejecuta el archivo dirigido, no el directorio completo con un
+manifiesto ajeno. V-VIS y la prueba guiada humana se registran en `validation.md`;
+esta suite no las declara por sí sola.
