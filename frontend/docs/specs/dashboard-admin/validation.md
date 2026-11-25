@@ -606,7 +606,7 @@ Script: `backend/scripts/benchmark-dashboard-series.ts` (fuera de `npm test` y d
 
 ## TASK-DA-E2-02 — Frontend de series y alternativa accesible
 
-Estado: **implementada y verificada localmente; NO aceptada/cerrada; commit `mismo commit`**. V-VIS y V-REAL/E2-03 siguen pendientes; no se hereda aceptación de E1. La evidencia de ejecución es del coordinador porque el verificador independiente tuvo shell denegado; la revisión independiente fue estática.
+Estado: **implementada y verificada localmente; NO aceptada/cerrada; commit `mismo commit`**. Su V-VIS propia y su aceptación siguen pendientes; la evidencia live de E2-03 es independiente y no concede aceptación a E2-02. No se hereda aceptación de E1. La evidencia de ejecución es del coordinador porque el verificador independiente tuvo shell denegado; la revisión independiente fue estática.
 
 ### Archivos
 
@@ -642,6 +642,162 @@ Estado: **implementada y verificada localmente; NO aceptada/cerrada; commit `mis
 
 - Revisión independiente estática final: sin bloqueantes técnicos para commit; B-01 y R-01 cerrados. Observaciones no bloqueantes: aislamiento de algunos negativos de mínimo, simetría de decimales en `to`, `aria-live` del panel completo y ausencia de capturas.
 - El verificador independiente no pudo ejecutar shell en la última sesión; los comandos de V-FE anteriores fueron ejecutados por el coordinador y se registran como tales, no como verificación independiente.
-- **V-VIS pendiente:** no hay capturas 1280/768/390 ni aceptación visual humana de E2-02.
-- **V-REAL/E2-03 pendiente:** toda la evidencia es MSW/E2E simulado; no acredita conciliación navegador→API/BD real, Electron ni HTTPS.
+- **V-VIS de E2-02 pendiente:** no hay capturas propias de E2-02 ni aceptación visual humana de esa tarea.
+- **V-REAL de E2-02 no acreditado por sí mismo:** su evidencia era MSW/E2E simulado. La corrida live posterior de **E2-03** es independiente: acredita series reales y no hereda ni concede aceptación a E2-02.
 - No se declara E2 cerrada ni CSV iniciado.
+
+## TASK-DA-E2-03 — Aceptación real de series
+
+Estado actual: **cerrada y aceptada por el responsable el 2026-11-25; re-revisión final sin bloqueantes técnicos tras corregir B-3/B-4; commit pendiente de autorización. NO cierra E2.** CSV-03 sigue siendo el cierre. Autor de la suite: `frontend-implementer`; verificación: `dashboard-verifier`; revisión independiente: `dashboard-reviewer` (B-1 corregido; B-2 aceptado por el responsable).
+
+### Entorno y dataset autorizados
+
+- El responsable autorizó reutilizar el entorno Docker local de E1-09 para E2-03 y la V-VIS pendiente de E2-02: PostgreSQL 17.11 en `cafeteria-local-postgres-1`, backend local en `http://localhost:3000` y Vite en `http://localhost:5173`. No es staging remoto ni acredita HTTPS/distribución.
+- Para no tocar datos ajenos se creó la base dedicada `cafeteria_da_e2_03` en el mismo contenedor, se aplicaron las migraciones y se sembró un dataset sintético congelado. No se ejecutó reset ni se modificó `cafeteria`, `cafeteria_test` ni historiales.
+- Dataset de 12 ventas (`V000001`–`V000012`) con `saleNumber` válido, varias líneas, una opción, un pago pendiente, un reembolso, una sesión de caja abierta y una cerrada. Valores principales: día local 2026-11-24 = `9000` centavos / 3 tickets / 5 unidades, mezcla CASH `4000` y STRIPE `5000`, promedio `3000`; periodo anterior `1000/1/1`. Sin PII ni secretos; usuarios QA temporales (`qa_e2_admin`, `qa_e2_cashier`, `qa_e2_prep`).
+- El manifiesto con credenciales y valores esperados se mantiene **fuera del repositorio** (`%TEMP%\opencode\da-e2-03\manifest.json`) y no se imprime ni versiona. El seed solo se ejecuta contra `cafeteria_da_e2_03` y se retiró de `backend/scripts` al terminar; copia temporal fuera del repo.
+- Se usó `CATALOG_RATE_LIMIT=10000` como override de entorno local, igual que E1-09; no valida el límite de producción.
+
+### Archivos de esta tarea
+
+- `frontend/unified/e2e-live/dashboard-series-acceptance.spec.ts`: 7 pruebas live sin `page.route`/`context.route`.
+- `frontend/unified/e2e-live/README.md`: alcance E1-09/E2-03, manifiesto por tarea y limitaciones.
+- `frontend/docs/specs/dashboard-admin/validation.md`: este registro.
+- Sin cambios de backend, contrato, OpenAPI, `e2e/`, dependencias ni E1.
+
+### Comandos ejecutados
+
+Frontend (`frontend/unified/`):
+
+| Comando | Resultado real |
+| --- | --- |
+| `$env:E2E_LIVE='1'; $env:E2E_LIVE_MANIFEST='...\manifest.json'; npm.cmd run test:e2e:live -- dashboard-series-acceptance.spec.ts` | **Versión inicial 6/6** en tres corridas (8.8/8.5/8.3 s). **Tras corregir B-1 y R-1…R-7: 7/7** en dos corridas del autor (9.5/9.0 s) y dos del verificador (9.1/9.1 s). Coste observado de 745 buckets: 81, 66, 53, 57, 55 y 53 ms según corrida (no SLA). |
+| `npm.cmd run typecheck` | Correcto. `tsconfig.app.json` no incluye `e2e-live`; el autor ejecutó además `tsc --noEmit --strict` sobre el spec con resultado correcto, pero no hay script de repo que lo reproduzca. |
+| `npm.cmd run lint` | Correcto. |
+| `npm.cmd run test` | **410/410** en 38 archivos. |
+| `npm.cmd run test:e2e` | **62/62** en la verificación inicial (suite simulada; no descubre `e2e-live`). No se repitió en el pase final porque limpia `test-results` y las capturas se guardan fuera. |
+| `npm.cmd run build` | Correcto; aviso existente de chunk >500 kB. |
+
+Backend (`backend/`):
+
+| Comando | Resultado real |
+| --- | --- |
+| `npm.cmd run format:check` | Correcto. |
+| `npm.cmd run typecheck` | Correcto. |
+| `npm.cmd run lint` | Correcto tras retirar los temporales de seed/runner del repositorio. La verificación detectó que esos temporales, sin seguimiento, causaban 8 `no-undef`; no era código de producto y quedó resuelto moviéndolos fuera del repo, no desactivando lint. |
+| `npm.cmd test` | **139** unitarias correctas; 155 integraciones omitidas por diseño. |
+| `npm.cmd run build` | Correcto. |
+| `npm.cmd run api:validate` | OpenAPI válido, **67 ejemplos** conformes. |
+| `npm.cmd run db:validate` | Esquema Prisma válido. |
+| `npm.cmd run test:integration` | **155/155** en 8 archivos con bases temporales aisladas. |
+
+Raíz:
+
+| Comando | Resultado real |
+| --- | --- |
+| `git diff --check` | Sin errores; solo avisos LF→CRLF en documentos/README. |
+| `git status --short` | Solo `tasks.md`, `validation.md` y `README.md` modificados y el spec live nuevo; sin manifiesto, capturas, seeds ni secretos. |
+| `node scripts/check-doc-links.mjs` (backend) | 286 enlaces locales revisados, 0 inexistentes (fragmentos no comprobados). |
+| Revisión de `e2e-live` | Sin `page.route`/`context.route`; sin credenciales, tokens ni `.env`; manifiesto fuera del repositorio. |
+
+### Cobertura real acreditada (sin mocks)
+
+- Día principal: suma de buckets = `totals` de series (importe/tickets/unidades con `BigInt`) y conciliación con `/admin/dashboard/summary` y `/sales/summary` con los mismos `from/to`; para CASH y STRIPE se comparan además tickets/unidades del resumen administrativo y `totalCents`/`count` de `/sales/summary?method=…` (`4000/1/2` y `5000/2/3`); 24 buckets hora y día de 24 h; ambos métodos `9000/3/5`; promedio `3000` y comparación recibidos del servidor, sin recalcular; cabeceras privadas en 200; UI con tabla, métricas y método vigente.
+- DST otoño: 25 buckets, dos `01:00` con `-07:00`/`-08:00`, filas `Hora repetida` y valores por bucket `100/1/1` y `200/1/1`, día de 25 h `Cambio de horario`, `300/2/2`. DST primavera: 23 buckets sin `02:00`, día de 23 h, `300/1/1`.
+- Bordes por API autenticada: S03 parcial (dos `partial:true`, efectivos contiguos, `8500/2/3`), precisión `to−1 µs` con ventanas reales de 1 ms (`100/1/1` en el centro, `0` a izquierda/derecha), máximo 745, mínimo 2000 (400 un ms antes / 200 en frontera), cero 2020 y rechazos 400 con `application/problem+json` para entradas inválidas, extras, repetidos, arrays, offset, decimales no admitidos y límites excedidos.
+- Seguridad: ADMINISTRADOR 200; CAJERO/PREPARACION 403 y sin peticiones `/api/v1/admin/` desde la UI; contexto anónimo 401; cabeceras privadas comprobadas en respuestas 400 representativa, 401 y 403; `localStorage` vacío.
+- Accesibilidad y carreras: axe WCAG 2.1 A/AA sin violaciones con series reales; tabla como alternativa textual; activación por teclado de Hora/Día con `Enter`/`Space`, `aria-pressed`, cambio de tabla y foco conservado; cambios rápidos con al menos una petición de series abortada realmente (`requestfailed` con aborto/cancelación) y UI final correspondiente a la última selección sin estado de carga.
+
+### V-VIS
+
+- Capturas generadas con backend real y el mismo fixture/estado, después de las suites para evitar que `test:e2e` limpie el directorio: `dashboard-series-1280.png` (1280×2723), `dashboard-series-768.png` (768×3328), `dashboard-series-390.png` (390×4551) y `dashboard-series-electron-1280.png` (1249×2738, ventana 1280×900). Dimensiones medidas por el coordinador; el verificador confirmó existencia y contenido.
+- Ubicación temporal fuera del repositorio: `%TEMP%\opencode\da-e2-03\captures\`. No se versionan.
+- Electron real: `_electron` contra `http://localhost:5173`, login real y dashboard con series; `nodeIntegration:false`, `contextIsolation:true`, `sandbox:true`, `webSecurity:true`. No acredita HTTPS ni distribución.
+- La captura 1280 muestra el panel de series con 24 filas, métricas `$90.00/3/5/24`, gráfica y tabla, y el resto de Inicio con datos reales.
+- **Aceptación visual y de capacidad humana registrada:** el responsable revisó y aprobó las capturas 1280/768/390 y Electron, incluido el desplazamiento horizontal de la tabla en anchos estrechos, el 2026-11-25. No se hereda la aceptación de E1.
+
+### Aceptación del responsable — 2026-11-25
+
+- **V-VIS y capacidad de E2-03 aceptadas:** el responsable aprobó las capturas `dashboard-series-1280.png`, `dashboard-series-768.png`, `dashboard-series-390.png` y `dashboard-series-electron-1280.png`, con el desplazamiento horizontal de la tabla en 768/390. La aceptación es propia de E2-03, no heredada de E1.
+- **Limitación B-2 aceptada formalmente:** el responsable acepta que **429, 503 y fallo parcial real no se induzcan en la suite live** de E2-03, porque exigirían mocks, intercepción, inyección de fallos o alterar el backend, lo que la tarea prohíbe. Quedan cubiertos por las suites simuladas/componentes y la integración backend. `368 day` se acredita por unitaria/guarda del backend y el rol `CLIENTE` por la integración de E2-01.
+- **Prueba de caos real diferida:** se deja para una tarea posterior con entorno y procedimiento autorizados. No se simula un fallo y se etiqueta como live.
+- **Alcance:** esta aceptación cierra la capacidad de **series E2-03**, no E2 completa ni la exportación CSV. CSV-03 sigue siendo el cierre de E2. No autoriza commit, push ni despliegue. La secuencia se apoya en E2-02 **revisada y verificada**, no en su aceptación: E2-03 no cierra ni acepta E2-02.
+
+### Revisión independiente
+
+- Revisión inicial (`dashboard-reviewer`, estática): sin mocks, sin secretos y con conciliación sólida sin método; bloqueantes **B-1** (faltaba conciliación por método en tickets/unidades y `/sales/summary?method`) y **B-2** (429/503/fallo parcial real no inducidos live); riesgos R-1…R-15.
+- Correcciones aplicadas: B-1 y R-1 (teclado), R-2 (cabeceras en 400/401/403), R-3 (valores por hora repetida), R-4 (carrera/cancelación real con `requestfailed`), R-5 (ventanas de 1 ms), R-7 (promedio/comparación del DTO real). Re-verificación: 7/7 en dos corridas, 9.1 s, 53 ms de coste observado.
+- B-2 no se corrigió con mocks: el responsable **aceptó formalmente la limitación** el 2026-11-25 y difirió la prueba de caos real a una tarea posterior autorizada.
+- **Disposición de los riesgos R-1…R-15 de la revisión inicial:**
+  - R-1 teclado/foco: corregido con activación real por `Enter`/`Space` y foco conservado.
+  - R-2 cabeceras solo en 200: corregido con un 400 representativo, 401 y 403; no se barrió cada 400.
+  - R-3 DST sin valores por bucket: corregido con `100/1/1` y `200/1/1` en las dos horas repetidas.
+  - R-4 carrera con respuesta intermedia: corregido moviendo la espera final tras la última acción y exigiendo aborto real.
+  - R-5 precisión sin vecinos: corregido con ventanas reales de 1 ms a izquierda/centro/derecha.
+  - R-6 máximo `day` 368: limitación aceptada; guarda unitaria/backend y máximo live 745 `hour`.
+  - R-7 promedio/comparación/caja: promedio y comparación afirmados desde el DTO real; caja no se re-acredita en E2-03 y sigue cubierta por E1-09.
+  - R-8 contradicción de `tasks.md`: corregida en la fila de estado y en el registro E2.
+  - R-9 mezcla live/integración/simulación: separada expresamente en este registro y en el README.
+  - R-10 sesión/privacidad más allá de `localStorage`: no se amplió; el flujo es de solo lectura y la sesión/CSRF de escritura siguen cubiertos por E1/suites existentes.
+  - R-11 rol CLIENTE no live: aceptado; 403 cubierto por la integración de E2-01.
+  - R-12 coste poco representativo: aceptado como observación, no SLA.
+  - R-13 aceptación humana de capacidad: registrada el 2026-11-25 junto con la visual.
+  - R-14 limpieza Git no verificable por el revisor: el coordinador comprobó `git status`/`git diff --check`; se registra en esta sección.
+  - R-15 identidad de entorno/dataset: el manifiesto y los valores congelados hacen fallar un entorno distinto; la comprobación operativa del operador queda registrada, no automatizada en la suite.
+- Re-revisión final (`dashboard-reviewer`): sin bloqueantes técnicos; detectó B-3 (`tasks.md` con estado antiguo) y B-4 (disposiciones R-6…R-15 ausentes), ambos corregidos. Confirmación documental posterior: sin bloqueantes para registrar E2-03 cerrada con commit pendiente, sin cerrar E2/CSV. La comprobación de `git status`/`git diff --check`/enlaces es del coordinador; el revisor tuvo shell denegado y no la reejecutó.
+
+### Limitaciones y pendientes
+
+- **429, 503 y fallo parcial real no se inducen live**: **limitación aceptada por el responsable el 2026-11-25**. Quedan cubiertos por suites simuladas e integración; la prueba de caos real se difiere a una tarea posterior autorizada.
+- El máximo `day` de 368 buckets no es alcanzable de forma natural con fechas completas de UI; la guarda se cubre de forma unitaria y el máximo live acreditado es 745 `hour`. No se añadió una prueba HTTP artificial de 368.
+- S12 (enteros grandes) y S14 (concurrencia de escritura) no se repiten live; su evidencia es unitaria/integración de E2-01.
+- El rol CLIENTE no se prueba live (login de cliente distinto del personal); su 403 está cubierto por la integración backend de E2-01.
+- Las cabeceras privadas se comprueban en un 400 representativo, no en todos los 400 de validación.
+- El coste de 745 buckets se midió sobre un dataset de 12 ventas y un rango sin ventas; no es comparable al benchmark de 20 000 ventas de E2-01 ni un SLA.
+- La corrida del directorio live completo no es válida con un manifiesto de otra tarea; cada spec valida su propio esquema. La evidencia E2-03 es la corrida dirigida registrada.
+- `e2e-live` queda fuera de `npm run typecheck`; el chequeo estricto adicional del autor no está empaquetado como script.
+- La conciliación es navegador↔API y API↔API sobre dataset congelado; no se consultó la BD directamente desde la suite.
+- **Cierre:** re-revisión final registrada sin bloqueantes técnicos tras corregir B-3/B-4; commit pendiente de autorización. E2-03 cerrada como capacidad de series; E2 completa y CSV-03 siguen abiertos.
+
+## TASK-DA-E2-04 — Contrato documental de ranking
+
+Estado actual: **contrato documental aceptado por el responsable el 2026-11-25; verificado y revisado; commit pendiente de autorización. NO implementa runtime y NO cierra E2.** No inicia E2-05/06/07; CSV-03 sigue siendo el cierre. Autor: `dashboard-backend-implementer`; verificación: `dashboard-verifier`; revisión: `dashboard-reviewer`.
+
+### Archivos
+
+- `frontend/docs/specs/dashboard-admin/contracts/E2-ranking-contract.md`: contrato aceptado el 2026-11-25; ruta, DTO cerrado, semántica C-DATA, desempates, bajas/nombre, vectores documentales y matriz R01–R22 con D01–D15 aceptadas. Sin runtime.
+- `backend/docs/api/openapi.yaml`: adición documental aceptada de `GET /api/v1/admin/dashboard/product-ranking` y esquemas `DashboardRanking*` con `x-contract-status: approved-2026-11-25`; no modifica summary/series ni implementa runtime.
+- Sin cambios de runtime, frontend, UI, CSV, `schema.prisma`, migraciones ni dependencias.
+
+### Comandos ejecutados
+
+| Comando | Resultado real |
+| --- | --- |
+| `npm.cmd run format:check` (backend) | Correcto. |
+| `npm.cmd run api:validate` (backend) | OpenAPI válido; **68 ejemplos** conformes (67 previos + 1 nuevo). |
+| `node scripts/check-doc-links.mjs` (backend) | 286 enlaces locales, 0 inexistentes (no cubre `frontend/docs`; enlaces del contrato revisados a mano). |
+| `git diff --check` (raíz) | Sin errores de whitespace; avisos LF→CRLF ya presentes. |
+| `git status --short` (raíz) | Cambios E2-04 (OpenAPI + contrato nuevos) y cambios E2-03 ya cerrados; sin secretos, manifiesto, capturas ni seeds. |
+
+No se ejecutaron pruebas HTTP/BD/UI ni runtime: no aplican a una tarea documental y no se presentan como aceptación de API real.
+
+### Revisión independiente y correcciones
+
+- Verificación: OpenAPI aditivo, esquemas cerrados, ejemplo 200 válido, strings exactos, roles solo ADMINISTRADOR, errores Problem Details, documentación sin autoaceptación. Sin bloqueantes de contenido. Dos comandos de verificación (`npx prettier --check` y `check-doc-links`) fueron denegados por permisos y no se eludieron; la cobertura equivalente fue `format:check` y revisión manual de enlaces.
+- Revisión inicial: sin bloqueantes semánticos; pidió vectores de ambas métricas/direcciones/tops, cero/grandes/negativos (R-1) y resolver la tensión del filtro defensivo `p.status='SUCCEEDED'` frente a la conciliación (R-2), además de R-3…R-9.
+- Correcciones aplicadas: sección de vectores documentales; filtro defensivo marcado como no aplicado por defecto y D11 pendiente; resolución de nombres en una sola lectura/CTE o `LATERAL`; precisión ms/µs explícita; cabeceras globales «no garantizadas»; roles negativos con `GERENTE`; forma léxica estricta de `top`; D08 para snapshot no resoluble; rutas exactas; R13 reformulado para una fila inconsistente `Sale` sin pago exitoso.
+- Confirmación posterior: **sin bloqueantes nuevos para someter el contrato a aceptación** del responsable.
+
+### Decisiones D01–D15 aceptadas — 2026-11-25
+
+El responsable **aceptó el paquete propuesto el 2026-11-25**: ruta `GET /api/v1/admin/dashboard/product-ranking`; `from`/`to` UTC con 0–3 decimales, mínimo 2000-01-01T08:00Z y máximo 366 días; `metric=units|amount` y `direction=top|bottom` obligatorios; `top` default 5 y solo `5/10/20` con forma léxica estricta; `method` opcional; agrupación por `productId`; unidades `SUM(quantity)` e importe histórico `SUM(lineTotalCents)`; sin opciones/intentos/reembolsos; `top` descendente y `bottom` ascendente excluyendo `unitsSold=0`; desempates primaria y secundaria en la misma dirección, nombre ascendente byte a byte UTF-8 `COLLATE "C"`, `productId` numérico ascendente; incluir bajas con movimiento y usar snapshot más reciente; sin filtro defensivo `p.status='SUCCEEDED'` por defecto (D11); metadatos `matchedProductCount`/`matchedTotals`/`truncated`; `position` y `nameSource` opcionales; errores/cabeceras como series; sin índice nuevo en E2-04. OpenAPI usa `x-contract-status: approved-2026-11-25`.
+
+### Aceptación del responsable — 2026-11-25
+
+- **Contrato E2-04 aceptado** con el paquete anterior. La aceptación es solo del contrato documental: no implementa runtime, no inicia E2-05/06/07, no cierra E2 y no autoriza commit/push/despliegue.
+- **D11:** se acepta **no aplicar** el filtro defensivo de pago por defecto. Si en el futuro se adopta, debe aplicarse el mismo predicado en resumen/`/api/v1/sales/summary` y probarse con una fila inconsistente, en tarea propia.
+- **Decisiones reservadas a E2-05:** coste real, índices, verificación de cabeceras en rechazos globales y cualquier cambio de obligatoriedad de `position`/`nameSource` requieren evidencia y decisión propia; no se declaran implementadas.
+
+### Siguiente puerta
+
+E2-04 queda cerrada documentalmente con commit pendiente de autorización. E2-05 (backend de ranking) no está iniciada y requiere tarea/autorización propia, verificación, revisión independiente y entorno de prueba autorizado. CSV-03 sigue siendo el cierre de E2.
