@@ -6617,6 +6617,207 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
+  /api/v1/admin/dashboard/product-ranking:
+    get:
+      x-contract-status: approved-2026-11-25
+      tags:
+        - DashboardAdmin
+      summary: readAdministrativeProductRanking
+      operationId: readAdministrativeProductRanking
+      description: >-
+        CONTRATO TASK-DA-E2-04 aceptado por el responsable el 2026-11-25. No autoriza
+        runtime, UI, CSV ni cambios de esquema; la implementación corresponde a E2-05/06/07.
+        Solo ADMINISTRADOR con sesión
+        vigente. Ranking de productos con movimiento sobre ventas pagadas brutas del periodo
+        UTC semiabierto [from,to) y método opcional. La fuente Sale implica pago exitoso; el
+        contrato aceptado no aplica por defecto un filtro defensivo p.status='SUCCEEDED'
+        (D11 aceptada sin filtro por defecto; su adopción futura requiere decisión propia:
+        si se adopta, aplicar el mismo predicado en resumen y /api/v1/sales/summary y
+        probarlo con una fila inconsistente). Agrupa por productId,
+        nunca por nombre.
+        Unidades = suma de OrderItem.quantity; importe = suma del histórico
+        OrderItem.lineTotalCents, no el precio actual. OrderItemOption ya está incluido en
+        lineTotalCents y no se une; refunds no restan y no se une Refund. Se agrega el
+        conjunto completo filtrado antes de recortar a top N, sin N+1 ni páginas de
+        /api/v1/sales. La resolución de nombres, incluido el snapshot de bajas, usa una sola
+        lectura/CTE o LATERAL, nunca una consulta por producto, y su coste se mide en E2-05.
+        Entradas escalares únicas y estrictas: from/to UTC reales con 0–3 decimales y mínimo
+        aceptado 2000-01-01T08:00:00.000Z; comparación exacta sobre timestamptz, sold_at
+        conserva microsegundos y no se convierte a Date para agrupar; rango positivo máximo
+        aceptado 366 días absolutos. metric=units|amount y direction=top|bottom obligatorios
+        en este contrato; top opcional con default 5 y forma léxica exacta 5, 10 o 20
+        (rechazo de 05, +5, 5.0, decimales, signos y otros enteros); method opcional
+        CASH|STRIPE, omitido devuelve null. Rechaza extras, repetidos, arrays, valores vacíos y
+        body no vacío. top descendente; bottom ascendente y excluye productos sin movimiento
+        (unitsSold=0), no necesariamente métrica 0 si hubo unidades; el top
+        mayor que el conjunto devuelve todos sin rellenar ceros; cero resultados es 200 con
+        items vacío. Desempates aceptados: métrica primaria en la dirección pedida, métrica
+        secundaria en la misma dirección, nombre ascendente con comparación byte a byte UTF-8
+        COLLATE "C" y productId numérico ascendente. Productos dados de baja con movimiento se
+        incluyen para conciliar ventas; name usa el nombre actual si deletedAt IS NULL y, en
+        caso contrario, el snapshot de la línea más reciente por soldAt DESC, orderItem.id
+        DESC, con nameSource. Filtrar por Product.isActive o isAvailable rompería la
+        conciliación y el universo activo pertenece al contrato separado de sin movimiento.
+        matchedProductCount y matchedTotals se calculan antes del corte; truncated indica si
+        se omitieron productos. generatedAt no es token de snapshot compartido. Lectura
+        coherente única y sumas reconciliables con /api/v1/sales/summary sobre dataset estable.
+        Cache-Control no-store y Referrer-Policy no-referrer dentro del middleware privado;
+        su cobertura en rechazos globales previos (Origin/parsing/413/429) no está garantizada
+        con el orden actual y E2-05 debe verificarla. Errores application/problem+json saneados:
+        400 VALIDATION_ERROR, 401 UNAUTHENTICATED, 403 FORBIDDEN para cualquier rol distinto de
+        ADMINISTRADOR (incluido GERENTE)/PIN_CHANGE_REQUIRED/ORIGIN_NOT_ALLOWED, 413
+        PAYLOAD_TOO_LARGE, 429 RATE_LIMITED, 500 INTERNAL_ERROR y 503 DEPENDENCY_UNAVAILABLE
+        solo para fallos reconocidos. Sin CSRF nuevo para esta lectura ni ampliación de permisos.
+      security:
+        - accessCookie: []
+        - productionAccessCookie: []
+      parameters:
+        - name: from
+          in: query
+          required: true
+          description: Inicio UTC inclusivo, escalar único y real con 0–3 decimales; mínimo aceptado 2000-01-01T08:00:00.000Z, menor devuelve 400 sin truncar. Comparación exacta sobre timestamptz; las filas de sold_at conservan microsegundos.
+          schema:
+            $ref: '#/components/schemas/DashboardRankingInputInstant'
+        - name: to
+          in: query
+          required: true
+          description: Fin UTC exclusivo, escalar único y real con 0–3 decimales; estrictamente mayor que from y rango máximo aceptado de 366 días absolutos. Venta en to−1 µs incluida; filas sin truncar a milisegundos.
+          schema:
+            $ref: '#/components/schemas/DashboardRankingInputInstant'
+        - name: metric
+          in: query
+          required: true
+          description: Métrica de orden y de los valores por producto. No tiene default en este contrato.
+          schema:
+            type: string
+            enum:
+              - units
+              - amount
+        - name: direction
+          in: query
+          required: true
+          description: top ordena descendente; bottom ascendente y excluye productos sin movimiento (unitsSold=0).
+          schema:
+            type: string
+            enum:
+              - top
+              - bottom
+        - name: top
+          in: query
+          required: false
+          description: Número máximo de productos devueltos; omitido equivale a 5. Forma léxica exacta 5, 10 o 20; se rechazan 05, +5, 5.0, decimales, signos y otros enteros.
+          schema:
+            type: string
+            enum:
+              - '5'
+              - '10'
+              - '20'
+            default: '5'
+        - name: method
+          in: query
+          required: false
+          description: Filtro opcional por método de pago; omitido incluye CASH y STRIPE y devuelve method null. No acepta vacío ni null literal.
+          schema:
+            type: string
+            enum:
+              - CASH
+              - STRIPE
+      responses:
+        '200':
+          description: Ranking del contrato aceptado con metadatos del conjunto completo anterior al corte; sin PII ni importes convertidos a Number.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Referrer-Policy:
+              schema:
+                type: string
+                enum:
+                  - no-referrer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardProductRankingResponse'
+              example:
+                data:
+                  generatedAt: '2026-11-24T18:30:00.000Z'
+                  currency: MXN
+                  period:
+                    from: '2026-11-24T08:00:00.000Z'
+                    to: '2026-11-25T08:00:00.000Z'
+                    timeZone: America/Tijuana
+                  method: null
+                  metric: units
+                  direction: top
+                  top: '5'
+                  matchedProductCount: '3'
+                  matchedTotals:
+                    unitsSold: '12'
+                    totalCents: '34500'
+                  truncated: false
+                  items:
+                    - position: '1'
+                      productId: '10'
+                      name: Latte
+                      nameSource: current
+                      unitsSold: '6'
+                      totalCents: '21000'
+                    - position: '2'
+                      productId: '11'
+                      name: Capuchino
+                      nameSource: current
+                      unitsSold: '3'
+                      totalCents: '8500'
+                    - position: '3'
+                      productId: '12'
+                      name: Americano
+                      nameSource: snapshot
+                      unitsSold: '3'
+                      totalCents: '5000'
+        '400':
+          description: VALIDATION_ERROR; from/to ausentes, inválidos, anteriores al mínimo, precisión con más de 3 decimales (4–6), rango no positivo o mayor al máximo aceptado de 366 días absolutos, metric/direction/top/method inválidos (top solo forma léxica 5/10/20; rechazo de 05, +5, 5.0, decimales y signos), extras, repetidos, arrays, vacíos o body no vacío. Sin truncar.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED; sin sesión vigente.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN para cualquier rol distinto de ADMINISTRADOR (incluido GERENTE); PIN_CHANGE_REQUIRED u ORIGIN_NOT_ALLOWED según middleware existente.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE del parser global antes del rechazo de body en ruta; la cobertura de cabeceras privadas no está garantizada con el orden actual y E2-05 debe verificarla.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED del limitador existente; puede ocurrir antes de cabeceras privadas de ruta y su cobertura no está garantizada con el orden actual; E2-05 debe verificarla. Sin bucle de reintentos.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR saneado según problemHandler; no transforma todo fallo en 503.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE solo para fallos de dependencia reconocidos por problemHandler existente; no éxito con ceros inventados.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
   /api/v1/admin/employees:
     get:
       tags:
@@ -7848,6 +8049,147 @@ components:
               description: Orden UTC ascendente, contiguos, sin duplicados; hour<=745 y day<=368. bucketCount igual a longitud. Incluye vacíos.
               items:
                 $ref: '#/components/schemas/DashboardSeriesBucket'
+    DashboardRankingInputInstant:
+      type: string
+      format: date-time
+      pattern: ^[2-9]\d{3}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$
+      description: >-
+        Entrada del contrato aceptado E2-04: fecha UTC real terminada en Z, años 2000–9999,
+        0–3 decimales y segundos 00–59. Validar además from>=2000-01-01T08:00:00.000Z,
+        to>from y rango máximo; no normalizar ni truncar entradas inválidas.
+      example: '2026-11-24T08:00:00.000Z'
+    DashboardRankingUtcInstant:
+      type: string
+      format: date-time
+      pattern: ^[2-9]\d{3}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$
+      description: Instante UTC normalizado a milisegundos, años 2000–9999; generatedAt no es token de snapshot.
+    DashboardRankingExactCount:
+      type: string
+      pattern: ^(0|[1-9][0-9]*)$
+      description: Entero no negativo canónico exacto, sin máximo heredado de 19 dígitos ni conversión a Number.
+    DashboardRankingMatchedTotals:
+      type: object
+      additionalProperties: false
+      required:
+        - unitsSold
+        - totalCents
+      properties:
+        unitsSold:
+          $ref: '#/components/schemas/DashboardRankingExactCount'
+        totalCents:
+          $ref: '#/components/schemas/DashboardRankingExactCount'
+    DashboardRankingItem:
+      type: object
+      additionalProperties: false
+      required:
+        - productId
+        - name
+        - unitsSold
+        - totalCents
+      properties:
+        position:
+          type: string
+          pattern: ^[1-9][0-9]*$
+          description: Posición 1-based dentro de items, opcional en el contrato aceptado; hacerlo obligatorio requiere decisión propia; no es un ID.
+        productId:
+          type: string
+          pattern: ^[1-9][0-9]*$
+          description: ID exacto del producto; agrupar por este valor, nunca por nombre.
+        name:
+          type: string
+          maxLength: 160
+          description: Nombre actual si deletedAt IS NULL; si está de baja, snapshot de la línea más reciente del conjunto filtrado. productNameSnapshot es no nulo; si una baja no tuviera snapshot resoluble, el contrato aceptado deja como decisión propia el rechazo explícito o fallback determinista sin inventar nombre.
+        nameSource:
+          type: string
+          enum:
+            - current
+            - snapshot
+          description: Origen del nombre, opcional en el contrato aceptado; hacerlo obligatorio requiere decisión propia; current o snapshot determinista.
+        unitsSold:
+          $ref: '#/components/schemas/DashboardRankingExactCount'
+        totalCents:
+          $ref: '#/components/schemas/DashboardRankingExactCount'
+    DashboardProductRankingResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - generatedAt
+            - currency
+            - period
+            - method
+            - metric
+            - direction
+            - top
+            - matchedProductCount
+            - matchedTotals
+            - truncated
+            - items
+          properties:
+            generatedAt:
+              $ref: '#/components/schemas/DashboardRankingUtcInstant'
+            currency:
+              type: string
+              enum:
+                - MXN
+            period:
+              type: object
+              additionalProperties: false
+              required:
+                - from
+                - to
+                - timeZone
+              properties:
+                from:
+                  $ref: '#/components/schemas/DashboardRankingUtcInstant'
+                to:
+                  $ref: '#/components/schemas/DashboardRankingUtcInstant'
+                timeZone:
+                  type: string
+                  enum:
+                    - America/Tijuana
+            method:
+              type: string
+              nullable: true
+              enum:
+                - CASH
+                - STRIPE
+                - null
+            metric:
+              type: string
+              enum:
+                - units
+                - amount
+            direction:
+              type: string
+              enum:
+                - top
+                - bottom
+            top:
+              type: string
+              enum:
+                - '5'
+                - '10'
+                - '20'
+              description: Eco del top efectivo; omitido en la petición devuelve 5.
+            matchedProductCount:
+              $ref: '#/components/schemas/DashboardRankingExactCount'
+            matchedTotals:
+              $ref: '#/components/schemas/DashboardRankingMatchedTotals'
+            truncated:
+              type: boolean
+              description: true si matchedProductCount es mayor que la longitud de items; false si se devolvió el conjunto completo.
+            items:
+              type: array
+              maxItems: 20
+              description: Productos con movimiento ordenados de forma determinista; bottom excluye productos sin movimiento (unitsSold=0); cero resultados devuelve array vacío.
+              items:
+                $ref: '#/components/schemas/DashboardRankingItem'
     Category:
       type: object
       additionalProperties: false
