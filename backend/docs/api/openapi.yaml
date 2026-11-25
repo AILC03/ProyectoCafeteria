@@ -6819,6 +6819,216 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
+  /api/v1/admin/dashboard/no-movement-products:
+    get:
+      x-contract-status: approved-2026-11-25
+      tags:
+        - DashboardAdmin
+      summary: readAdministrativeNoMovementProducts
+      operationId: readAdministrativeNoMovementProducts
+      description: >-
+        CONTRATO TASK-DA-E2-08 aceptado por delegación del responsable el 2026-11-25;
+        no implementa runtime y su backend/UI/CSV pertenecen a E2-09/10/11 y al cierre E2.
+        Solo ADMINISTRADOR con sesión vigente. Lista separada de productos
+        del universo activo sin movimiento en el periodo UTC semiabierto [from,to) y
+        método opcional. No es el ranking de menos vendidos ni una lista de ceros.
+        Universo: Product.deletedAt IS NULL; categoría existente con Category.isActive=true
+        y Category.deletedAt IS NULL; Product.createdAt < to (cohorte). Product.isAvailable
+        NO filtra: un producto agotado sigue existiendo y se devuelve con isAvailable=false.
+        Product no tiene isActive y no se inventa. El estado de deletedAt/categoría/nombre/
+        isAvailable es el actual al generar la respuesta; no existe snapshot histórico y
+        no se reconstruye el estado al instante to. universe.asOf es to y expresa el corte
+        de cohorte (Product.createdAt < to) con atributos actuales, no la hora de los
+        atributos mutables ni un snapshot de deletedAt/categoría; la UI futura debe
+        etiquetarlo como «corte del universo», no como histórico. universe.definition incluye
+        current-catalog-state para hacerlo explícito.
+        Ausencia: no existe ninguna línea de OrderItem de una Sale pagada con soldAt en
+        [from,to) y, si se filtró method, con Payment.method igual al filtro. Cualquier
+        línea cuenta por su existencia, aunque quantity sea 0, el importe sea 0 o exista
+        reembolso; Refund no borra la venta ni resta movimiento. Ventas fuera del rango u
+        otro método no cuentan; por tanto la lista significa «sin movimiento en el rango/
+        método», nunca ausencia global ni producto nunca vendido. Órdenes sin Sale
+        (pendientes/fallidas/expiradas), intentos, eventos e incidentes no cuentan. Igual
+        que el contrato de ranking D11, no se aplica por defecto p.status='SUCCEEDED':
+        Sale implica pago exitoso; una fila inconsistente contaría con el default y un
+        filtro defensivo requeriría decisión propia y el mismo predicado en resumen y
+        /api/v1/sales/summary.
+        Entrada estricta: from/to obligatorios, UTC reales terminados en Z, 0–3 decimales,
+        from inclusivo y to exclusivo, from < to, mínimo 2000-01-01T08:00:00.000Z y rango
+        máximo 366 días absolutos; 400 sin truncar. method opcional CASH|STRIPE; omitido
+        incluye ambos y devuelve null. limit opcional con forma léxica exacta 10, 20 o 50
+        (default 20; rechazo de 010, +20, 20.0, 5, 100, decimales, signos y texto); es un
+        string propio de este DTO y no se reutiliza el parser genérico Page/pageQuerySchema
+        (limit entero 1–100). cursor opcional, opaco, base64url, 1–2048; vincula definición,
+        periodo normalizado, método, límite y última clave (name,productId); manipulado, de
+        otro endpoint o incompatible produce 400. El cursor y page.nextCursor requieren un
+        codificador/decodificador propio con alcance dashboard-no-movement; no se reutiliza
+        decodeCursor de pagination.ts (scopes de filtros y posición {id,createdAt}). Se
+        rechazan extras (category, top, metric, direction,
+        timeZone, order, sort, offset, page, includeUnavailable…), repetidos, arrays,
+        vacíos y body no vacío. No hay filtro de categoría en esta capacidad.
+        Orden determinista: name COLLATE "C" ASC y productId numérico ASC. El frontend no
+        reordena. Paginación por keyset, sin offset ni top N; se piden limit+1 filas para
+        decidir nextCursor; nextCursor null al final. totalNoMovementProducts es el total del
+        conjunto sin movimiento que cumple universo+rango+método, antes del cursor y la
+        paginación; no es el tamaño de página ni el total de productos activos del
+        catálogo. Cada página es una lectura actual: si el catálogo cambia entre páginas
+        (renombrado, baja, cambio de categoría, desactivación o baja de categoría), puede
+        omitir/duplicar elementos y el total puede variar; generatedAt no es token de
+        snapshot y no hay snapshot entre páginas. En catálogo estable, las páginas
+        concilian con totalNoMovementProducts.
+        DTO cerrado: generatedAt/currency/period/method/universe{asOf,definition,
+        includesUnavailable}/totalNoMovementProducts/page{limit,nextCursor}/items
+        {productId,name,category{id,name},isAvailable,createdAt}. IDs y conteos son
+        strings decimales exactos; createdAt conserva seis decimales de Product.createdAt;
+        sin precios, ventas, unidades, tickets, PII ni datos de pago. Cero resultados es
+        200 con items vacío, total "0" y nextCursor null, no 404.
+        Cache-Control no-store y Referrer-Policy no-referrer dentro del middleware privado;
+        los rechazos globales previos (Origin/parsing/413/429) pueden carecer de esas
+        cabeceras con el orden actual y E2-09 debe verificarlo. Errores
+        application/problem+json saneados: 400 VALIDATION_ERROR, 401 UNAUTHENTICATED, 403
+        FORBIDDEN para cualquier rol distinto de ADMINISTRADOR (incluido GERENTE)/
+        PIN_CHANGE_REQUIRED/ORIGIN_NOT_ALLOWED, 413 PAYLOAD_TOO_LARGE, 429 RATE_LIMITED,
+        500 INTERNAL_ERROR y 503 DEPENDENCY_UNAVAILABLE solo para fallos reconocidos. Sin
+        CSRF nuevo para esta lectura ni ampliación de permisos de /api/v1/sales. Sin CSV
+        en este contrato; el CSV de cierre E2 se define en su contrato específico.
+      security:
+        - accessCookie: []
+        - productionAccessCookie: []
+      parameters:
+        - name: from
+          in: query
+          required: true
+          description: Inicio UTC inclusivo, escalar único y real con 0–3 decimales; mínimo aceptado 2000-01-01T08:00:00.000Z, menor devuelve 400 sin truncar. Comparación exacta sobre timestamptz; las filas de sold_at y Product.createdAt conservan microsegundos.
+          schema:
+            $ref: '#/components/schemas/DashboardNoMovementInputInstant'
+        - name: to
+          in: query
+          required: true
+          description: Fin UTC exclusivo, escalar único y real con 0–3 decimales; estrictamente mayor que from y rango máximo aceptado de 366 días absolutos. Venta en to−1 µs incluida; alta exactamente en to excluida por cohorte.
+          schema:
+            $ref: '#/components/schemas/DashboardNoMovementInputInstant'
+        - name: method
+          in: query
+          required: false
+          description: Filtro opcional por método de pago; omitido incluye CASH y STRIPE y devuelve method null. No acepta vacío ni null literal.
+          schema:
+            type: string
+            enum:
+              - CASH
+              - STRIPE
+        - name: limit
+          in: query
+          required: false
+          description: Tamaño de página; omitido equivale a 20. Forma léxica exacta 10, 20 o 50; se rechazan 010, +20, 20.0, decimales, signos y otros valores. String propio de este DTO; no reutiliza el parser genérico Page (limit entero 1–100).
+          schema:
+            type: string
+            enum:
+              - '10'
+              - '20'
+              - '50'
+            default: '20'
+        - name: cursor
+          in: query
+          required: false
+          description: Cursor opaco emitido por el servidor para la página siguiente; vincula definición, periodo, método, límite y última clave. No interpretar ni construir; cursor inválido o incompatible devuelve 400. Requiere decodificador propio con alcance dashboard-no-movement; no se reutiliza decodeCursor (scopes de filtros y posición id/createdAt).
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 2048
+            pattern: ^[A-Za-z0-9_-]+$
+      responses:
+        '200':
+          description: Lista aceptada de productos del universo sin movimiento en el rango/método, con total del conjunto anterior a la paginación; sin PII ni importes convertidos a Number.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Referrer-Policy:
+              schema:
+                type: string
+                enum:
+                  - no-referrer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardNoMovementResponse'
+              example:
+                data:
+                  generatedAt: '2026-11-25T18:30:00.000Z'
+                  currency: MXN
+                  period:
+                    from: '2026-11-24T08:00:00.000Z'
+                    to: '2026-11-25T08:00:00.000Z'
+                    timeZone: America/Tijuana
+                  method: null
+                  universe:
+                    asOf: '2026-11-25T08:00:00.000Z'
+                    definition: product-not-deleted+category-active+category-not-deleted+created-before-asOf+availability-ignored+current-catalog-state
+                    includesUnavailable: true
+                  totalNoMovementProducts: '2'
+                  page:
+                    limit: '20'
+                    nextCursor: null
+                  items:
+                    - productId: '10'
+                      name: Latte
+                      category:
+                        id: '3'
+                        name: Cafés
+                      isAvailable: true
+                      createdAt: '2024-01-15T18:00:00.000000Z'
+                    - productId: '12'
+                      name: Moka
+                      category:
+                        id: '3'
+                        name: Cafés
+                      isAvailable: false
+                      createdAt: '2026-11-20T17:30:00.123456Z'
+        '400':
+          description: VALIDATION_ERROR; from/to ausentes, inválidos, anteriores al mínimo, precisión con más de 3 decimales, rango no positivo o mayor a 366 días, limit/method inválidos, cursor manipulado o incompatible, extras, repetidos, arrays, vacíos o body no vacío. Sin truncar.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED; sin sesión vigente.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN para cualquier rol distinto de ADMINISTRADOR (incluido GERENTE); PIN_CHANGE_REQUIRED u ORIGIN_NOT_ALLOWED según middleware existente.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '413':
+          description: PAYLOAD_TOO_LARGE del parser global antes del rechazo de body en ruta; la cobertura de cabeceras privadas no está garantizada con el orden actual y E2-09 debe verificarla.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED del limitador existente; puede ocurrir antes de cabeceras privadas de ruta y su cobertura no está garantizada con el orden actual; E2-09 debe verificarla. Sin bucle de reintentos.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR saneado según problemHandler; no transforma todo fallo en 503.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: DEPENDENCY_UNAVAILABLE solo para fallos de dependencia reconocidos por problemHandler existente; no éxito con ceros inventados.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
   /api/v1/admin/employees:
     get:
       tags:
@@ -8191,6 +8401,185 @@ components:
               description: Productos con movimiento ordenados de forma determinista; bottom excluye productos sin movimiento (unitsSold=0); cero resultados devuelve array vacío.
               items:
                 $ref: '#/components/schemas/DashboardRankingItem'
+    DashboardNoMovementInputInstant:
+      type: string
+      format: date-time
+      pattern: ^[2-9]\d{3}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$
+      description: >-
+        Entrada aceptada E2-08: fecha UTC real terminada en Z, años 2000–9999,
+        0–3 decimales y segundos 00–59. Validar además from>=2000-01-01T08:00:00.000Z,
+        to>from y rango máximo de 366 días absolutos; no normalizar ni truncar entradas
+        inválidas. Las fracciones de 4–6 decimales se rechazan.
+      example: '2026-11-24T08:00:00.000Z'
+    DashboardNoMovementUtcInstant:
+      type: string
+      format: date-time
+      pattern: ^[2-9]\d{3}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$
+      description: Instante UTC normalizado a milisegundos, años 2000–9999; generatedAt no es token de snapshot. universe.asOf es to y expresa el corte de cohorte Product.createdAt < to con atributos actuales; no es snapshot histórico de deletedAt/categoría/nombre/isAvailable. La UI debe etiquetarlo como «corte del universo», no como histórico.
+      example: '2026-11-25T18:30:00.000Z'
+    DashboardNoMovementProductInstant:
+      type: string
+      format: date-time
+      pattern: ^[2-9]\d{3}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$
+      description: Instante UTC exacto de Product.createdAt con seis decimales (microsegundos); no se trunca a milisegundos y no se usa para ordenar ni paginar.
+      example: '2026-11-20T17:30:00.123456Z'
+    DashboardNoMovementExactCount:
+      type: string
+      pattern: ^(0|[1-9][0-9]*)$
+      description: Total exacto del conjunto sin movimiento que cumple universo+rango+método, antes de paginar; no es el total de productos activos del catálogo. Entero no negativo canónico, sin máximo heredado de 19 dígitos ni conversión a Number.
+      example: '2'
+    DashboardNoMovementUniverse:
+      type: object
+      additionalProperties: false
+      required:
+        - asOf
+        - definition
+        - includesUnavailable
+      properties:
+        asOf:
+          $ref: '#/components/schemas/DashboardNoMovementUtcInstant'
+        definition:
+          type: string
+          enum:
+            - product-not-deleted+category-active+category-not-deleted+created-before-asOf+availability-ignored+current-catalog-state
+          description: >-
+            Token cerrado aceptado. Product.deletedAt IS NULL; categoría existente con
+            isActive=true y deletedAt IS NULL; Product.createdAt < asOf; Product.isAvailable
+            no filtra. asOf expresa el corte de cohorte, no un snapshot histórico: los
+            atributos mutables se leen en su estado actual al generar la respuesta.
+        includesUnavailable:
+          type: boolean
+          enum:
+            - true
+          description: Siempre true; isAvailable se devuelve por ítem y no define actividad.
+    DashboardNoMovementCategory:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          pattern: ^[1-9][0-9]*$
+          description: ID exacto de la categoría actual, activa y no borrada; string decimal positivo.
+          example: '3'
+        name:
+          type: string
+          maxLength: 120
+          description: Nombre actual de la categoría; no es histórico ni PII.
+          example: Cafés
+    DashboardNoMovementItem:
+      type: object
+      additionalProperties: false
+      required:
+        - productId
+        - name
+        - category
+        - isAvailable
+        - createdAt
+      properties:
+        productId:
+          type: string
+          pattern: ^[1-9][0-9]*$
+          description: ID exacto del producto no borrado; identidad y desempate final, nunca el nombre.
+          example: '10'
+        name:
+          type: string
+          maxLength: 160
+          description: Product.name actual; puede repetirse entre productos y no se usa para agrupar.
+          example: Latte
+        category:
+          $ref: '#/components/schemas/DashboardNoMovementCategory'
+        isAvailable:
+          type: boolean
+          description: Disponibilidad actual; se presenta como dato y no define el universo.
+          example: true
+        createdAt:
+          $ref: '#/components/schemas/DashboardNoMovementProductInstant'
+    DashboardNoMovementPage:
+      type: object
+      additionalProperties: false
+      required:
+        - limit
+        - nextCursor
+      properties:
+        limit:
+          type: string
+          enum:
+            - '10'
+            - '20'
+            - '50'
+          description: Eco del límite efectivo de página; default 20. String propio de este DTO; no es un agregado, no reutiliza el parser genérico Page/pageQuerySchema (limit entero 1–100) ni cambia el esquema Page de otros endpoints.
+          example: '20'
+        nextCursor:
+          type: string
+          nullable: true
+          minLength: 1
+          maxLength: 2048
+          pattern: ^[A-Za-z0-9_-]+$
+          description: Cursor opaco base64url de la página siguiente emitido por el servidor; null cuando no hay más elementos. Misma forma 1–2048 que el cursor de entrada; requiere codificador/decodificador propio, no decodeCursor. No interpretar ni construir.
+          example: null
+    DashboardNoMovementResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - generatedAt
+            - currency
+            - period
+            - method
+            - universe
+            - totalNoMovementProducts
+            - page
+            - items
+          properties:
+            generatedAt:
+              $ref: '#/components/schemas/DashboardNoMovementUtcInstant'
+            currency:
+              type: string
+              enum:
+                - MXN
+            period:
+              type: object
+              additionalProperties: false
+              required:
+                - from
+                - to
+                - timeZone
+              properties:
+                from:
+                  $ref: '#/components/schemas/DashboardNoMovementUtcInstant'
+                to:
+                  $ref: '#/components/schemas/DashboardNoMovementUtcInstant'
+                timeZone:
+                  type: string
+                  enum:
+                    - America/Tijuana
+            method:
+              type: string
+              nullable: true
+              enum:
+                - CASH
+                - STRIPE
+                - null
+            universe:
+              $ref: '#/components/schemas/DashboardNoMovementUniverse'
+            totalNoMovementProducts:
+              $ref: '#/components/schemas/DashboardNoMovementExactCount'
+            page:
+              $ref: '#/components/schemas/DashboardNoMovementPage'
+            items:
+              type: array
+              maxItems: 50
+              description: Productos del universo sin movimiento en el rango/método, en orden name COLLATE "C" ASC, productId ASC; cero resultados devuelve array vacío.
+              items:
+                $ref: '#/components/schemas/DashboardNoMovementItem'
     Category:
       type: object
       additionalProperties: false

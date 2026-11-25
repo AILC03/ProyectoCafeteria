@@ -303,6 +303,7 @@ Las épicas sustituidas se conservan como trazabilidad, no como tareas ejecutabl
 - Verificación: V-DOC + V-CONTRACT; revisión datos/catálogo de matriz activo/no activo × alta × método × venta dentro/fuera, coste y privacidad.
 - Revisor: backend independiente con catálogo/datos/frontend, por confirmar antes de ejecución.
 - Commit esperado (no autorizado): `docs(dashboard-admin): define E2 no-movement contract`.
+- Estado propio E2-08: **contrato documental aceptado por delegación del responsable el 2026-11-25; verificado sin bloqueantes; sin runtime ni commit**. Evidencia en [validation.md](./validation.md): ruta `/admin/dashboard/no-movement-products`, universo activo por `deletedAt`/categoría sin `Product.isActive`, cohorte `createdAt < to`, ausencia por rango/método, cursor keyset propio, `totalNoMovementProducts`, R01–R20/D01–D10; OpenAPI `approved-2026-11-25`, 69 ejemplos. No inicia E2-09 ni cierra E2/CSV.
 
 ### TASK-DA-E2-09 — Backend de activos sin movimiento
 
@@ -494,7 +495,7 @@ E1 queda cerrada y aceptada por el responsable el 2026-11-24. La validación nav
 | TASK-DA-E2-02 | Implementada y verificada localmente; no aceptada; commit `mismo commit` | Adaptador estricto, Hora/Día, tabla accesible y fallo parcial aislado; 410/410 unit/componente y 62/62 E2E simuladas; revisión sin bloqueantes técnicos tras B-01/R-01. Su V-VIS y aceptación propia siguen pendientes; la evidencia live de E2-03 es independiente y no hereda ni concede aceptación a E2-02 |
 | TASK-DA-E2-03 | Suite live aceptada por el responsable el 2026-11-25; re-revisión final registrada; sin commit; no cierra E2/CSV | 7/7 live sin mocks (autor y verificador), conciliación por método, DST, parciales, precisión µs, máximo 745, mínimo 2000, roles/cabeceras, teclado, axe y cancelación real. Capturas 1280/768/390/Electron aprobadas. B-1 corregido; B-2 aceptado como limitación (429/503/fallo parcial real en simulación/integración; caos real diferido). Detalle en validation.md |
 | TASK-DA-E2-04 / 05 / 06 / 07 | E2-04 contrato, E2-05 backend, E2-06 frontend y E2-07 aceptación real cerrados/aceptados; commit de E2-07 pendiente | Turno tras ranking; E2-07 aceptada con prueba guiada de 4 s y limitaciones declaradas. No cierra E2/CSV ni autoriza tareas CSV por extensión |
-| TASK-DA-E2-08 / 09 / 10 / 11 | Aceptadas en secuencia; no iniciadas | Turno tras ranking, asignaciones y contrato sin movimiento; activo/altas/método/paginación pendientes |
+| TASK-DA-E2-08 / 09 / 10 / 11 | E2-08 contrato aceptado; E2-09/10/11 no iniciadas | Turno tras ranking; contrato de sin movimiento aceptado con universo/cursor/ausencia definidos. E2-09 requiere implementación y coste; E2-11 aceptación real |
 | TASK-DA-E2-12 / 13 / 14 / 15 | Aceptadas en secuencia; no iniciadas | Turno tras sin movimiento, asignaciones y contrato categorías; denominadores/redondeo/reclasificación pendientes |
 | TASK-DA-E2-CSV-00…03 | Aceptadas en secuencia; no iniciadas | Contratos CSV pendientes y dependencias E2 aceptadas arriba; CSV-03 cierra E2 tras todas las aceptaciones |
 

@@ -948,3 +948,28 @@ Estado actual: **suite live implementada y verificada; capturas generadas; prueb
 - Fallo parcial y sesión en vivo no se inducen en esta suite: el fallo aislado del panel, 401/429 y limpieza de sesión están cubiertos por E2-06 (componente/E2E simulado) y por la integración E2-05; no se presentan como live de E2-07.
 - Electron no sustituye HTTPS/distribución. CSV-03 sigue siendo el cierre de E2.
 - **Cierre:** E2-07 aceptada como capacidad de ranking el 2026-11-25 (4 s, todo correcto) con las limitaciones anteriores; commit pendiente de autorización. E2 completa y CSV-03 siguen abiertos.
+
+## TASK-DA-E2-08 — Contrato de activos sin movimiento
+
+Estado actual: **contrato documental aceptado por delegación del responsable el 2026-11-25; verificado sin bloqueantes; sin runtime ni commit.** Autor: `dashboard-backend-implementer`; verificación: `dashboard-verifier`.
+
+### Archivos
+
+- `frontend/docs/specs/dashboard-admin/contracts/E2-no-movement-contract.md`: ruta, universo activo, ausencia por rango/método, DTO, cursor/paginación, matriz R01–R20 y D01–D10 aceptadas.
+- `backend/docs/api/openapi.yaml`: `GET /api/v1/admin/dashboard/no-movement-products` y esquemas `DashboardNoMovement*`, `approved-2026-11-25`.
+- Sin runtime, UI, CSV, esquema, migraciones ni dependencias.
+
+### Decisiones aceptadas por delegación
+
+- Activo = `Product.deletedAt IS NULL` + categoría existente con `isActive=true` y `deletedAt IS NULL`; `isAvailable` no filtra y se devuelve como dato. No existe `Product.isActive`.
+- Universo = cohorte `Product.createdAt < to`; atributos actuales, sin snapshot histórico de baja/categoría. `universe.asOf = to` es corte de cohorte, no histórico.
+- Ausencia = sin línea de `OrderItem` de una `Sale` pagada en `[from,to)` y método filtrado; ventas fuera de rango u otro método no cuentan; no se afirma ausencia global; reembolsos no borran movimiento; órdenes sin `Sale` no cuentan.
+- `from/to` UTC 0–3 decimales, mínimo 2000, máximo 366 días; `method` opcional; `limit` 10/20/50 default 20; cursor keyset propio (`name COLLATE "C" ASC, productId ASC`), sin `decodeCursor` genérico.
+- DTO: `generatedAt`, `currency`, `period`, `method`, `universe{asOf,definition,includesUnavailable}`, `totalNoMovementProducts` (conjunto antes de paginar, no total del catálogo), `page{limit,nextCursor}`, `items[]{productId,name,category{id,name},isAvailable,createdAt}`.
+- Solo ADMINISTRADOR; 401/403 (incluido GERENTE); 400/413/429/500/503; cabeceras privadas en middleware; sin CSRF nuevo.
+
+### Verificación
+
+- `format:check` correcto, `api:validate` 69 ejemplos, `prettier --check` correcto, 286 enlaces 0 inexistentes, `git diff --check` correcto.
+- Verificación independiente sin bloqueantes; ajustes aplicados: `totalNoMovementProducts`, `asOf` como cohorte, `nextCursor` con patrón/longitud, `page.limit` propio, decodificador propio, categoría desactivada en limitaciones.
+- Sin runtime/HTTP/BD/UI/CSV; la implementación y coste corresponden a E2-09/E2-11. Commit pendiente de autorización.
