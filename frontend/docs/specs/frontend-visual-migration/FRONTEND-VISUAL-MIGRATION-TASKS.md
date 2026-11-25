@@ -1,6 +1,6 @@
 # TASKS-FE-VIS-001 — Entregas híbridas de migración visual
 
-- **Estado:** listado revisado a petición del responsable; ninguna task iniciada.
+- **Estado:** listado revisado a petición del responsable; HYB-01 terminada, HYB-02…HYB-25 pendientes de autorización individual.
 - **Fuente:** [plan híbrido](./FRONTEND-VISUAL-MIGRATION-PLAN.md) y [spec vigente](./FRONTEND-VISUAL-MIGRATION-SPEC.md).
 - **Sustituye:** listado anterior de 69 tasks R/U, todavía no ejecutadas. Los IDs pasan a `HYB-XX` para no confundir las dos descomposiciones.
 - **Reglas armonizadas:** el responsable autorizó ajustar spec/plan y proceso al enfoque híbrido. Esa edición documental no inicia ninguna task ni aprueba lote, tema, adaptación o resultado visual.
@@ -35,7 +35,7 @@ Cada task cerrada incluye fila STATUS con evidencia real, decisiones, revisores,
 
 ## 2. Habilitación y lote de referencia
 
-- [ ] **HYB-01 — Crear registros e inventario conjunto** (D).
+- [x] **HYB-01 — Crear registros e inventario conjunto** (D).
   - Requisitos: RV-01, RV-03, CA-01, CA-09, CA-10; plan §3–4.
   - Dependencias: aprobación individual; comprobar coherencia de spec/plan/listado revisados. Sin dependencias de tasks de ejecución anteriores.
   - Archivos: DOC/REFERENCES y DOC/STATUS con nombres completos `FRONTEND-VISUAL-MIGRATION-*.md`; lectura de originales y rutas/features actuales.
@@ -204,4 +204,4 @@ No implementar una task genérica de «mejorar todo». Tras la reproducción, ca
 | CA-08 | Revisiones/aceptación al final de cada bloque y HYB-25 |
 | CA-09 | Todos los contratos, revisión final de diff/originales |
 
-**Primera task a autorizar:** HYB-01 (registros e inventario). Hay 25 tasks de ejecución propuestas; ninguna iniciada. El ajuste documental del enfoque no es una task de implementación ni una aprobación de capturas.
+**Próxima task a autorizar:** HYB-02 (harness aislado), una vez cerrado HYB-01. Hay 25 tasks en total; completar el inventario no aprueba herramientas, capturas, temas ni los bloques siguientes. El ajuste documental del enfoque no es una task de implementación ni una aprobación de capturas.

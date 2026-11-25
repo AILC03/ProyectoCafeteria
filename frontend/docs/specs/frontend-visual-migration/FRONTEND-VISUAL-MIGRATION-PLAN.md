@@ -201,4 +201,4 @@ Reversión: detener bloque afectado y proponer corrección o reversión explíci
 
 Las tasks agrupan entregas coherentes, no pares R/U para cada pantalla. Cada una enlaza requisitos, dependencias, archivos, fuentes visuales, revisión previa si corresponde, tests primero y «Hecho cuando» verificable. No se impone 20–30 minutos a un bloque completo: si es demasiado amplio para revisión segura se subdivide antes de implementarlo, no se reduce su verificación.
 
-La armonización de spec/agentes/skills fue autorizada y se incorpora a esta revisión documental; no es una task de UI pendiente. El siguiente paso es revisar el listado y aprobar individualmente HYB-01 (registros e inventario). No se inicia ninguna migración por modificar estos documentos.
+La armonización de spec/agentes/skills fue autorizada y se incorpora a esta revisión documental; no es una task de UI pendiente. HYB-01 (registros e inventario) fue autorizada individualmente y se documentó sin cambiar pantallas; el siguiente paso será solicitar aprobación individual para HYB-02 (harness aislado). No se inicia ninguna migración de UI por modificar estos documentos.
