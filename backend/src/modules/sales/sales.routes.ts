@@ -5,7 +5,12 @@ import { principal } from '../auth/auth.http.js';
 import { privateCashResponse } from '../cash/cash.routes.js';
 import { jsonValue } from '../../shared/http/serialization.js';
 import { invalidInput } from '../../shared/http/problem.js';
-import { dashboardSummaryQuery, salesFilters, salesQuery } from './sales.validation.js';
+import {
+  dashboardSummaryQuery,
+  salesFilters,
+  salesQuery,
+  salesSeriesQuery,
+} from './sales.validation.js';
 import type { SalesService } from './sales.service.js';
 export function salesRoutes(auth: AuthService, service: SalesService) {
   const router = Router();
@@ -38,6 +43,19 @@ export function salesRoutes(auth: AuthService, service: SalesService) {
             dashboardSummaryQuery.parse(req.query),
           ),
         ),
+      );
+    },
+  );
+  router.get(
+    '/admin/dashboard/sales-series',
+    privateCashResponse,
+    authenticate(auth),
+    authorize('ADMINISTRADOR'),
+    async (req, res) => {
+      if (req.headers['transfer-encoding'] || Number(req.headers['content-length'] ?? 0))
+        throw invalidInput();
+      res.json(
+        jsonValue(await service.salesSeries(principal(res), salesSeriesQuery.parse(req.query))),
       );
     },
   );

@@ -17,6 +17,12 @@ type DashboardAggregateRow = {
   previousUnitsSold: string;
 };
 
+export type SalesSeriesAggregate = {
+  totalCents: string;
+  ticketCount: string;
+  unitsSold: string;
+};
+
 export class SalesRepository {
   constructor(private db: PrismaClient) {}
   read<T>(actor: Principal, fn: (tx: Prisma.TransactionClient) => Promise<T>) {
@@ -78,6 +84,63 @@ export class SalesRepository {
         coalesce(sum(s.total_cents) FILTER (WHERE p.method='STRIPE'),0)::text AS "stripeCents"
         FROM sales s JOIN payments p ON p.id=s.payment_id WHERE ${this.where(input)}`);
       return { data: row! };
+    });
+  }
+  /**
+   * Agregado por bucket en una sola lectura. `sold_at` permanece en PostgreSQL
+   * (microsegundos intactos): se filtra y asigna por los límites efectivos de
+   * cada bucket, sin convertir filas a Date. Unidades por venta sin unir
+   * opciones ni intentos de pago.
+   */
+  seriesAggregates(
+    actor: Principal,
+    input: { from: Date; to: Date; method?: 'CASH' | 'STRIPE' },
+    buckets: { effectiveFrom: Date; effectiveTo: Date }[],
+  ): Promise<SalesSeriesAggregate[]> {
+    const method = input.method ? Prisma.sql`AND p.method::text=${input.method}` : Prisma.empty;
+    const bucketValues = Prisma.join(
+      buckets.map(
+        (bucket, index) =>
+          Prisma.sql`(${index}::int,${bucket.effectiveFrom}::timestamptz,${bucket.effectiveTo}::timestamptz)`,
+      ),
+    );
+    return this.read(actor, async (tx) => {
+      const rows = await tx.$queryRaw<
+        { idx: number; totalCents: string; ticketCount: string; unitsSold: string }[]
+      >(Prisma.sql`
+        WITH buckets(idx,effective_from,effective_to) AS (VALUES ${bucketValues}),
+        range_sales AS (
+          SELECT s.id,s.order_id,s.total_cents,s.sold_at
+          FROM sales s JOIN payments p ON p.id=s.payment_id
+          WHERE s.sold_at >= ${input.from}::timestamptz
+            AND s.sold_at < ${input.to}::timestamptz ${method}
+        ),
+        sale_units AS (
+          SELECT rs.id AS sale_id,coalesce(sum(oi.quantity),0)::bigint AS units
+          FROM range_sales rs JOIN order_items oi ON oi.order_id=rs.order_id
+          GROUP BY rs.id
+        )
+        SELECT b.idx::int AS idx,
+          coalesce(sum(rs.total_cents),0)::text AS "totalCents",
+          count(rs.id)::text AS "ticketCount",
+          coalesce(sum(su.units),0)::text AS "unitsSold"
+        FROM buckets b
+        LEFT JOIN range_sales rs
+          ON rs.sold_at >= b.effective_from AND rs.sold_at < b.effective_to
+        LEFT JOIN sale_units su ON su.sale_id=rs.id
+        GROUP BY b.idx ORDER BY b.idx`);
+      const byIndex = new Map(rows.map((row) => [row.idx, row]));
+      return buckets.map((_bucket, index) => {
+        const row = byIndex.get(index);
+        // El SQL devuelve siempre una fila por bucket (GROUP BY sobre buckets).
+        // Si faltase, no se inventan ceros: error interno saneado.
+        if (!row) throw new Error('Agregado de serie incompleto');
+        return {
+          totalCents: row.totalCents,
+          ticketCount: row.ticketCount,
+          unitsSold: row.unitsSold,
+        };
+      });
     });
   }
   administrativeSummary(actor: Principal, input: DashboardSummaryQuery) {

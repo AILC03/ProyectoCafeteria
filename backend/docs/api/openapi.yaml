@@ -6456,7 +6456,9 @@ paths:
       operationId: readAdministrativeSalesSeries
       description: >-
         CONTRATO TASK-DA-E2-00 aceptado por el responsable el 2026-11-24 mediante
-        «aprobar y continuar», acotado a fechas desde 2000; sin implementación runtime.
+        «aprobar y continuar», acotado a fechas desde 2000. Implementación backend
+        TASK-DA-E2-01 presente; su verificación y revisión independiente corresponden
+        a esas tareas y no se declaran aquí.
         Solo ADMINISTRADOR. Series de ventas pagadas brutas (no resta reembolsos), tickets
         y unidades, siempre las tres métricas, sin parámetro metric. Intervalo [from,to)
         en UTC; zona fija America/Tijuana. Entradas escalares únicas y estrictas: rechaza
@@ -6523,7 +6525,7 @@ paths:
               - STRIPE
       responses:
         '200':
-          description: Serie completa con totales coherentes, sin truncar ni datos personales; contrato aceptado, runtime no implementado.
+          description: Serie completa con totales coherentes, sin truncar ni datos personales; contrato aceptado.
           headers:
             Cache-Control:
               schema:

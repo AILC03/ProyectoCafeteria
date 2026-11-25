@@ -539,3 +539,67 @@ Las denegaciones anteriores se conservan como evidencia histórica, no se presen
 Resultado actual: B1 armonizado con mínimo aceptado y negativos revalidados documentalmente; la cuestión histórica F1 queda fuera del dominio, no se mantiene una política indeterminada aplicable desde 2000. B2 cuenta ahora con verificaciones actuales correctas por el autor bajo autorización expresa; las denegaciones anteriores del verificador no se convierten en ejecuciones suyas. Revisión independiente final: sin bloqueantes de contenido y apta para commit documental. `git diff --check` fue ejecutado por coordinación y resultó correcto, sin errores de espacios; no sustituye la verificación independiente de las suites. Una futura actualización tzdb/ley requerirá evaluación si cambia reglas relevantes. Commit de la tarea: `mismo commit`.
 
 Pendientes de tareas posteriores, no cumplidos por E2-00: coste medido, HTTP/BD de permisos/precisión/concurrencia, implementación backend/frontend, V-VIS y V-REAL con entorno/dataset autorizado. No dependencias, migraciones, SQL ejecutable, secretos, proveedores reales, CSV, runtime ni commit. E2-01 NO iniciada en este encargo.
+
+## TASK-DA-E2-01 — Backend de series (implementación y verificación local; no cerrada)
+
+Estado: **implementación backend verificada localmente y aceptada por el responsable el 2026-11-24; commit `mismo commit`**. Incluye corrección H-01, R-03 y aceptación explícita del rendimiento actual con optimización pendiente documentada. Sin E2-02 ni CSV en este commit. Autor: `dashboard-backend-implementer`; verificación y revisión independientes realizadas.
+
+### Alcance implementado
+- Ruta `GET /api/v1/admin/dashboard/sales-series` solo `ADMINISTRADOR`, con `privateCashResponse`, validación Zod estricta y rechazo de body.
+- Serie `[from,to)` UTC con zona fija America/Tijuana, buckets naturales (incluidos vacíos y parciales), DST moderno 23/25 h y hora repetida, mínimo `2000-01-01T08:00:00.000Z`, límites hour 744 h/745 y day 366×24 h/368.
+- Agregación en una sola consulta parametrizada: importe bruto, tickets por `Sale` y unidades por `OrderItem.quantity`; `sold_at` conserva microsegundos en PostgreSQL (`from` incluido, `to` y `to−1 µs` probados).
+- DTO cerrado con tres métricas, `method: null|CASH|STRIPE`, strings decimales exactos sin `Number`; totales = suma de buckets de la misma lectura.
+- OpenAPI: solo se corrigió la nota obsoleta «runtime no implementado»; esquema y semántica aceptados intactos.
+
+### Huecos señalados y cobertura real
+| Hueco | Evidencia |
+| --- | --- |
+| Guarda 368 buckets `day` | Prueba unitaria directa: 368 buckets aceptados y 369 rechazados con 400; se conservan 366 días y 744/745 buckets `hour`. |
+| Cabeceras privadas en 400 | Integración HTTP: todos los 400 de query/body de la ruta devuelven `Cache-Control: no-store` y `Referrer-Policy: no-referrer`; el middleware de ruta sí los cubre. |
+| H-01 — 401/403 antes de la ruta | Corregido con cambio mínimo en `app.ts`: `/api/v1/admin/dashboard` se incluye en el middleware privado temprano, antes de `adminRoutes`. Integración con `createApp` y `AdminService`/`AdminRepository` reales montados: 401 sin sesión, 403 CLIENTE/CAJERO/PREPARACION y 403 `PIN_CHANGE_REQUIRED` conservan `Cache-Control: no-store` y `Referrer-Policy: no-referrer`. Sin cambiar permisos ni autenticación. |
+| R-03 — fila agregada ausente | `SalesRepository.seriesAggregates` y `SalesService.salesSeries` lanzan `Agregado de serie incompleto` si falta la fila de un bucket; no se devuelven ceros silenciosos. Pruebas unitarias directas de servicio y repositorio. Con el SQL actual (`GROUP BY` sobre `buckets`) se espera una fila por bucket; el error queda saneado como 500 por el manejador existente. |
+| Query con corchetes/array | `from[]=...` y `method[]=CASH` devuelven 400 `VALIDATION_ERROR`; repetidos idénticos siguen rechazados. |
+| Ejemplo parcial S03 exacto | Integración: rango 08:15Z–09:15Z con CASH 4000/1/2 y STRIPE 4500/1/1; método omitido 8500/2/3, CASH 4000/1/2 (segundo bucket cero), STRIPE 4500/1/1 (primer bucket cero). |
+| Concurrencia S14 | 12 ventas STRIPE insertadas en paralelo con 8 lecturas concurrentes: todas las respuestas 200, `totals` igual a la suma de buckets en cada una y sin duplicar; lectura final conciliada con la BD (12 tickets, mismo importe y unidades). No se exige total intermedio fijo. |
+| Teléfono sintético | Fixture cambiada a `+520000000001` (no PII, válida para el esquema de prueba). |
+| Coste con volumen | Benchmark aislado reproducible: ver abajo. |
+
+### Comandos ejecutados (backend, Node 22.14.0)
+| Comando | Resultado real |
+| --- | --- |
+| `npm.cmd run format:check` | Correcto; todos los archivos cumplen Prettier. |
+| `npm.cmd run typecheck` | Correcto. |
+| `npm.cmd run lint` | Correcto. |
+| `npm.cmd test` | **139 pruebas unitarias correctas**, 155 integraciones omitidas por diseño. |
+| `npm.cmd run build` | Correcto. |
+| `npm.cmd run api:validate` | Correcto; OpenAPI válido, **67 ejemplos** conformes. |
+| `npm.cmd run db:validate` | Correcto; esquema Prisma válido. |
+| `npm.cmd run test:integration` | **155/155** en 8 archivos; archivo nuevo `dashboard-series.integration.test.ts` **9/9**. Incluye `completion.integration.test.ts` sin cambios. |
+| `npm.cmd run db:verify:docker` | PostgreSQL **17.11**, **22 comprobaciones correctas**, mutantes C01–C04 detectados. Ejecutado con `DB_REVIEW_OUTPUT_DIR` temporal para no sobrescribir la evidencia versionada de la verificación independiente. |
+| `git diff --check` | Sin errores; solo avisos LF→CRLF de Git. |
+
+### Benchmark de coste (reproducible, aislado)
+Script: `backend/scripts/benchmark-dashboard-series.ts` (fuera de `npm test` y del runner de integración). Crea una base temporal aislada, migra, siembra y elimina; no imprime credenciales ni parámetros.
+
+- Comando: `node --env-file=.env.docker --import tsx scripts/benchmark-dashboard-series.ts` (desde `backend/`).
+- Escenario del autor: **20 000 ventas STRIPE** en 744 h (31 días), 1 línea por venta, repartidas en intervalos de 5 min; rango desalineado para **745 buckets `hour`**.
+- Semilla del autor: ~1 044 ms. Totales de la última lectura: `ticketCount=20000`, `unitsSold=40001`, `totalCents=102992000`.
+
+**Dos mediciones reales, separadas por ejecutor; ninguna se presenta como verificación independiente de la otra:**
+
+| Ejecutor / fecha | Volumen | ms observados | EXPLAIN de la agregación |
+| --- | --- | --- | --- |
+| Autor E2-01, 2026-11-24 (local del proyecto) | 20 000 ventas, 744 h, **745 buckets** | 7 corridas + 2 calentamiento: min **873.69**, mediana **878.85**, máx **890.34**, media 880.82 | ~**1 496 ms**; plan con `Nested Loop Left` `Values Scan` (745) × `Materialize` (20 000 filas) |
+| Coordinador, reportada en la revisión de E2-01 (2026-11-24 local) | 20 000 ventas (misma prueba de 745 buckets; rango no detallado en el reporte recibido) | mediana **642.99**, min **608.03**, máx **652.92** | **1 282 ms** |
+
+- Autor: consultas por corrida **1 agregación** (~846.86 ms) + 6 de revalidación de actor; sin N+1 por bucket; memoria RSS +0.9 MB.
+- El plan de ambas ejecuciones muestra coste aproximado O(buckets × ventas del rango).
+- **Riesgo de coste documentado, no corregido**: ~0.64–0.88 s con 20 000 ventas/745 buckets según ejecutor. Ajuste propuesto para una tarea posterior, sin cambiar contrato: asignar cada venta a un bucket una sola vez (p. ej. unión por rango con índice o cálculo de índice por hora) en lugar del nested loop actual; no se añadieron índices ni migraciones.
+- **No se midió 100 000+ ventas.** Cualquier proyección a ese volumen es una extrapolación, no una medida, y no se registra como evidencia.
+- **Decisión del responsable (2026-11-24):** acepta el rendimiento actual **por ahora** y deja **documentada la optimización pendiente**. No se fija SLA ni se declara el coste escalado como resuelto; la mejora propuesta (asignar cada venta a un bucket una vez) queda para una tarea posterior y no autoriza índices, migraciones ni cambio de contrato en E2-01.
+
+### Límites y pendientes
+- No se ejecutó una medición de coste con 100 000+ ventas ni un SLA; el benchmark cubre 20 000 ventas/31 días en dos ejecuciones (autor y coordinador) y deja el riesgo de escalado documentado.
+- `EXPLAIN` se ejecutó sobre la consulta agregada emitida; la diferencia con el tiempo del servicio se reporta sin ocultarla.
+- S14 se prueba con concurrencia real acotada (12 ventas/8 lecturas), no con estrés masivo; no se exige un total intermedio fijo.
+- Verificación y revisión independientes realizadas; H-01 y R-03 cerrados; aceptación del responsable registrada. Commit `mismo commit`; sin push. E2-02 y CSV no iniciadas en este commit.

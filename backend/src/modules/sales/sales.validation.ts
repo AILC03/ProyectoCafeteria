@@ -17,6 +17,81 @@ export type SalesOrder = z.infer<typeof salesOrder>;
 
 const UTC_DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$/;
 export const MAX_DASHBOARD_RANGE_MS = 366 * 24 * 60 * 60 * 1000;
+
+/** E2: dominio mínimo aceptado, 2000-01-01 00:00 America/Tijuana. */
+export const SALES_SERIES_MIN_INSTANT_MS = Date.UTC(2000, 0, 1, 8, 0, 0, 0);
+const SERIES_INSTANT_PATTERN = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?Z$/;
+export const SALES_SERIES_MAX_HOUR_RANGE_MS = 31 * 24 * 60 * 60 * 1000;
+export const SALES_SERIES_MAX_DAY_RANGE_MS = 366 * 24 * 60 * 60 * 1000;
+
+/**
+ * Entrada E2: solo milisegundos, fecha gregoriana real UTC terminada en Z y
+ * años 2000–9999. Devuelve NaN para cualquier forma inválida (4–6 decimales,
+ * offset, hora 24, segundo 60, fecha imposible…), sin normalizar ni truncar.
+ */
+export function parseSalesSeriesInstant(value: string): number {
+  const match = SERIES_INSTANT_PATTERN.exec(value);
+  if (!match) return Number.NaN;
+  const year = Number(match[1]),
+    month = Number(match[2]),
+    day = Number(match[3]),
+    hour = Number(match[4]),
+    minute = Number(match[5]),
+    second = Number(match[6]),
+    millisecond = match[7] ? Number(match[7].padEnd(3, '0')) : 0;
+  if (year < 2000 || year > 9999) return Number.NaN;
+  const instant = Date.UTC(year, month - 1, day, hour, minute, second, millisecond);
+  const check = new Date(instant);
+  if (
+    check.getUTCFullYear() !== year ||
+    check.getUTCMonth() !== month - 1 ||
+    check.getUTCDate() !== day ||
+    check.getUTCHours() !== hour ||
+    check.getUTCMinutes() !== minute ||
+    check.getUTCSeconds() !== second ||
+    check.getUTCMilliseconds() !== millisecond
+  )
+    return Number.NaN;
+  return instant;
+}
+
+const salesSeriesInstant = z
+  .string()
+  .refine((value) => Number.isFinite(parseSalesSeriesInstant(value)));
+export const salesSeriesQuery = z
+  .object({
+    from: salesSeriesInstant,
+    to: salesSeriesInstant,
+    granularity: z.enum(['hour', 'day']),
+    method: z.enum(['CASH', 'STRIPE']).optional(),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    const from = parseSalesSeriesInstant(value.from),
+      to = parseSalesSeriesInstant(value.to);
+    if (!Number.isFinite(from) || !Number.isFinite(to)) return;
+    if (from < SALES_SERIES_MIN_INSTANT_MS)
+      context.addIssue({
+        code: 'custom',
+        message: 'El inicio no puede ser anterior al dominio aceptado',
+        path: ['from'],
+      });
+    if (!(from < to))
+      context.addIssue({
+        code: 'custom',
+        message: 'El rango debe ser positivo y exclusivo al final',
+        path: ['to'],
+      });
+    const limit =
+      value.granularity === 'hour' ? SALES_SERIES_MAX_HOUR_RANGE_MS : SALES_SERIES_MAX_DAY_RANGE_MS;
+    if (to - from > limit)
+      context.addIssue({
+        code: 'custom',
+        message: 'El rango supera el límite de la granularidad',
+        path: ['to'],
+      });
+  });
+export type SalesSeriesQuery = z.infer<typeof salesSeriesQuery>;
 /** Rango obligatorio y acotado para evitar agregaciones sin límite. */
 export const dashboardSummaryQuery = z
   .object({
