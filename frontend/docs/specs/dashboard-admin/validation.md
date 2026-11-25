@@ -249,6 +249,52 @@ Estado: **terminada técnicamente; revisión inicial aplicada; commit `mismo com
 - No se declara aprobada la identidad visual; DA-D08 sigue diferida.
 - Commit: `mismo commit`.
 
+## TASK-DA-E1-06 — Caja actual y últimas ventas
+
+Estado: **terminada técnicamente; revisión inicial aplicada; commit `mismo commit`**.
+
+### Archivos
+
+- `frontend/unified/src/features/terminal/admin/dashboard/DashboardSummary.tsx`: caja actual independiente, últimas ventas filtradas y enlaces existentes.
+- `frontend/unified/src/features/terminal/admin/dashboard/DashboardSummary.component.test.tsx`: 10 pruebas de componente.
+- `frontend/unified/e2e/admin.spec.ts` y `e2e/accessibility.spec.ts`: fixtures de caja/ventas.
+- `frontend/unified/src/styles/base.css`: estilos del bloque operativo.
+- `frontend/unified/src/features/terminal/sales/salesApi.ts`: `order=asc|desc` y `AbortSignal` en `listSales`.
+- `backend/src/modules/sales/{sales.validation.ts,sales.read.repository.ts,sales.service.ts}` y `backend/docs/api/openapi.yaml`: orden descendente opcional, cursor ligado al orden.
+- `backend/tests/completion.test.ts`, `backend/tests/integration/completion.integration.test.ts`: validación y orden descendente.
+
+### Comandos ejecutados en `frontend/unified/`
+
+| Comando | Resultado |
+| --- | --- |
+| `npm run test` (frontend) | 327/327 en 35 archivos. |
+| `npm run test:e2e` | 59/59 Chromium, incluida Electron y axe. |
+| `npm run typecheck` | Correcto. |
+| `npm run lint` | Correcto. |
+| `npm run build` | Correcto; advertencia existente de chunk >500 kB. |
+| `npm test` (backend) | 120/120; 146 integraciones omitidas en el runner normal. |
+| `npm run test:integration` (backend) | 146/146 en 7 suites. |
+| `npm run api:validate` | OpenAPI válido, 66 ejemplos conformes. |
+| `git diff --check` | Correcto. |
+
+### Cobertura ejecutada
+
+- Caja abierta con fondo, ventas efectivo, esperado y responsable por ID.
+- Sin caja abierta como estado normal, no como error.
+- Error de caja no anula resumen ni ventas.
+- Últimas 5 ventas reales mediante `order=desc`; backend ordena por `(soldAt,id)` descendente y el cursor incluye el orden.
+- Periodo/método afectan ventas y no el significado de caja; caja solo se refetch con actualización manual.
+- Caja éxito→error limpia datos antiguos; ventas usan `AbortSignal`; errores de caja/ventas no anulan el resumen.
+- Enlaces existentes a caja e historial; sin historial de caja, cobro, ticket ni `ticket-access`.
+- Identidad visual final sigue diferida por DA-D08.
+
+### Revisión independiente
+
+- Revisión inicial: señaló B1 (orden ascendente no permite «últimas»), caja obsoleta tras fallo y falta de aborto real de ventas.
+- Corregido: `order=desc` aprobado y extendido en contrato/backend con cursor; caja se limpia al refetch; `listSales` recibe `AbortSignal`.
+- Sin bloqueantes conocidos tras la corrección; la identidad visual sigue diferida.
+- Commit: `mismo commit`.
+
 ## Siguiente puerta
 
 `TASK-DA-E1-02` (shell), `TASK-DA-E1-04` (adaptador) y el resto de E1 no se inician automáticamente. E1-01 está verificada técnica y funcionalmente; solo queda la aceptación formal y la autorización de commit. La integración real ya se ejecutó (146/146) y `db:verify` pasó (22 comprobaciones).

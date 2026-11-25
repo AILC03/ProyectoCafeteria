@@ -4,7 +4,7 @@ import type { Position } from '../../shared/http/pagination.js';
 import { OrdersTransaction } from '../orders/orders.repository.js';
 import { forbidden } from '../auth/auth.tokens.js';
 import type { Principal } from '../auth/auth.types.js';
-import type { DashboardSummaryQuery, SalesFilters } from './sales.validation.js';
+import type { DashboardSummaryQuery, SalesFilters, SalesOrder } from './sales.validation.js';
 
 type DashboardAggregateRow = {
   ticketCount: string;
@@ -32,8 +32,19 @@ export class SalesRepository {
       ${input.to ? Prisma.sql`AND s.sold_at < ${new Date(input.to)}` : Prisma.empty}
       ${input.method ? Prisma.sql`AND p.method::text=${input.method}` : Prisma.empty}`;
   }
-  async list(actor: Principal, input: SalesFilters, limit: number, after?: Position) {
+  async list(
+    actor: Principal,
+    input: SalesFilters,
+    limit: number,
+    after?: Position,
+    order: SalesOrder = 'asc',
+  ) {
     return this.read(actor, async (tx) => {
+      const comparison = order === 'desc' ? Prisma.sql`<` : Prisma.sql`>`;
+      const ordering =
+        order === 'desc'
+          ? Prisma.sql`ORDER BY s.sold_at DESC,s.id DESC`
+          : Prisma.sql`ORDER BY s.sold_at,s.id`;
       const rows = await tx.$queryRaw<
         {
           id: bigint;
@@ -49,8 +60,8 @@ export class SalesRepository {
         s.payment_id AS "paymentId",s.total_cents AS "totalCents",s.sold_at AS "soldAt",p.method,
         to_char(s.sold_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS "positionTime"
         FROM sales s JOIN payments p ON p.id=s.payment_id WHERE ${this.where(input)}
-        ${after ? Prisma.sql`AND (s.sold_at,s.id)>(${after.createdAt}::timestamptz,${BigInt(after.id)})` : Prisma.empty}
-        ORDER BY s.sold_at,s.id LIMIT ${limit + 1}`);
+        ${after ? Prisma.sql`AND (s.sold_at,s.id)${comparison}(${after.createdAt}::timestamptz,${BigInt(after.id)})` : Prisma.empty}
+        ${ordering} LIMIT ${limit + 1}`);
       return rows.map(({ positionTime, ...data }) => ({
         data,
         position: { id: data.id.toString(), createdAt: positionTime },

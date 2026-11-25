@@ -1,6 +1,6 @@
 import { decodeCursor, paginate } from '../../shared/http/pagination.js';
 import type { Principal } from '../auth/auth.types.js';
-import type { DashboardSummaryQuery, SalesFilters } from './sales.validation.js';
+import type { DashboardSummaryQuery, SalesFilters, SalesOrder } from './sales.validation.js';
 import type { SalesRepository } from './sales.read.repository.js';
 export { SalesRepository } from './sales.read.repository.js';
 
@@ -30,15 +30,26 @@ export class SalesService {
     readonly repository: SalesRepository,
     readonly now: () => Date = () => new Date(),
   ) {}
-  async list(actor: Principal, input: SalesFilters & { limit: number; cursor?: string }) {
-    const { limit, cursor, ...filters } = input;
+  async list(
+    actor: Principal,
+    input: SalesFilters & { limit: number; cursor?: string; order?: SalesOrder },
+  ) {
+    const { limit, cursor, order = 'asc', ...filters } = input;
+    // Preserve existing ascending cursors; descending cursors bind the order explicitly.
     const scope = JSON.stringify([
       filters.from ?? null,
       filters.to ?? null,
       filters.method ?? null,
+      ...(order === 'desc' ? [order] : []),
     ]);
     return paginate(
-      await this.repository.list(actor, filters, limit, decodeCursor(cursor, 'sales', scope)),
+      await this.repository.list(
+        actor,
+        filters,
+        limit,
+        decodeCursor(cursor, 'sales', scope),
+        order,
+      ),
       limit,
       'sales',
       scope,

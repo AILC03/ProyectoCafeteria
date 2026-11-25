@@ -44,13 +44,20 @@ describe('operational sales API (TASK-17)', () => {
   test('builds only contract query parameters with strict filters and cursor', () => {
     expect(buildSalesQuery()).toBe('?limit=20');
     const query = new URLSearchParams(buildSalesQuery(
-      { from: '2026-01-01T00:00:00.000Z', to: '2026-02-01T00:00:00.000Z', method: 'STRIPE', limit: 50 },
+      {
+        from: '2026-01-01T00:00:00.000Z',
+        to: '2026-02-01T00:00:00.000Z',
+        method: 'STRIPE',
+        order: 'desc',
+        limit: 50,
+      },
       'opaque-1',
     ));
-    expect([...query.keys()]).toEqual(['from', 'to', 'method', 'limit', 'cursor']);
+    expect([...query.keys()]).toEqual(['from', 'to', 'method', 'order', 'limit', 'cursor']);
     expect(query.get('from')).toBe('2026-01-01T00:00:00.000Z');
     expect(query.get('to')).toBe('2026-02-01T00:00:00.000Z');
     expect(query.get('method')).toBe('STRIPE');
+    expect(query.get('order')).toBe('desc');
     expect(query.get('limit')).toBe('50');
     expect(query.get('cursor')).toBe('opaque-1');
     expect(new URLSearchParams(buildSalesQuery({ limit: 10 }, undefined, false)).toString()).toBe('');
@@ -63,6 +70,7 @@ describe('operational sales API (TASK-17)', () => {
     [{ to: 'not-a-date' } as unknown as SalesFilter],
     [{ from: '2026-02-01T00:00:00.000Z', to: '2026-01-01T00:00:00.000Z' } as unknown as SalesFilter],
     [{ method: 'TRANSFER' } as unknown as SalesFilter],
+    [{ order: 'sideways' } as unknown as SalesFilter],
     [{ limit: 0 } as unknown as SalesFilter],
     [{ limit: 101 } as unknown as SalesFilter],
     [{ limit: 2.5 } as unknown as SalesFilter],

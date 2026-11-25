@@ -5969,9 +5969,10 @@ paths:
         - FIN-01
       summary: listSales
       description:
-        CAJERO/ADMINISTRADOR. from inclusivo y to exclusivo sobre soldAt. Orden (soldAt,id),
-        cursor ligado a filtros; no expone clientes. Entradas estrictas; rechaza campos y query
-        extra. Respuestas privadas no-store. Sin body.
+        CAJERO/ADMINISTRADOR. from inclusivo y to exclusivo sobre soldAt. Orden ascendente por
+        defecto; `order=desc` para las más recientes. Cursor ligado a filtros y orden; no expone
+        clientes. Entradas estrictas; rechaza campos y query extra. Respuestas privadas no-store.
+        Sin body.
       operationId: listSales
       security:
         - accessCookie: []
@@ -6007,6 +6008,16 @@ paths:
             enum:
               - CASH
               - STRIPE
+        - name: order
+          in: query
+          required: false
+          description: Ascendente por defecto; `desc` devuelve las ventas más recientes primero.
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+            default: asc
       responses:
         '200':
           description: Resultado

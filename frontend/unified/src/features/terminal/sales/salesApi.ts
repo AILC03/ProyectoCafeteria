@@ -10,7 +10,8 @@ const SALE_NUMBER = /^V[0-9]{6,}$/;
 const CENTS = /^[0-9]+$/;
 const DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/;
 const METHODS = new Set(['CASH', 'STRIPE']);
-const FILTER_KEYS = new Set(['from', 'to', 'method', 'limit']);
+const ORDERS = new Set(['asc', 'desc']);
+const FILTER_KEYS = new Set(['from', 'to', 'method', 'order', 'limit']);
 const SALE_KEYS = new Set(['id', 'saleNumber', 'orderId', 'paymentId', 'totalCents', 'soldAt', 'method']);
 const PAGE_KEYS = new Set(['limit', 'nextCursor']);
 const SALES_ROOT_KEYS = new Set(['data', 'page']);
@@ -18,7 +19,14 @@ const SUMMARY_KEYS = new Set(['count', 'totalCents', 'cashCents', 'stripeCents']
 const SUMMARY_ROOT_KEYS = new Set(['data']);
 
 export type SalesMethod = 'CASH' | 'STRIPE';
-export type SalesFilter = { from?: string; to?: string; method?: SalesMethod; limit?: number };
+export type SalesOrder = 'asc' | 'desc';
+export type SalesFilter = {
+  from?: string;
+  to?: string;
+  method?: SalesMethod;
+  order?: SalesOrder;
+  limit?: number;
+};
 export type Sale = {
   id: string;
   saleNumber: string;
@@ -87,6 +95,12 @@ function normalizeFilter(value: unknown): SalesFilter {
     if (!method(value.method)) throw new TypeError('El método de pago no es válido.');
     filter.method = value.method;
   }
+  if (value.order !== undefined) {
+    if (typeof value.order !== 'string' || !ORDERS.has(value.order)) {
+      throw new TypeError('El orden de ventas no es válido.');
+    }
+    filter.order = value.order as SalesOrder;
+  }
   if (value.limit !== undefined) {
     if (!Number.isInteger(value.limit) || (value.limit as number) < 1 || (value.limit as number) > 100) {
       throw new TypeError('El límite de ventas debe estar entre 1 y 100.');
@@ -108,6 +122,7 @@ export function buildSalesQuery(
   if (normalized.from !== undefined) params.set('from', normalized.from);
   if (normalized.to !== undefined) params.set('to', normalized.to);
   if (normalized.method !== undefined) params.set('method', normalized.method);
+  if (normalized.order !== undefined) params.set('order', normalized.order);
   if (includeLimit) params.set('limit', String(normalized.limit ?? 20));
   if (cursor !== undefined) params.set('cursor', cursor);
   const query = params.toString();
@@ -162,8 +177,14 @@ function parseSummary(value: unknown): SalesSummary {
 }
 
 /** Lists operational sales. The cursor is sent only after an explicit user action. */
-export async function listSales(filter: SalesFilter = {}, cursor?: string): Promise<SalesPage> {
-  const response = await apiFetch<unknown>(`/sales${buildSalesQuery(filter, cursor, true)}`);
+export async function listSales(
+  filter: SalesFilter = {},
+  cursor?: string,
+  signal?: AbortSignal,
+): Promise<SalesPage> {
+  const response = await apiFetch<unknown>(`/sales${buildSalesQuery(filter, cursor, true)}`, {
+    signal,
+  });
   return parsePage(response);
 }
 

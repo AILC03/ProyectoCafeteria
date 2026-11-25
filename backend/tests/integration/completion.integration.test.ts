@@ -671,6 +671,13 @@ describe.skipIf(!target)('FIN-01: cierre con HTTP y PostgreSQL aislado', () => {
     expect(first.status).toBe(200);
     expect(first.body.page.nextCursor).toBeTruthy();
     conform('/api/v1/sales', 'get', '200', first.body);
+    const descending = await get('/api/v1/sales?method=STRIPE&limit=1&order=desc');
+    const latestSale = await db.sale.findFirstOrThrow({
+      where: { payment: { method: 'STRIPE' } },
+      orderBy: [{ soldAt: 'desc' }, { id: 'desc' }],
+    });
+    expect(descending.status).toBe(200);
+    expect(descending.body.data[0].id).toBe(latestSale.id.toString());
     const next = await get(
       `/api/v1/sales?method=STRIPE&limit=1&cursor=${first.body.page.nextCursor}`,
     );

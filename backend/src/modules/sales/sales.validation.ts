@@ -7,10 +7,13 @@ export const salesFilters = z
     method: z.enum(['CASH', 'STRIPE']).optional(),
   })
   .strict();
+export const salesOrder = z.enum(['asc', 'desc']);
 export const salesQuery = pageQuerySchema
   .extend(salesFilters.shape)
+  .extend({ order: salesOrder.optional() })
   .refine((v) => !v.from || !v.to || new Date(v.from) < new Date(v.to));
 export type SalesFilters = z.infer<typeof salesFilters>;
+export type SalesOrder = z.infer<typeof salesOrder>;
 
 const UTC_DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$/;
 export const MAX_DASHBOARD_RANGE_MS = 366 * 24 * 60 * 60 * 1000;

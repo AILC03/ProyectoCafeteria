@@ -1,11 +1,20 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { delay, HttpResponse, http } from 'msw';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, test } from 'vitest';
+import { beforeEach, describe, expect, test } from 'vitest';
 import { server } from '../../../../test/server';
 import { DashboardSummary } from './DashboardSummary';
 
 const now = () => new Date('2026-11-24T20:00:00.000Z');
+
+beforeEach(() => {
+  server.use(
+    http.get('/api/v1/cash-sessions/current', () => HttpResponse.json({ data: null })),
+    http.get('/api/v1/sales', () =>
+      HttpResponse.json({ data: [], page: { limit: 5, nextCursor: null } }),
+    ),
+  );
+});
 
 function summaryFor(url: string, overrides: Record<string, unknown> = {}) {
   const query = new URL(url).searchParams;
@@ -185,6 +194,125 @@ describe('Inicio administrative summary', () => {
     renderDashboard();
     expect(await screen.findByText('No hay ventas registradas en este periodo.')).toBeInTheDocument();
     expect(screen.getAllByText(/Sin comparación/).length).toBeGreaterThan(0);
+  });
+
+  test('shows current cash independently and lists latest sales with filters', async () => {
+    let cashRequests = 0;
+    const saleQueries: URLSearchParams[] = [];
+    server.use(
+      http.get('/api/v1/cash-sessions/current', () => {
+        cashRequests += 1;
+        return HttpResponse.json({
+          data: {
+            id: '7',
+            employeeId: '3',
+            openedAt: '2026-11-24T08:00:00.000Z',
+            closedAt: null,
+            closedByEmployeeId: null,
+            exceptionalCloseReason: null,
+            openingAmountCents: '100000',
+            expectedCashCents: null,
+            countedCashCents: null,
+            differenceCents: null,
+            cashSalesCents: '4500',
+            successfulPayments: '1',
+            computedExpectedCashCents: '104500',
+          },
+        });
+      }),
+      http.get('/api/v1/sales', ({ request }) => {
+        saleQueries.push(new URL(request.url).searchParams);
+        return HttpResponse.json({
+          data: [
+            {
+              id: '9',
+              saleNumber: 'V000009',
+              orderId: '8',
+              paymentId: '7',
+              totalCents: '4500',
+              soldAt: '2026-11-24T18:00:00.000Z',
+              method: 'CASH',
+            },
+          ],
+          page: { limit: 5, nextCursor: null },
+        });
+      }),
+    );
+    renderDashboard();
+    expect(await screen.findByText('Caja actual')).toBeInTheDocument();
+    expect(screen.getByText('Empleado #3')).toBeInTheDocument();
+    expect(screen.getByText('$1,000.00')).toBeInTheDocument();
+    expect(screen.getByText('$1,045.00')).toBeInTheDocument();
+    expect(await screen.findByText('V000009')).toBeInTheDocument();
+    expect(saleQueries[0].get('method')).toBeNull();
+    expect(saleQueries[0].get('order')).toBe('desc');
+    fireEvent.click(screen.getByRole('button', { name: 'Últimos 7 días' }));
+    await waitFor(() => expect(saleQueries.at(-1)?.get('from')).toBe('2026-11-18T08:00:00.000Z'));
+    expect(cashRequests).toBe(1);
+  });
+
+  test('shows no open cash session without treating it as an error', async () => {
+    server.use(
+      http.get('/api/v1/admin/dashboard/summary', ({ request }) =>
+        HttpResponse.json({ data: summaryFor(request.url) }),
+      ),
+    );
+    renderDashboard();
+    expect(await screen.findByText('Sin caja abierta.')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  test('does not keep an old open cash state after a failed refresh', async () => {
+    let fail = false;
+    server.use(
+      http.get('/api/v1/admin/dashboard/summary', ({ request }) =>
+        HttpResponse.json({ data: summaryFor(request.url) }),
+      ),
+      http.get('/api/v1/cash-sessions/current', () =>
+        fail
+          ? HttpResponse.json({ title: 'No disponible' }, { status: 503 })
+          : HttpResponse.json({
+              data: {
+                id: '7',
+                employeeId: '3',
+                openedAt: '2026-11-24T08:00:00.000Z',
+                closedAt: null,
+                closedByEmployeeId: null,
+                exceptionalCloseReason: null,
+                openingAmountCents: '100000',
+                expectedCashCents: null,
+                countedCashCents: null,
+                differenceCents: null,
+                cashSalesCents: '4500',
+                successfulPayments: '1',
+                computedExpectedCashCents: '104500',
+              },
+            }),
+      ),
+    );
+    renderDashboard();
+    expect(await screen.findByText('Empleado #3')).toBeInTheDocument();
+    fail = true;
+    fireEvent.click(screen.getByRole('button', { name: 'Actualizar resumen' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/No fue posible consultar la caja/);
+    expect(screen.queryByText('Abierta')).not.toBeInTheDocument();
+    expect(screen.queryByText('Empleado #3')).not.toBeInTheDocument();
+  });
+
+  test('keeps sales and cash independent when cash fails', async () => {
+    server.use(
+      http.get('/api/v1/admin/dashboard/summary', ({ request }) =>
+        HttpResponse.json({ data: summaryFor(request.url) }),
+      ),
+      http.get('/api/v1/cash-sessions/current', () =>
+        HttpResponse.json({ title: 'No disponible' }, { status: 503 }),
+      ),
+    );
+    renderDashboard();
+    expect((await screen.findAllByText('$12,345.00')).length).toBeGreaterThan(0);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/No fue posible consultar la caja/);
+    expect(screen.getByText('No hay ventas en este periodo.')).toBeInTheDocument();
+    expect(screen.queryByText('Sin caja abierta.')).not.toBeInTheDocument();
   });
 
   test('shows an API error and an unverifiable response without inventing data', async () => {

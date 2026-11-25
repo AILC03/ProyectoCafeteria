@@ -128,6 +128,19 @@ button.secondary-button { background: #fff; color: #1e3a8a; border-color: #1e3a8
 .dashboard-mix dd { font-weight: 700; margin: .25rem 0 0; }
 .dashboard-error { background: #fef2f2; border: 1px solid #b91c1c; border-radius: .375rem; color: #991b1b; display: grid; gap: .5rem; padding: .75rem; }
 .dashboard-error p { margin: 0; }
+.dashboard-operational { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); }
+.dashboard-operational-card { border: 1px solid #cbd5e1; border-radius: .5rem; display: grid; gap: .6rem; padding: .9rem; min-width: 0; }
+.dashboard-operational-card h3 { font-size: 1rem; margin: 0; }
+.dashboard-operational-card p { margin: 0; }
+.dashboard-cash { display: grid; gap: .5rem; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); margin: 0; }
+.dashboard-cash div { border-bottom: 1px solid #e2e8f0; padding-bottom: .4rem; }
+.dashboard-cash dt { color: #475569; font-size: .8rem; }
+.dashboard-cash dd { font-weight: 700; margin: .2rem 0 0; overflow-wrap: anywhere; }
+.dashboard-sales-wrap { max-width: 100%; overflow-x: auto; }
+.dashboard-sales { border-collapse: collapse; width: 100%; min-width: 26rem; }
+.dashboard-sales caption { font-weight: 700; padding-bottom: .35rem; text-align: left; }
+.dashboard-sales th, .dashboard-sales td { border-bottom: 1px solid #cbd5e1; padding: .35rem; text-align: left; }
+.dashboard-sales th { color: #475569; font-size: .8rem; }
 .dashboard-links { margin: 0; }
 .admin-tabs { display: flex; flex-wrap: wrap; gap: .5rem; }
 .admin-tabs [aria-current="page"] { outline: 2px solid #38bdf8; }

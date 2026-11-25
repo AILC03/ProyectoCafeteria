@@ -94,6 +94,9 @@ async function mockApi(context: BrowserContext, actor: MockActor | null) {
     if (path === '/api/v1/cash-sessions/current' && request.method() === 'GET') {
       return json({ data: null });
     }
+    if (path === '/api/v1/sales' && request.method() === 'GET') {
+      return json({ data: [], page: { limit: 5, nextCursor: null } });
+    }
 
     return json({ code: 'NOT_FOUND' }, 404);
   });

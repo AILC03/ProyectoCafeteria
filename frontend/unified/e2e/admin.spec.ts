@@ -64,6 +64,8 @@ async function mock(context: BrowserContext, actor = administrator) {
     if (path === '/api/v1/admin/dashboard/summary') {
       return json({ data: dashboardSummary(request.url()) });
     }
+    if (path === '/api/v1/cash-sessions/current') return json({ data: null });
+    if (path === '/api/v1/sales') return json({ data: [], page: { limit: 5, nextCursor: null } });
     if (path === '/api/v1/sales/summary') return json({ data: { count: '1', totalCents: '4500', cashCents: '4500', stripeCents: '0' } });
     if (path === '/api/v1/admin/categories') return json({ data: [category], page: { limit: 20, nextCursor: null } });
     if (path === '/api/v1/admin/products') return json({ data: [product], page: { limit: 20, nextCursor: null } });

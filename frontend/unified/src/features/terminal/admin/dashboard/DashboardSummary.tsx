@@ -1,6 +1,13 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
+import { ApiError } from '../../../../shared/api/client';
 import { formatMxnCents } from '../../../../shared/utils/money';
+import {
+  getCurrentCashSession,
+  UnverifiableCashSessionResponseError,
+  type CashSession,
+} from '../../cash/cashApi';
+import { formatSalesError, listSales, type Sale } from '../../sales/salesApi';
 import {
   BUSINESS_TIME_ZONE,
   createCustomPeriod,
@@ -41,6 +48,21 @@ function rangeLabel(period: PeriodRange): string {
   return `${dateLabel(period.from)} – ${dateLabel(end)}`;
 }
 
+function formatCashStatusError(error: unknown): string {
+  if (error instanceof UnverifiableCashSessionResponseError) {
+    return 'La respuesta de caja no se puede verificar.';
+  }
+  if (error instanceof ApiError) {
+    if (error.status === 401) return 'Tu sesión venció. Vuelve a acceder.';
+    if (error.status === 403) return 'No tienes permiso para consultar la caja.';
+    if (error.status === 429) return 'Demasiadas consultas. Inténtalo más tarde.';
+    if (error.status === 0 || error.status >= 500) {
+      return 'No fue posible consultar la caja. El resumen de ventas sigue disponible.';
+    }
+  }
+  return 'No fue posible consultar la caja.';
+}
+
 export function DashboardSummary({ now = () => new Date() }: { now?: () => Date } = {}) {
   const [period, setPeriod] = useState<PeriodRange>(() => defaultPeriod(now()));
   const [method, setMethod] = useState<SummaryMethod>('ALL');
@@ -51,7 +73,66 @@ export function DashboardSummary({ now = () => new Date() }: { now?: () => Date 
   const [loadError, setLoadError] = useState<string | null>(null);
   const [filterError, setFilterError] = useState<string | null>(null);
   const [refresh, setRefresh] = useState(0);
+  const [cash, setCash] = useState<CashSession | null>(null);
+  const [cashLoading, setCashLoading] = useState(true);
+  const [cashError, setCashError] = useState<string | null>(null);
+  const [sales, setSales] = useState<Sale[] | null>(null);
+  const [salesLoading, setSalesLoading] = useState(true);
+  const [salesError, setSalesError] = useState<string | null>(null);
   const request = useRef(0);
+  const cashRequest = useRef(0);
+  const salesRequest = useRef(0);
+
+  useEffect(() => {
+    const id = cashRequest.current + 1;
+    cashRequest.current = id;
+    const controller = new AbortController();
+    setCash(null);
+    setCashLoading(true);
+    setCashError(null);
+    getCurrentCashSession(controller.signal)
+      .then((data) => {
+        if (cashRequest.current === id && !controller.signal.aborted) {
+          setCash(data);
+          setCashLoading(false);
+        }
+      })
+      .catch((reason: unknown) => {
+        if (cashRequest.current !== id || controller.signal.aborted) return;
+        setCashError(formatCashStatusError(reason));
+        setCashLoading(false);
+      });
+    return () => controller.abort();
+  }, [refresh]);
+
+  useEffect(() => {
+    const id = salesRequest.current + 1;
+    salesRequest.current = id;
+    const controller = new AbortController();
+    setSales(null);
+    setSalesLoading(true);
+    setSalesError(null);
+    const filter = {
+      from: period.from,
+      to: period.to,
+      order: 'desc' as const,
+      limit: 5,
+      ...(method === 'ALL' ? {} : { method }),
+    };
+    listSales(filter, undefined, controller.signal)
+      .then((page) => {
+        if (salesRequest.current === id && !controller.signal.aborted) {
+          setSales(page.items);
+          setSalesLoading(false);
+        }
+      })
+      .catch((reason: unknown) => {
+        if (salesRequest.current !== id || controller.signal.aborted) return;
+        setSalesError(formatSalesError(reason));
+        setSalesLoading(false);
+      });
+    return () => controller.abort();
+  }, [period, method, refresh]);
 
   useEffect(() => {
     const id = request.current + 1;
@@ -83,14 +164,18 @@ export function DashboardSummary({ now = () => new Date() }: { now?: () => Date 
   function choosePreset(preset: Exclude<PeriodRange['preset'], 'custom'>): void {
     setFilterError(null);
     setSummary(null);
+    setSales(null);
     setLoading(true);
+    setSalesLoading(true);
     setPeriod(createPresetPeriod(preset, now()));
   }
 
   function changeMethod(next: SummaryMethod): void {
     setFilterError(null);
     setSummary(null);
+    setSales(null);
     setLoading(true);
+    setSalesLoading(true);
     setMethod(next);
   }
 
@@ -100,7 +185,9 @@ export function DashboardSummary({ now = () => new Date() }: { now?: () => Date 
       const next = createCustomPeriod(customStart, customEnd);
       setFilterError(null);
       setSummary(null);
+      setSales(null);
       setLoading(true);
+      setSalesLoading(true);
       setPeriod(next);
     } catch (reason) {
       setFilterError(reason instanceof TypeError ? reason.message : 'El rango no es válido.');
@@ -265,12 +352,81 @@ export function DashboardSummary({ now = () => new Date() }: { now?: () => Date 
             </dl>
           </section>
 
-          <p className="dashboard-links">
-            <Link to="/terminal/caja">Caja y corte</Link> ·{' '}
-            <Link to="/terminal/historial">Historial operativo</Link>
-          </p>
         </div>
       )}
+
+      <div className="dashboard-operational">
+        <section aria-labelledby="dashboard-cash-title" className="dashboard-operational-card">
+          <h3 id="dashboard-cash-title">Caja actual</h3>
+          <p className="dashboard-updated">Consulta independiente del periodo y método seleccionados.</p>
+          {cashLoading && <p role="status">Consultando caja…</p>}
+          {cashError !== null && <p role="alert">{cashError}</p>}
+          {!cashLoading && cashError === null && cash === null && (
+            <p role="status">Sin caja abierta.</p>
+          )}
+          {!cashLoading && cash !== null && (
+            <dl className="dashboard-cash">
+              <div>
+                <dt>Estado</dt>
+                <dd>Abierta</dd>
+              </div>
+              <div>
+                <dt>Responsable</dt>
+                <dd>Empleado #{cash.employeeId}</dd>
+              </div>
+              <div>
+                <dt>Fondo inicial</dt>
+                <dd>{formatMxnCents(cash.openingAmountCents)}</dd>
+              </div>
+              <div>
+                <dt>Ventas en efectivo</dt>
+                <dd>{formatMxnCents(cash.cashSalesCents)}</dd>
+              </div>
+              <div>
+                <dt>Esperado</dt>
+                <dd>{formatMxnCents(cash.computedExpectedCashCents)}</dd>
+              </div>
+            </dl>
+          )}
+          <p><Link to="/terminal/caja">Ir a caja y corte</Link></p>
+        </section>
+
+        <section aria-labelledby="dashboard-sales-title" className="dashboard-operational-card">
+          <h3 id="dashboard-sales-title">Últimas ventas</h3>
+          <p className="dashboard-updated">Máximo 5 ventas del periodo y método seleccionados.</p>
+          {salesLoading && <p role="status">Consultando últimas ventas…</p>}
+          {salesError !== null && <p role="alert">{salesError}</p>}
+          {!salesLoading && sales !== null && sales.length === 0 && (
+            <p role="status">No hay ventas en este periodo.</p>
+          )}
+          {!salesLoading && sales !== null && sales.length > 0 && (
+            <div className="dashboard-sales-wrap">
+              <table className="dashboard-sales">
+                <caption>Últimas ventas</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Venta</th>
+                    <th scope="col">Fecha</th>
+                    <th scope="col">Método</th>
+                    <th scope="col">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sales.map((sale) => (
+                    <tr key={sale.id}>
+                      <td>{sale.saleNumber}</td>
+                      <td>{dateTimeLabel(sale.soldAt)}</td>
+                      <td>{sale.method === 'CASH' ? 'Efectivo' : 'Tarjeta'}</td>
+                      <td>{formatMxnCents(sale.totalCents)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <p><Link to="/terminal/historial">Ver historial completo</Link></p>
+        </section>
+      </div>
     </section>
   );
 }

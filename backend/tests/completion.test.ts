@@ -51,6 +51,8 @@ describe('FIN-01: validación y proveedores sin red', () => {
       salesQuery.safeParse({ from: '2026-11-11T00:00:00Z', to: '2026-11-10T00:00:00Z' }).success,
     ).toBe(false);
     expect(salesQuery.safeParse({ limit: '101' }).success).toBe(false);
+    expect(salesQuery.safeParse({ order: 'desc' }).success).toBe(true);
+    expect(salesQuery.safeParse({ order: 'sideways' }).success).toBe(false);
   });
   it('valida el rango acotado y estricto del resumen administrativo', () => {
     expect(

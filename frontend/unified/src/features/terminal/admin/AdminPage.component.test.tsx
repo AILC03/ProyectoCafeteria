@@ -46,6 +46,10 @@ function setup(actor = admin, path = '/terminal/administracion') {
     http.get('/api/v1/admin/dashboard/summary', ({ request }) =>
       HttpResponse.json({ data: dashboardSummary(request.url) }),
     ),
+    http.get('/api/v1/cash-sessions/current', () => HttpResponse.json({ data: null })),
+    http.get('/api/v1/sales', () =>
+      HttpResponse.json({ data: [], page: { limit: 5, nextCursor: null } }),
+    ),
   );
   render(<SessionProvider><RouterProvider router={createTestRouter([path])} /></SessionProvider>);
 }
