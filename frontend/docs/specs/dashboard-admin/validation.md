@@ -376,27 +376,77 @@ Estado: **terminada técnicamente; revisión inicial aplicada; commit `mismo com
 
 ## TASK-DA-E1-09 — Aceptación integrada del MVP
 
-Estado: **BLOQUEADA; E1 no se declara aceptada**.
+Estado: **CERRADA Y ACEPTADA por el responsable el 2026-11-24; E1 aceptada con las limitaciones registradas**.
 
-### Ejecutado
+### Entorno real autorizado
 
-- Backend: `npm test` 120/120, `test:integration` 146/146, `api:validate` correcto, `db:verify` en PostgreSQL 17.11 con 22 comprobaciones y mutantes C01–C04.
-- Frontend: `test` 332/332, `test:e2e` 60/60, typecheck, lint y build correctos.
-- Cobertura funcional: resumen, periodos/DST, caja actual, últimas ventas descendentes, ticket protegido, configuración/logout y regresión de roles/CRUD.
-- Axe WCAG 2.1 A/AA de administración y prueba E2E de ticket.
+- El responsable autorizó Docker local como entorno real de esta validación: PostgreSQL 17.11 en contenedor `cafeteria-local-postgres-1`, backend local en `http://localhost:3000` y Vite en `http://localhost:5173`. No es staging remoto ni acredita HTTPS de distribución.
+- Dataset controlado y congelado para la corrida: 2 ventas del día (CASH 2 unidades, 4 000 centavos; STRIPE 1 unidad, 4 500 centavos), 1 venta del periodo anterior (1 000 centavos) y caja abierta con fondo de 50 000 centavos. Se usaron usuarios QA temporales; no se versionaron credenciales, manifiesto ni `.env`.
+- Los importes/conteos agregados que aparecen en este registro son valores sintéticos del fixture QA, sin PII ni credenciales; publicarlos no expone secretos. El manifiesto completo con contraseñas QA permanece fuera del repositorio.
+- La corrida live requirió `CATALOG_RATE_LIMIT=10000` como override de entorno para no agotar el límite global; no es cambio de código ni valida el límite de producción.
 
-### No ejecutado / bloqueado
+### Archivos de esta tarea
 
-- Comparación visual formal del dashboard completo contra el PDF y capturas 1280/768/390; DA-D08 sigue diferida. Las capturas del shell estructural no acreditan las tarjetas finales.
-- Prueba real navegador → backend con credenciales administrativas y datos controlados: no se dispone de autorización/credenciales en este encargo. La integración backend sí está ejecutada.
-- Medición guiada de “ventas del día en menos de 10 s” y metas de uso del PDF.
-- Dashboard dentro de Electron en vivo: el wrapper tiene pruebas, pero no esta pantalla completa.
-- Origen HTTPS de distribución/fallback SPA y despliegue.
+- `frontend/unified/playwright.live.config.ts`: configuración aislada (`testDir: ./e2e-live`, 1 worker, sin trazas/vídeo/capturas), reutiliza Vite y no arranca backend.
+- `frontend/unified/e2e-live/dashboard-acceptance.spec.ts`: 5 pruebas reales sin `page.route`/`context.route`.
+- `frontend/unified/e2e-live/README.md`: variables y aislamiento, sin secretos.
+- `frontend/unified/package.json`: solo añade `test:e2e:live`; sin dependencias nuevas.
+
+### Comandos ejecutados
+
+| Comando | Resultado |
+| --- | --- |
+| `npm run typecheck`, `npm run lint`, `npm run test`, `npm run test:e2e`, `npm run build` (frontend) | Correctos; `test` 332/332 y `test:e2e` 60/60 simuladas, sin descubrir `e2e-live`. |
+| `npm run test:e2e:live` sin variables | 5 omitidas limpiamente, exit 0. |
+| `npm run test:e2e:live` con manifiesto y backend real | **5/5 en cuatro corridas registradas**: dos del implementador y dos de la verificación independiente (`dashboard-verifier`); la corrección de B1 se revalidó con otra corrida 5/5. |
+| `npm run format:check`, `typecheck`, `lint`, `test`, `build`, `api:validate`, `db:validate` (backend) | Correctos; 120/120 unitarias, OpenAPI con 66 ejemplos conformes. |
+| `npm run test:integration` (backend) | 146/146 en 7 suites con bases temporales aisladas. |
+| `npm run db:verify:docker` (backend) | PostgreSQL 17.11, 22 comprobaciones correctas y mutantes C01–C04 detectados. |
+| `git diff --check` | Correcto; solo aviso LF→CRLF de `package.json`. |
+
+### Cobertura real acreditada
+
+- Navegador → Vite → backend real con cookies y auth reales; resumen conciliado con `/sales/summary` usando los mismos `from`/`to`: total 8 500, tickets 2, unidades 3, promedio 4 250 y mezcla 4 000/4 500.
+- Caja actual independiente del periodo/método: su texto no cambia y no se repite la petición a `/cash-sessions/current`; fondo, ventas en efectivo y esperado coinciden con el dataset (50 000 / 4 000 / 54 000).
+- Últimas ventas ≤5 y descendentes, `saleNumber` conforme a `^V[0-9]{6,}$`, y ticket reimpreso en un clic con solo `GET /sales/{id}/ticket`, sin POST de cobro ni `ticket-access`. En E1 el detalle disponible es el ticket protegido (no existe pantalla separada de detalle desde Inicio), por lo que «detalle en ≤2 acciones» se acredita con esa apertura en una acción.
+- Presets 7/30 días con límites UTC de `America/Tijuana`, método persistente y filtro vigente; rango vacío con ceros y «Sin comparación».
+- Roles: CAJERO/PREPARACION bloqueados en UI sin peticiones administrativas, summary 403 con su sesión y 401 sin sesión.
+- `Cache-Control: no-store` y `Referrer-Policy: no-referrer` reales; `localStorage` vacío; axe WCAG 2.1 A/AA sin violaciones.
+- Electron en vivo: ejecutado el 2026-11-24 por coordinación con Playwright `_electron` y script temporal no versionado, contra `http://localhost:5173/terminal/administracion` con backend real y dataset; `terminalOnly` activo y `nodeIntegration:false`, `contextIsolation:true`, `sandbox:true`, `webSecurity:true`; captura en la carpeta de evidencia visual. No acredita HTTPS ni distribución.
+
+### Evidencia visual generada (no versionada)
+
+- Capturas en `frontend/unified/test-results/da-e1-09-captures/` (ignorado por Git): `admin-1280.png`, `admin-768.png`, `admin-390.png` y `admin-electron-1280.png`, con datos reales.
+- Observación V-VIS: a 768 y 390 px la tabla de últimas ventas exige desplazamiento horizontal dentro de su contenedor para alcanzar «Ver ticket»; el contenedor tiene `overflow-x: auto` y no desborda la página. **El responsable aceptó expresamente este desplazamiento horizontal** el 2026-11-24; no se abre tarea correctiva por este punto.
+- No se comparó contra el PDF original porque no está accesible en el repositorio. **El responsable aprobó el diseño actual implementado como baseline visual de E1**, cerrando DA-D08 con este diseño y no con el PDF. La identidad café/crema del PDF no se declara aplicada.
+
+### Aceptación humana y prueba guiada
+
+- El responsable revisó las capturas 1280/768/390 y Electron y **aprobó el diseño actual** como baseline visual de E1.
+- **Usabilidad:** el responsable reportó **7 segundos** para localizar las ventas del día y abrir el ticket de la última venta, por debajo del objetivo de 10 s.
+- **Teclado:** recorrido del menú, navegación a Ventas/Inicio, apertura y cierre del ticket y retorno de foco: **correcto**.
+- **Caja:** lectura de fondo/ventas en efectivo/esperado y cambio de periodo/método sin alterar el significado de la caja: **correcto**.
+
+### Revisión independiente
+
+- Verificación independiente: frontend 332/332, 60/60 simuladas, live 5/5 ×2, backend 146/146 y 22 comprobaciones de `db:verify`; sin mocks en live y sin artefactos con secretos.
+- Revisión independiente inicial: B1 bloqueante (la prueba de últimas ventas/ticket podía dar verde con dataset vacío); corregido exigiendo `expected.ticketCount > 0`, `min(5, expectedTickets)`, botón por fila y `Referrer-Policy`.
+- Re-revisión: B1 cerrado; suite live considerada correcta como artefacto de verificación, con residuales no bloqueantes (presets calculados con la misma función del producto, CSRF/refresh no ejercitados en live, `reuseExistingServer`, `typecheck` no cubre `e2e-live`).
+- La revisión inicial condicionó la aceptación a la evidencia humana (visual, usabilidad y teclado). Esa evidencia fue aportada por el responsable el 2026-11-24: diseño actual aprobado, 7 s, teclado correcto y caja correcta; se solicita confirmación final de la revisión sobre el registro cerrado.
+
+### Limitaciones registradas (no bloqueantes tras aceptación)
+
+- HTTPS de distribución/fallback SPA y despliegue: no acreditados con Vite local ni build local; no se declara paridad de producción.
+- Fallo parcial en runtime real y CSRF/refresh de escritura: la suite live de Inicio es de solo lectura; esos aspectos siguen cubiertos por las suites simuladas e integración, no por la corrida live.
+- La comparación contra el PDF no se ejecutó; la aceptación visual se basa en el diseño actual aprobado por el responsable.
+- El desplazamiento horizontal de la tabla a 768/390 fue aceptado expresamente.
 
 ### Decisión
 
-E1 queda **funcionalmente implementada y verificada con mocks + backend real**, pero **no aceptada** hasta que el responsable aporte referencia visual aprobable y ejecute la validación real navegador/Electron. No se atribuyen resultados de usabilidad ni aceptación visual.
+E1-09 queda **cerrada y aceptada por el responsable el 2026-11-24**. E1 está implementada y verificada en local real (navegador→backend y Electron), con aceptación visual del diseño actual, usabilidad reportada en 7 s, teclado y caja correctos, y las limitaciones de HTTPS/distribución y cobertura live de escritura registradas. No se atribuyen resultados no ejecutados.
+
+El cierre de DA-D08 se hace con el diseño actual aprobado por el responsable, no con el PDF. Las menciones históricas de E1-05…E1-08 sobre «identidad visual diferida» se conservan como contexto; DA-D08 quedó cerrada en esta tarea. También se acepta la interpretación de que el detalle disponible en E1 es el ticket protegido abierto en una acción.
 
 ## Siguiente puerta
 
-`TASK-DA-E1-02` (shell), `TASK-DA-E1-04` (adaptador) y el resto de E1 no se inician automáticamente. E1-01 está verificada técnica y funcionalmente; solo queda la aceptación formal y la autorización de commit. La integración real ya se ejecutó (146/146) y `db:verify` pasó (22 comprobaciones).
+E1 queda cerrada. E2/E3/E4 y las tareas CSV no se inician automáticamente. Commit de cierre `mismo commit`; sin push ni despliegue.
