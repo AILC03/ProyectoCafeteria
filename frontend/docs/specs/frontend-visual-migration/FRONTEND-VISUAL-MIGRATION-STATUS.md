@@ -5,8 +5,9 @@
 | Task | Estado | Commit | Evidencia, decisiones, revisiones y aceptación |
 | --- | --- | --- | --- |
 | HYB-01 — Crear registros e inventario conjunto | Terminada | `mismo commit` | Autorización individual del responsable (2026-11-25). Inventario de todas las superficies de SPEC §6 con originales/destino, recursos, temas candidatos, licencias por verificar, diferencias y aprobaciones pendientes en `FRONTEND-VISUAL-MIGRATION-REFERENCES.md`; fuentes de Ángel a `c88d01b`, rutas cotejadas con `frontend/unified/src/app/router.tsx`; originales, backend y UI sin modificar. `git diff --check` sin errores; revisión técnica independiente en dos pasadas: se corrigieron IDs de temas y se añadió trazabilidad de recursos por superficies, veredicto sin bloqueantes de contenido. No se capturaron ni aceptaron imágenes, temas ni adaptación visual; aprobación visual no aplicable a esta task documental. Decisiones vigentes de SPEC-FE-VIS-001 respetadas; no se propone decisión nueva. |
+| HYB-02 — Preparar harness aislado original/unificado/Electron | En curso (pendiente de revisión) | `mismo commit` (checkpoint, no cierre) | A petición expresa del responsable se guarda un commit local de avance (2026-11-25), **no un cierre ni excepción a la revisión**. Configuración y verificaciones Node v22.23.0 documentadas en `FRONTEND-VISUAL-MIGRATION-HARNESS.md` (funcional 59/59, visual 4/4 tras corregir un mock demasiado amplio, unitarias 283/283, lint, tipos y build). Sin capturas aprobadas, sin backend/BD reales ni cambios UI; revisión técnica independiente pendiente (subagente agotó cuota). No iniciar HYB-03 hasta resolver las dependencias y aprobaciones aplicables. |
 
-**HYB-02…HYB-25:** pendientes, sin implementación ni autorización inferida. Los lotes HYB-03/04, adaptaciones sensibles y resultados de cada bloque requieren aprobaciones separadas. No hay capturas aprobadas aún.
+**HYB-03…HYB-25:** pendientes; HYB-02 en curso. Los lotes HYB-03/04, adaptaciones sensibles y resultados de cada bloque requieren aprobaciones separadas. No hay capturas aprobadas aún.
 
 ## Cómo cerrar una task
 
