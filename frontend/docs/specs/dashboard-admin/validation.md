@@ -295,6 +295,44 @@ Estado: **terminada técnicamente; revisión inicial aplicada; commit `mismo com
 - Sin bloqueantes conocidos tras la corrección; la identidad visual sigue diferida.
 - Commit: `mismo commit`.
 
+## TASK-DA-E1-07 — Detalle y ticket reutilizados
+
+Estado: **terminada técnicamente; revisión inicial aplicada; commit `mismo commit`**.
+
+### Archivos
+
+- `frontend/unified/src/features/terminal/admin/dashboard/DashboardSummary.tsx`: acción «Ver ticket» por venta, ticket protegido, foco/cierre y cierre al cambiar filtros.
+- `frontend/unified/src/features/terminal/admin/dashboard/DashboardSummary.component.test.tsx`: 14 pruebas de componente.
+- Reutilización sin cambios de `ProtectedTicket`, `reprintSaleTicket`, `formatTicketError` y `getProtectedTicket`.
+
+### Comandos ejecutados en `frontend/unified/`
+
+| Comando | Resultado |
+| --- | --- |
+| `npm run test` | 330/330 en 35 archivos. |
+| `npm run test:e2e` | 60/60 Chromium, incluida Electron y axe. |
+| `npm run typecheck` | Correcto. |
+| `npm run lint` | Correcto. |
+| `npm run build` | Correcto; advertencia existente de chunk >500 kB. |
+| `git diff --check` | Correcto. |
+
+### Cobertura ejecutada
+
+- Ticket abierto desde últimas ventas en una acción, con foco en el encabezado y retorno al botón al cerrar.
+- Ticket CASH/STRIPE verificado por el lector existente; efectivo nulo en tarjeta.
+- Error 404 de ticket sin ticket visible y sin cobro/reintento.
+- Sin POST de cobro, `ticket-access` ni token nuevo.
+- Ticket en vuelo se invalida al cambiar periodo/método; no reaparece ni enfoca un ticket viejo.
+- E2E abre y cierra el ticket desde últimas ventas.
+- Identidad visual final sigue diferida por DA-D08.
+
+### Revisión independiente
+
+- Revisión inicial: flujo base correcto; B1 por ticket en vuelo que podía reaparecer tras cambiar filtros y falta de E2E específico.
+- Corregido: se invalida `ticketRequest`, se limpia estado y se aborta visualmente al cambiar filtros; prueba de ticket diferido y E2E de apertura/cierre.
+- No se declara aprobada la identidad visual.
+- Commit: `mismo commit`.
+
 ## Siguiente puerta
 
 `TASK-DA-E1-02` (shell), `TASK-DA-E1-04` (adaptador) y el resto de E1 no se inician automáticamente. E1-01 está verificada técnica y funcionalmente; solo queda la aceptación formal y la autorización de commit. La integración real ya se ejecutó (146/146) y `db:verify` pasó (22 comprobaciones).

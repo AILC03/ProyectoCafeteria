@@ -13,6 +13,29 @@ const employee = { id: '3', name: 'María', username: 'maria_3', role: 'CAJERO',
 const group = { id: '4', name: 'Tamaño', pricingScope: 'GLOBAL', deletedAt: null };
 const value = { id: '5', optionGroupId: '4', name: 'Grande', globalSurchargeCents: '500', isAvailable: true, deletedAt: null };
 const config = { groups: [{ groupId: '4', minSelections: 0, maxSelections: 1, values: [{ valueId: '5' }] }] };
+const sale = {
+  id: '9',
+  saleNumber: 'V000009',
+  orderId: '8',
+  paymentId: '7',
+  totalCents: '4500',
+  soldAt: '2026-11-24T18:00:00.000Z',
+  method: 'STRIPE',
+};
+const ticket = {
+  saleId: '9',
+  saleNumber: 'V000009',
+  orderFolio: 'A000009',
+  soldAt: '2026-11-24T18:00:00.000Z',
+  currency: 'MXN',
+  totalCents: '4500',
+  cashReceivedCents: null,
+  changeCents: null,
+  items: [
+    { productName: 'Café', quantity: 1, unitPriceCents: '4500', lineTotalCents: '4500' },
+  ],
+  registration: null,
+};
 
 function dashboardSummary(url: string) {
   const query = new URL(url).searchParams;
@@ -65,7 +88,8 @@ async function mock(context: BrowserContext, actor = administrator) {
       return json({ data: dashboardSummary(request.url()) });
     }
     if (path === '/api/v1/cash-sessions/current') return json({ data: null });
-    if (path === '/api/v1/sales') return json({ data: [], page: { limit: 5, nextCursor: null } });
+    if (path === '/api/v1/sales') return json({ data: [sale], page: { limit: 5, nextCursor: null } });
+    if (path === '/api/v1/sales/9/ticket') return json({ data: ticket });
     if (path === '/api/v1/sales/summary') return json({ data: { count: '1', totalCents: '4500', cashCents: '4500', stripeCents: '0' } });
     if (path === '/api/v1/admin/categories') return json({ data: [category], page: { limit: 20, nextCursor: null } });
     if (path === '/api/v1/admin/products') return json({ data: [product], page: { limit: 20, nextCursor: null } });
@@ -95,6 +119,16 @@ test.describe('TASK-19 administrative workspace', () => {
     expect(writes).toEqual([{ method: 'POST', path: '/api/v1/admin/categories', body: { name: 'Comida', isActive: true }, csrf: 'e2e-admin-csrf' }]);
     expect(await page.evaluate(() => localStorage.length)).toBe(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
+  });
+
+  test('opens a protected ticket from latest sales without charging', async ({ page, context }) => {
+    await mock(context);
+    await page.goto('/terminal/administracion');
+    await page.getByRole('button', { name: 'Ver ticket V000009' }).click();
+    await expect(page.getByRole('heading', { name: 'Ticket reimpreso' })).toBeVisible();
+    await expect(page.getByText('Ticket V000009')).toBeVisible();
+    await page.getByRole('button', { name: 'Cerrar ticket' }).click();
+    await expect(page.getByRole('heading', { name: 'Ticket reimpreso' })).toBeHidden();
   });
 
   test('configuration only uses API groups and rejects invalid edits before mutation', async ({ page, context }) => {

@@ -7,7 +7,15 @@ import {
   UnverifiableCashSessionResponseError,
   type CashSession,
 } from '../../cash/cashApi';
-import { formatSalesError, listSales, type Sale } from '../../sales/salesApi';
+import {
+  formatSalesError,
+  formatTicketError,
+  listSales,
+  reprintSaleTicket,
+  type Sale,
+} from '../../sales/salesApi';
+import { ProtectedTicket } from '../../payment/ProtectedTicket';
+import type { Ticket } from '../../payment/paymentApi';
 import {
   BUSINESS_TIME_ZONE,
   createCustomPeriod,
@@ -79,9 +87,15 @@ export function DashboardSummary({ now = () => new Date() }: { now?: () => Date 
   const [sales, setSales] = useState<Sale[] | null>(null);
   const [salesLoading, setSalesLoading] = useState(true);
   const [salesError, setSalesError] = useState<string | null>(null);
+  const [ticket, setTicket] = useState<Ticket | null>(null);
+  const [ticketBusy, setTicketBusy] = useState(false);
+  const [ticketError, setTicketError] = useState<string | null>(null);
   const request = useRef(0);
   const cashRequest = useRef(0);
   const salesRequest = useRef(0);
+  const ticketRequest = useRef(0);
+  const focusReturn = useRef<HTMLButtonElement | null>(null);
+  const ticketHeading = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
     const id = cashRequest.current + 1;
@@ -161,8 +175,50 @@ export function DashboardSummary({ now = () => new Date() }: { now?: () => Date 
     return () => controller.abort();
   }, [period, method, refresh]);
 
+  useEffect(() => {
+    if (ticket !== null) ticketHeading.current?.focus();
+  }, [ticket]);
+
+  async function openTicket(sale: Sale, trigger: HTMLButtonElement): Promise<void> {
+    const id = ticketRequest.current + 1;
+    ticketRequest.current = id;
+    focusReturn.current = trigger;
+    setTicket(null);
+    setTicketError(null);
+    setTicketBusy(true);
+    try {
+      const result = await reprintSaleTicket(sale.id);
+      if (ticketRequest.current === id) setTicket(result);
+    } catch (reason) {
+      if (ticketRequest.current === id) setTicketError(formatTicketError(reason));
+    } finally {
+      if (ticketRequest.current === id) setTicketBusy(false);
+    }
+  }
+
+  function closeTicket(): void {
+    const trigger = focusReturn.current;
+    focusReturn.current = null;
+    ticketRequest.current += 1;
+    setTicket(null);
+    setTicketError(null);
+    setTicketBusy(false);
+    setTimeout(() => {
+      if (trigger?.isConnected) trigger.focus();
+    }, 0);
+  }
+
+  function resetTicket(): void {
+    ticketRequest.current += 1;
+    focusReturn.current = null;
+    setTicket(null);
+    setTicketError(null);
+    setTicketBusy(false);
+  }
+
   function choosePreset(preset: Exclude<PeriodRange['preset'], 'custom'>): void {
     setFilterError(null);
+    resetTicket();
     setSummary(null);
     setSales(null);
     setLoading(true);
@@ -172,6 +228,7 @@ export function DashboardSummary({ now = () => new Date() }: { now?: () => Date 
 
   function changeMethod(next: SummaryMethod): void {
     setFilterError(null);
+    resetTicket();
     setSummary(null);
     setSales(null);
     setLoading(true);
@@ -184,6 +241,7 @@ export function DashboardSummary({ now = () => new Date() }: { now?: () => Date 
     try {
       const next = createCustomPeriod(customStart, customEnd);
       setFilterError(null);
+      resetTicket();
       setSummary(null);
       setSales(null);
       setLoading(true);
@@ -409,6 +467,7 @@ export function DashboardSummary({ now = () => new Date() }: { now?: () => Date 
                     <th scope="col">Fecha</th>
                     <th scope="col">Método</th>
                     <th scope="col">Total</th>
+                    <th scope="col">Ticket</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -418,6 +477,18 @@ export function DashboardSummary({ now = () => new Date() }: { now?: () => Date 
                       <td>{dateTimeLabel(sale.soldAt)}</td>
                       <td>{sale.method === 'CASH' ? 'Efectivo' : 'Tarjeta'}</td>
                       <td>{formatMxnCents(sale.totalCents)}</td>
+                      <td>
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          aria-label={`Ver ticket ${sale.saleNumber}`}
+                          onClick={(event) => {
+                            void openTicket(sale, event.currentTarget);
+                          }}
+                        >
+                          Ver ticket
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -427,6 +498,21 @@ export function DashboardSummary({ now = () => new Date() }: { now?: () => Date 
           <p><Link to="/terminal/historial">Ver historial completo</Link></p>
         </section>
       </div>
+
+      {ticketBusy && <p role="status">Recuperando ticket…</p>}
+      {ticketError !== null && <p role="alert">{ticketError}</p>}
+      {ticket !== null && (
+        <section className="history-ticket" aria-labelledby="dashboard-ticket-title">
+          <h2 id="dashboard-ticket-title" ref={ticketHeading} tabIndex={-1}>
+            Ticket reimpreso
+          </h2>
+          <p>Lectura autorizada: no se realizó ningún cobro ni se emitió un nuevo acceso.</p>
+          <ProtectedTicket ticket={ticket} />
+          <button type="button" className="secondary-button" onClick={closeTicket}>
+            Cerrar ticket
+          </button>
+        </section>
+      )}
     </section>
   );
 }

@@ -262,6 +262,137 @@ describe('Inicio administrative summary', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
+  test('opens and closes a protected ticket from the latest sales list', async () => {
+    const sale = {
+      id: '9',
+      saleNumber: 'V000009',
+      orderId: '8',
+      paymentId: '7',
+      totalCents: '4500',
+      soldAt: '2026-11-24T18:00:00.000Z',
+      method: 'STRIPE' as const,
+    };
+    server.use(
+      http.get('/api/v1/admin/dashboard/summary', ({ request }) =>
+        HttpResponse.json({ data: summaryFor(request.url) }),
+      ),
+      http.get('/api/v1/sales', () =>
+        HttpResponse.json({ data: [sale], page: { limit: 5, nextCursor: null } }),
+      ),
+      http.get('/api/v1/sales/9/ticket', () =>
+        HttpResponse.json({
+          data: {
+            saleId: '9',
+            saleNumber: 'V000009',
+            orderFolio: 'A000009',
+            soldAt: '2026-11-24T18:00:00.000Z',
+            currency: 'MXN',
+            totalCents: '4500',
+            cashReceivedCents: null,
+            changeCents: null,
+            items: [
+              {
+                productName: 'Café',
+                quantity: 1,
+                unitPriceCents: '4500',
+                lineTotalCents: '4500',
+              },
+            ],
+            registration: null,
+          },
+        }),
+      ),
+    );
+    renderDashboard();
+    const trigger = await screen.findByRole('button', { name: 'Ver ticket V000009' });
+    fireEvent.click(trigger);
+    expect(await screen.findByRole('heading', { name: 'Ticket reimpreso' })).toHaveFocus();
+    expect(screen.getByText('Ticket V000009')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar ticket' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { name: 'Ticket reimpreso' })).not.toBeInTheDocument(),
+    );
+    expect(trigger).toHaveFocus();
+  });
+
+  test('discards an in-flight ticket when filters change', async () => {
+    server.use(
+      http.get('/api/v1/admin/dashboard/summary', ({ request }) =>
+        HttpResponse.json({ data: summaryFor(request.url) }),
+      ),
+      http.get('/api/v1/sales', () =>
+        HttpResponse.json({
+          data: [
+            {
+              id: '9',
+              saleNumber: 'V000009',
+              orderId: '8',
+              paymentId: '7',
+              totalCents: '4500',
+              soldAt: '2026-11-24T18:00:00.000Z',
+              method: 'STRIPE',
+            },
+          ],
+          page: { limit: 5, nextCursor: null },
+        }),
+      ),
+      http.get('/api/v1/sales/9/ticket', async () => {
+        await delay(100);
+        return HttpResponse.json({
+          data: {
+            saleId: '9',
+            saleNumber: 'V000009',
+            orderFolio: 'A000009',
+            soldAt: '2026-11-24T18:00:00.000Z',
+            currency: 'MXN',
+            totalCents: '4500',
+            cashReceivedCents: null,
+            changeCents: null,
+            items: [],
+            registration: null,
+          },
+        });
+      }),
+    );
+    renderDashboard();
+    fireEvent.click(await screen.findByRole('button', { name: 'Ver ticket V000009' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Últimos 7 días' }));
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    expect(screen.queryByRole('heading', { name: 'Ticket reimpreso' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Recuperando ticket…')).not.toBeInTheDocument();
+  });
+
+  test('reports a ticket read failure without charging or issuing access', async () => {
+    server.use(
+      http.get('/api/v1/admin/dashboard/summary', ({ request }) =>
+        HttpResponse.json({ data: summaryFor(request.url) }),
+      ),
+      http.get('/api/v1/sales', () =>
+        HttpResponse.json({
+          data: [
+            {
+              id: '9',
+              saleNumber: 'V000009',
+              orderId: '8',
+              paymentId: '7',
+              totalCents: '4500',
+              soldAt: '2026-11-24T18:00:00.000Z',
+              method: 'CASH',
+            },
+          ],
+          page: { limit: 5, nextCursor: null },
+        }),
+      ),
+      http.get('/api/v1/sales/9/ticket', () =>
+        HttpResponse.json({ title: 'No encontrado' }, { status: 404 }),
+      ),
+    );
+    renderDashboard();
+    fireEvent.click(await screen.findByRole('button', { name: 'Ver ticket V000009' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/no existe/);
+    expect(screen.queryByRole('heading', { name: 'Ticket reimpreso' })).not.toBeInTheDocument();
+  });
+
   test('does not keep an old open cash state after a failed refresh', async () => {
     let fail = false;
     server.use(
