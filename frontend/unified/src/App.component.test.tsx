@@ -42,6 +42,7 @@ describe('application routes', () => {
     ['/terminal/caja', 'Caja'],
     ['/terminal/historial', 'Historial y ventas'],
     ['/terminal/administracion/catalogo', 'Administración'],
+    ['/terminal/administracion/configuracion', 'Administración'],
   ])('renders %s', async (path, heading) => {
     renderRoute(path);
     expect(await screen.findByRole('heading', { name: heading })).toBeInTheDocument();

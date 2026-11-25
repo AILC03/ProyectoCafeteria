@@ -7746,6 +7746,11 @@ components:
           enum:
             - STAFF
             - CUSTOMER
+        username:
+          type: string
+          nullable: true
+          maxLength: 24
+          description: Nombre de usuario propio del personal; null para CLIENTE.
         mustChangePin: &a73
           type: boolean
       required:

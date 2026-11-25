@@ -333,6 +333,47 @@ Estado: **terminada técnicamente; revisión inicial aplicada; commit `mismo com
 - No se declara aprobada la identidad visual.
 - Commit: `mismo commit`.
 
+## TASK-DA-E1-08 — Configuración básica de sesión
+
+Estado: **terminada técnicamente; revisión inicial aplicada; commit `mismo commit`**.
+
+### Archivos
+
+- `frontend/unified/src/features/terminal/admin/SessionSettings.tsx`: nombre, usuario, rol, cuenta, entorno y API base; logout único en la cabecera.
+- `frontend/unified/src/features/terminal/admin/AdminPage.tsx`: sección Configuración y enlace lateral.
+- `frontend/unified/src/features/terminal/admin/SessionSettings.component.test.tsx`: 1 prueba.
+- `frontend/unified/src/shared/auth/session.ts`, backend `auth.types.ts` y OpenAPI: `username` propio del personal en `/auth/me`.
+- `frontend/unified/src/App.component.test.tsx`: ruta administrativa.
+
+### Comandos ejecutados en `frontend/unified/`
+
+| Comando | Resultado |
+| --- | --- |
+| `npm run test` (frontend) | 332/332 en 36 archivos. |
+| `npm run test:e2e` | 60/60 Chromium, incluida Electron y axe. |
+| `npm run typecheck` | Correcto. |
+| `npm run lint` | Correcto. |
+| `npm run build` | Correcto; advertencia existente de chunk >500 kB. |
+| `npm test` (backend) | 120/120; 146 integraciones omitidas. |
+| `npm run test:integration` (backend) | 146/146 en 7 suites. |
+| `npm run api:validate` | OpenAPI válido, 66 ejemplos conformes. |
+| `git diff --check` | Correcto. |
+
+### Cobertura ejecutada
+
+- Nombre, usuario propio, rol y tipo de cuenta resueltos por `/auth/me`; entorno navegador/Electron y API base visible.
+- Logout único en la cabecera del shell; no hay segundo botón ni gestor.
+- Sin cambio de contraseña/NIP, secretos, almacenamiento local ni cierre global.
+- Guarda ADMINISTRADOR existente sin cambios.
+- Identidad visual final diferida por DA-D08.
+
+### Revisión independiente
+
+- Revisión inicial: sin bloqueante de seguridad; señaló falta de usuario y doble logout.
+- Corregido: `username` propio añadido a la sesión/OpenAPI y logout único conservado en la cabecera.
+- Sin bloqueantes conocidos tras la corrección; la identidad visual sigue diferida.
+- Commit: `mismo commit`.
+
 ## Siguiente puerta
 
 `TASK-DA-E1-02` (shell), `TASK-DA-E1-04` (adaptador) y el resto de E1 no se inician automáticamente. E1-01 está verificada técnica y funcionalmente; solo queda la aceptación formal y la autorización de commit. La integración real ya se ejecutó (146/146) y `db:verify` pasó (22 comprobaciones).

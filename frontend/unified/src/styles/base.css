@@ -100,7 +100,10 @@ button.secondary-button { background: #fff; color: #1e3a8a; border-color: #1e3a8
 .admin-nav-group a:hover { background: #e2e8f0; }
 .admin-nav-group a[aria-current="page"] { background: #1d4ed8; color: #fff; font-weight: 700; }
 .admin-main { display: grid; gap: 1rem; min-width: 0; }
-.admin-dashboard { display: grid; gap: 1rem; min-width: 0; }
+.admin-dashboard,
+.admin-settings { display: grid; gap: 1rem; min-width: 0; }
+.admin-settings h2 { margin: 0; }
+.admin-settings .dashboard-cash { max-width: 48rem; }
 .dashboard-heading { align-items: start; display: flex; flex-wrap: wrap; gap: 1rem; justify-content: space-between; }
 .dashboard-heading h2 { margin: 0 0 .35rem; }
 .dashboard-heading p { margin: 0; }

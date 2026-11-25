@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { formatMxnCents } from '../../../shared/utils/money';
 import { DashboardSummary } from './dashboard/DashboardSummary';
+import { SessionSettings } from './SessionSettings';
 import {
   deleteAdmin, formatAdminError, formatAdminMutationError, getConfiguration, isUncertainAdminMutation,
   listAdmin, putConfiguration, writeAdmin,
@@ -272,6 +273,7 @@ export function AdminPage() {
   const location = useLocation();
   const heading = useRef<HTMLHeadingElement>(null);
   const section = location.pathname.split('/').filter(Boolean)[2];
+  const configuration = section === 'configuracion';
   const kind: AdminKind | 'dashboard' = section === 'catalogo' ? 'products'
     : section === 'categorias' ? 'categories' : section === 'grupos' ? 'option-groups'
       : section === 'valores' ? 'option-values' : section === 'personal' ? 'employees' : 'dashboard';
@@ -298,13 +300,22 @@ export function AdminPage() {
         </div>
         <div className="admin-nav-group">
           <p className="admin-nav-label">Equipo</p>
-          <ul><li><NavLink to="/terminal/administracion/personal">{LABELS.employees}</NavLink></li></ul>
+          <ul>
+            <li><NavLink to="/terminal/administracion/personal">{LABELS.employees}</NavLink></li>
+            <li><NavLink to="/terminal/administracion/configuracion">Configuración</NavLink></li>
+          </ul>
         </div>
       </nav>
     </aside>
     <section className="admin-main" aria-labelledby="admin-title">
       <h1 id="admin-title" ref={heading} tabIndex={-1}>Administración</h1>
-      {kind === 'dashboard' ? <DashboardSummary /> : <Collection key={kind} kind={kind} />}
+      {configuration ? (
+        <SessionSettings />
+      ) : kind === 'dashboard' ? (
+        <DashboardSummary />
+      ) : (
+        <Collection key={kind} kind={kind} />
+      )}
     </section>
   </div>;
 }
