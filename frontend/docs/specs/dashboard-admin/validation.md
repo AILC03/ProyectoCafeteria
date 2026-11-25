@@ -374,6 +374,29 @@ Estado: **terminada técnicamente; revisión inicial aplicada; commit `mismo com
 - Sin bloqueantes conocidos tras la corrección; la identidad visual sigue diferida.
 - Commit: `mismo commit`.
 
+## TASK-DA-E1-09 — Aceptación integrada del MVP
+
+Estado: **BLOQUEADA; E1 no se declara aceptada**.
+
+### Ejecutado
+
+- Backend: `npm test` 120/120, `test:integration` 146/146, `api:validate` correcto, `db:verify` en PostgreSQL 17.11 con 22 comprobaciones y mutantes C01–C04.
+- Frontend: `test` 332/332, `test:e2e` 60/60, typecheck, lint y build correctos.
+- Cobertura funcional: resumen, periodos/DST, caja actual, últimas ventas descendentes, ticket protegido, configuración/logout y regresión de roles/CRUD.
+- Axe WCAG 2.1 A/AA de administración y prueba E2E de ticket.
+
+### No ejecutado / bloqueado
+
+- Comparación visual formal del dashboard completo contra el PDF y capturas 1280/768/390; DA-D08 sigue diferida. Las capturas del shell estructural no acreditan las tarjetas finales.
+- Prueba real navegador → backend con credenciales administrativas y datos controlados: no se dispone de autorización/credenciales en este encargo. La integración backend sí está ejecutada.
+- Medición guiada de “ventas del día en menos de 10 s” y metas de uso del PDF.
+- Dashboard dentro de Electron en vivo: el wrapper tiene pruebas, pero no esta pantalla completa.
+- Origen HTTPS de distribución/fallback SPA y despliegue.
+
+### Decisión
+
+E1 queda **funcionalmente implementada y verificada con mocks + backend real**, pero **no aceptada** hasta que el responsable aporte referencia visual aprobable y ejecute la validación real navegador/Electron. No se atribuyen resultados de usabilidad ni aceptación visual.
+
 ## Siguiente puerta
 
 `TASK-DA-E1-02` (shell), `TASK-DA-E1-04` (adaptador) y el resto de E1 no se inician automáticamente. E1-01 está verificada técnica y funcionalmente; solo queda la aceptación formal y la autorización de commit. La integración real ya se ejecutó (146/146) y `db:verify` pasó (22 comprobaciones).
