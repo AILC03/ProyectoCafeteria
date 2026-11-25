@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
+import { productRankingForUrl } from '../src/test/rankingFixture';
 import { salesSeriesForUrl } from '../src/test/seriesFixture';
 
 type MockActor = {
@@ -91,6 +92,9 @@ async function mockApi(context: BrowserContext, actor: MockActor | null) {
     }
     if (path === '/api/v1/admin/dashboard/sales-series' && request.method() === 'GET') {
       return json({ data: salesSeriesForUrl(request.url()) });
+    }
+    if (path === '/api/v1/admin/dashboard/product-ranking' && request.method() === 'GET') {
+      return json({ data: productRankingForUrl(request.url()) });
     }
     if (path === '/api/v1/sales/summary' && request.method() === 'GET') {
       return json({ data: salesSummary });

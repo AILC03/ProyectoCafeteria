@@ -3,6 +3,7 @@ import { delay, HttpResponse, http } from 'msw';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { server } from '../../../../test/server';
+import { productRankingForUrl } from '../../../../test/rankingFixture';
 import { salesSeriesForUrl } from '../../../../test/seriesFixture';
 import { DashboardSummary } from '../dashboard/DashboardSummary';
 import { barHeightPercent, formatSeriesCount, SalesSeries } from './SalesSeries';
@@ -192,6 +193,9 @@ beforeEach(() => {
   server.use(
     http.get('/api/v1/cash-sessions/current', () => HttpResponse.json({ data: null })),
     http.get('/api/v1/sales', () => HttpResponse.json({ data: [], page: { limit: 5, nextCursor: null } })),
+    http.get('/api/v1/admin/dashboard/product-ranking', ({ request }) =>
+      HttpResponse.json({ data: productRankingForUrl(request.url) }),
+    ),
   );
 });
 

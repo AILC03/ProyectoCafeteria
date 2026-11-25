@@ -853,3 +853,49 @@ Estado actual: **implementado, verificado y revisado sin bloqueantes; commit pen
 - R-2 corregido: el benchmark imprime `cleanup` real tras el DROP y no serializa URLs/credenciales.
 - Residuales no bloqueantes registrados: prueba de µs no discrimina truncación interna (se apoya en SQL inspeccionado); sumas >2^53 no acreditadas end-to-end por constraints (unitarias/SQL `numeric` sí); integración no monta `adminRoutes` de producción; errores no validados contra todo el esquema `Problem`; 100k/366 días no medidos; `position`/`nameSource` emitidos siempre aunque OpenAPI los declara opcionales; casos teóricos de producto huérfano o cantidad neta 0 no montables bajo constraints.
 - **No cierra E2 ni CSV**; E2-06/07 y CSV-03 siguen pendientes. Commit de E2-05 pendiente de autorización.
+
+## TASK-DA-E2-06 — Frontend de ranking
+
+Estado actual: **implementado, verificado, corregido y aceptado visualmente por el responsable el 2026-11-25; commit pendiente de autorización. NO cierra E2/CSV.** Autor: `frontend-implementer`; verificación: `dashboard-verifier`; revisión: `dashboard-reviewer`.
+
+### Archivos
+
+- `frontend/unified/src/features/terminal/admin/analytics/{rankingApi.ts,rankingApi.unit.test.ts,ProductRanking.tsx,ProductRanking.component.test.tsx}`.
+- `frontend/unified/src/test/rankingFixture.ts`.
+- `frontend/unified/src/features/terminal/admin/dashboard/DashboardSummary.tsx` (montaje acotado con periodo/método).
+- `frontend/unified/src/styles/base.css` (solo `.dashboard-ranking-*`).
+- `frontend/unified/e2e/dashboard-ranking.spec.ts`.
+- Ajustes de mocks en suites existentes que montan Inicio.
+- Sin cambios de backend, contrato, OpenAPI, `shared/api/client.ts`, `shared/auth/`, dependencias ni Electron.
+
+### Comandos ejecutados
+
+| Comando | Resultado real |
+| --- | --- |
+| `npm.cmd run typecheck` | Correcto. |
+| `npm.cmd run lint` | Correcto. |
+| `npm.cmd run test` | **512/512** en 40 archivos. |
+| Dirigidas ranking/DashboardSummary | **116/116** tras correcciones. |
+| `npm.cmd run test:e2e -- e2e/dashboard-ranking.spec.ts` | **10/10**. |
+| `npm.cmd run test:e2e` | **72/72**. |
+| `npm.cmd run build` | Correcto; aviso existente de chunk >500 kB. |
+
+### Cobertura
+
+- Defaults `units/top/5`; selectores de métrica/dirección/top 5/10/20; periodo/método heredados del resumen.
+- Parser estricto: query builder, DTO cerrado, strings exactos/BigInt, eco de filtros, cardinalidad/`truncated`, IDs/posición/orden, opcionales `position`/`nameSource`.
+- Tabla accesible con caption/scope, ID visible para nombres iguales, metadatos del conjunto antes del corte, importe bruto; sin sumar filas ni reordenar.
+- Estados carga/cero/error/DTO inválido/429/sesión; fallo de ranking aislado; aborto/descarte de respuestas antiguas; sin polling ni nuevo cliente/sesión.
+- Correcciones de revisión: propagación periodo/método (R-3), 401/403/PIN/ORIGIN (P-1), metadatos visibles (P-2), top 20 y método por UI (P-3), 429 con una petición no abortada (P-4), vector de orden literal independiente (R-2), invariante `unitsSold>0` (R-1).
+
+### V-VIS y aceptación
+
+- Capturas 1280×900, 768×1024 y 390×844 en `frontend/unified/test-results/dashboard-ranking-TASK-DA--e2706-shots-for-the-ranking-panel-chromium/` (ignorado), con respaldo temporal fuera del repositorio.
+- Revisión humana: el responsable **aprobó la composición del panel y el desplazamiento horizontal** en pantallas estrechas el 2026-11-25. Aceptación propia de ranking, no heredada de E1/series.
+- V-REAL/E2-07 sigue pendiente; no se declara integración real, HTTPS, Electron ni prueba guiada por esta aceptación visual.
+
+### Revisión y residuales
+
+- Revisión independiente sin bloqueantes técnicos; correcciones aplicadas y re-ejecutadas.
+- Residuales no bloqueantes documentados: uso acotado de `Number` para `top`/fechas (no IDs/importes), `unitsSold>0` más estricto que el patrón literal del DTO, fixtures de orden ya complementadas con vector literal, y `test:e2e` con `--pass-with-no-tests` (no ocurrió: 10/10 y 72/72 reales).
+- **No cierra E2 ni CSV**; E2-07 y CSV-03 siguen pendientes.

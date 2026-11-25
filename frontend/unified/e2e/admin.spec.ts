@@ -1,4 +1,5 @@
 import { expect, test, type BrowserContext } from '@playwright/test';
+import { productRankingForUrl } from '../src/test/rankingFixture';
 import { salesSeriesForUrl } from '../src/test/seriesFixture';
 
 const administrator = { id: '1', name: 'Ana', role: 'ADMINISTRADOR', accountType: 'STAFF', mustChangePin: false };
@@ -90,6 +91,9 @@ async function mock(context: BrowserContext, actor = administrator) {
     }
     if (path === '/api/v1/admin/dashboard/sales-series') {
       return json({ data: salesSeriesForUrl(request.url()) });
+    }
+    if (path === '/api/v1/admin/dashboard/product-ranking') {
+      return json({ data: productRankingForUrl(request.url()) });
     }
     if (path === '/api/v1/cash-sessions/current') return json({ data: null });
     if (path === '/api/v1/sales') return json({ data: [sale], page: { limit: 5, nextCursor: null } });

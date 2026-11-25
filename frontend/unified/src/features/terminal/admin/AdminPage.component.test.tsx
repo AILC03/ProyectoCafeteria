@@ -6,6 +6,7 @@ import { createTestRouter } from '../../../app/router';
 import { invalidateCsrfToken, setCsrfToken } from '../../../shared/api/client';
 import { SessionProvider } from '../../../shared/auth/SessionProvider';
 import { server } from '../../../test/server';
+import { productRankingForUrl } from '../../../test/rankingFixture';
 import { salesSeriesForUrl } from '../../../test/seriesFixture';
 
 const admin = { id: '1', name: 'Administrador', role: 'ADMINISTRADOR', accountType: 'STAFF', mustChangePin: false };
@@ -53,6 +54,9 @@ function setup(actor = admin, path = '/terminal/administracion') {
     ),
     http.get('/api/v1/admin/dashboard/sales-series', ({ request }) =>
       HttpResponse.json({ data: salesSeriesForUrl(request.url) }),
+    ),
+    http.get('/api/v1/admin/dashboard/product-ranking', ({ request }) =>
+      HttpResponse.json({ data: productRankingForUrl(request.url) }),
     ),
   );
   render(<SessionProvider><RouterProvider router={createTestRouter([path])} /></SessionProvider>);
