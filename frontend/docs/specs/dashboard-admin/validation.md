@@ -603,3 +603,45 @@ Script: `backend/scripts/benchmark-dashboard-series.ts` (fuera de `npm test` y d
 - `EXPLAIN` se ejecutó sobre la consulta agregada emitida; la diferencia con el tiempo del servicio se reporta sin ocultarla.
 - S14 se prueba con concurrencia real acotada (12 ventas/8 lecturas), no con estrés masivo; no se exige un total intermedio fijo.
 - Verificación y revisión independientes realizadas; H-01 y R-03 cerrados; aceptación del responsable registrada. Commit `mismo commit`; sin push. E2-02 y CSV no iniciadas en este commit.
+
+## TASK-DA-E2-02 — Frontend de series y alternativa accesible
+
+Estado: **implementada y verificada localmente; NO aceptada/cerrada; commit `mismo commit`**. V-VIS y V-REAL/E2-03 siguen pendientes; no se hereda aceptación de E1. La evidencia de ejecución es del coordinador porque el verificador independiente tuvo shell denegado; la revisión independiente fue estática.
+
+### Archivos
+
+- `frontend/unified/src/features/terminal/admin/analytics/{seriesApi.ts,seriesApi.unit.test.ts,SalesSeries.tsx,SalesSeries.component.test.tsx}`.
+- `frontend/unified/src/features/terminal/admin/dashboard/DashboardSummary.tsx` y su prueba: integración acotada con periodo y método vigentes.
+- `frontend/unified/src/styles/base.css`: estilos acotados del panel, tabla y gráfica desplazable.
+- `frontend/unified/e2e/dashboard-series.spec.ts` y ajustes de mocks en `e2e/admin.spec.ts`/`e2e/accessibility.spec.ts`.
+- `frontend/unified/src/test/seriesFixture.ts`: fixture contractual de pruebas.
+- Sin cambios de backend, contrato, dependencias ni E1.
+
+### Cobertura y comandos ejecutados (frontend)
+
+| Comando | Resultado real |
+| --- | --- |
+| `npm run typecheck` | Correcto. |
+| `npm run lint` | Correcto. |
+| `npm run test` | **410/410** en 38 archivos. |
+| Dirigidas `seriesApi` + `SalesSeries` | **57 + 21** pruebas correctas en las corridas registradas. |
+| `npm run test:e2e` | **62/62**; incluye 2 pruebas de series y axe con panel válido. |
+| `npm run build` | Correcto; solo aviso existente de chunk >500 kB. |
+| Cobertura dirigida | `seriesApi.ts` ~97 % líneas; `SalesSeries.tsx` ~96 % líneas. |
+| `git diff --check` | Correcto; solo avisos LF→CRLF. |
+
+### Cobertura funcional
+
+- Adaptador estricto: claves cerradas, strings exactos, mínimo 2000 también en `generatedAt`/periodo/buckets/effective, límites hour 745 y day 368, orden/contigüidad/partial, DST 23/25 h, hora repetida, respuestas inválidas y errores 400/401/403/429/503.
+- Panel con selector Hora/Día, caída automática a Día cuando el periodo supera 31 días, tabla accesible con `caption`/`scope`, gráfica de apoyo desplazable y alternativa textual exacta.
+- Periodo y método reutilizan los filtros vigentes; no hay recálculo de agregados, polling ni nuevo cliente/sesión. Un fallo de series no anula resumen, caja ni últimas ventas.
+- Aborto/descarte de respuestas antiguas al cambiar filtros/desmontar; estados de carga/cero/error/DTO inválido diferenciados.
+- Correcciones de revisión cerradas: mocks de series en suites existentes, formateador local sin límite de 19 dígitos, fin semiabierto, cobertura con segundos/ms, gráfica sin recorte silencioso, B-01 (mínimo semántico) y R-01 (fin de día = siguiente medianoche local IANA).
+
+### Revisión independiente y límites
+
+- Revisión independiente estática final: sin bloqueantes técnicos para commit; B-01 y R-01 cerrados. Observaciones no bloqueantes: aislamiento de algunos negativos de mínimo, simetría de decimales en `to`, `aria-live` del panel completo y ausencia de capturas.
+- El verificador independiente no pudo ejecutar shell en la última sesión; los comandos de V-FE anteriores fueron ejecutados por el coordinador y se registran como tales, no como verificación independiente.
+- **V-VIS pendiente:** no hay capturas 1280/768/390 ni aceptación visual humana de E2-02.
+- **V-REAL/E2-03 pendiente:** toda la evidencia es MSW/E2E simulado; no acredita conciliación navegador→API/BD real, Electron ni HTTPS.
+- No se declara E2 cerrada ni CSV iniciado.

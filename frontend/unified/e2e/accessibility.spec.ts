@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
+import { salesSeriesForUrl } from '../src/test/seriesFixture';
 
 type MockActor = {
   id: string;
@@ -88,6 +89,9 @@ async function mockApi(context: BrowserContext, actor: MockActor | null) {
     if (path === '/api/v1/admin/dashboard/summary' && request.method() === 'GET') {
       return json({ data: dashboardSummary(request.url()) });
     }
+    if (path === '/api/v1/admin/dashboard/sales-series' && request.method() === 'GET') {
+      return json({ data: salesSeriesForUrl(request.url()) });
+    }
     if (path === '/api/v1/sales/summary' && request.method() === 'GET') {
       return json({ data: salesSummary });
     }
@@ -163,6 +167,9 @@ test.describe('Automated accessibility (axe-core, WCAG 2.1 A/AA)', () => {
     await page.goto('/terminal/administracion');
     await expect(page.getByRole('heading', { name: 'Administración' })).toBeVisible();
     await expect(page.getByText('$65.00').first()).toBeVisible();
+    await expect(
+      page.getByRole('table', { name: /Series de ventas por hora/ }),
+    ).toBeVisible();
     await expectNoA11yViolations(page, '/terminal/administracion (ADMINISTRADOR)');
   });
 });

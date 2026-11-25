@@ -3,6 +3,7 @@ import { delay, HttpResponse, http } from 'msw';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, test } from 'vitest';
 import { server } from '../../../../test/server';
+import { salesSeriesForUrl } from '../../../../test/seriesFixture';
 import { DashboardSummary } from './DashboardSummary';
 
 const now = () => new Date('2026-11-24T20:00:00.000Z');
@@ -12,6 +13,9 @@ beforeEach(() => {
     http.get('/api/v1/cash-sessions/current', () => HttpResponse.json({ data: null })),
     http.get('/api/v1/sales', () =>
       HttpResponse.json({ data: [], page: { limit: 5, nextCursor: null } }),
+    ),
+    http.get('/api/v1/admin/dashboard/sales-series', ({ request }) =>
+      HttpResponse.json({ data: salesSeriesForUrl(request.url) }),
     ),
   );
 });

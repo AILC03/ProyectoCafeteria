@@ -33,6 +33,7 @@ import {
   type DashboardMethod,
   type DashboardSummary as DashboardSummaryData,
 } from './summaryApi';
+import { SalesSeries } from '../analytics/SalesSeries';
 
 type SummaryMethod = 'ALL' | DashboardMethod;
 
@@ -412,6 +413,8 @@ export function DashboardSummary({ now = () => new Date() }: { now?: () => Date 
 
         </div>
       )}
+
+      <SalesSeries from={period.from} to={period.to} method={method} />
 
       <div className="dashboard-operational">
         <section aria-labelledby="dashboard-cash-title" className="dashboard-operational-card">
