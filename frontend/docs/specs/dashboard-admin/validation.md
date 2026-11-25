@@ -457,3 +457,85 @@ E1 queda cerrada. E3/E4 no se inician automáticamente. La autorización posteri
 - Backlog redactado en `tasks.md`; investigación y revisión sin bloqueantes reportadas. `git diff --check` reportado correcto por el implementador (aviso LF→CRLF); verificación del verificador denegada por permisos, sin rodear la denegación ni atribuirle ejecución exitosa. Esta actualización no reejecuta comandos denegados.
 - Sin runtime ni suites runtime en este encargo documental. Al commit del backlog todas las tareas E2/CSV siguen no iniciadas, ningún contrato E2 queda aceptado ni tarea implementada. Commit backlog: `mismo commit`, autorizado al coordinador y no creado por este encargo; sin push/despliegue.
 - Siguiente autorizada: **TASK-DA-E2-00**, solo propuesta documental de contrato de series. Autor: `dashboard-backend-implementer`; verificación: `dashboard-verifier`; revisión independiente: `dashboard-reviewer`. No se inicia el contrato en esta actualización. Persisten DA-D04/06 por capacidad, precisión temporal, límites/coste, referencia visual y autorizaciones de entorno aplicables.
+
+## TASK-DA-E2-00 — Propuesta documental de series
+
+Estado actual: **contrato documental aceptado por el responsable el 2026-11-24 mediante «aprobar y continuar», con dominio desde 2000; listo para commit documental, no creado en este encargo**. Autor: `dashboard-backend-implementer`; roles independientes `dashboard-verifier` / `dashboard-reviewer`. La revalidación actual del autor se registra al final, sin atribuir una nueva aprobación independiente no recibida. Encargo iniciado tras backlog `846aab6`. Se conserva abajo la evolución histórica de propuesta, F1/B1/B2 y denegaciones; el estado actual reemplaza sus pendientes de aceptación/dominio. Sin runtime; E2-01 NO iniciada.
+
+### Archivos y RF
+
+- `backend/docs/api/openapi.yaml`: nueva ruta GET `/api/v1/admin/dashboard/sales-series`, ahora `x-contract-status: approved-2026-11-24` por aceptación explícita del responsable; esquemas cerrados y ejemplo 200 de dos buckets parciales, dominio desde 2000. No se modifica contrato E1 ni rutas antiguas.
+- [contracts/E2-series-contract.md](./contracts/E2-series-contract.md): semántica propuesta, ejemplos cero/DST, vector grande, matriz S01…S16 RF-12/RNF-02/04/06 con RF-01/03/11/19; puertas futuras de C-UI/C-VIS/REAL sin implementación ni aceptación anticipada.
+- `tasks.md`: solo estado/evidencia propia E2-00. Este registro no cierra la tarea ni acredita revisión todavía no recibida.
+
+### Decisiones propuestas, no aceptadas
+
+Ruta/DTO con las tres métricas siempre, sin selector `metric`; método omitido=null. Entradas UTC reales solo hasta ms; preservar microsegundos de `sold_at` al filtrar/agrupar, incluyendo `to−1μs`, sin cambiar E1. Buckets naturales Tijuana, identidad UTC y offset para hora repetida, vacíos y recortes explícitos independientes del reloj. Topes hour 31×24 h/745 y day 366×24 h/368, ambos exigibles sin truncar, **no medidos**. Totals/buckets coherentes en lectura única y conciliación de resumen con mismo método/rango ms/dataset estable; generatedAt no es snapshot token entre peticiones. Límite de cabeceras privadas en errores globales previos al router documentado, no corregido mediante runtime.
+
+### Comandos ejecutados por el autor (backend, Node 22.14.0)
+
+| Comando / comprobación | Resultado real |
+| --- | --- |
+| `git status --short` desde raíz, antes de editar | Árbol limpio; no cambios ajenos detectados. |
+| `npm.cmd run format:check` | **Falla (exit 1)**: únicamente `docs/api/openapi.yaml` señalado. Diagnóstico de Prettier sin escritura confirma igualdad exacta tras normalizar CRLF/LF: mezcla de finales de línea del archivo existente CRLF y adiciones por patch LF. No es aprobación de formato. |
+| `npm.cmd run api:validate` | Correcto: OpenAPI válido, **67 ejemplos** conformes a esquema/ruta (66 anteriores y nuevo ejemplo singular 200). |
+| Comprobación documental por Node stdin con SwaggerParser/Ajv existentes, sin archivo de prueba nuevo | Correcta: ejemplo OpenAPI y dos JSON completos del contrato (3), sumas exactas BigInt, bucketCount, identidad localStart/UTC, recortes/partial, contigüidad/extremos y vector 9007199254740993+2. Cuatro entradas temporales válidas y seis inválidas (fecha imposible, 4/5/6 decimales, offset, vacío) conformes a expectativa. No acredita HTTP/BD ni reglas cruzadas completas. |
+| Diagnóstico Prettier por Node `-e` | Primer intento falló por quoting PowerShell/SyntaxError, sin edición. Repetido por stdin correctamente: contenido igual tras normalizar finales de línea, sin otras diferencias de formato. |
+
+El fallo de formato inicial se conservó como evidencia en la tabla anterior y quedó **resuelto** en la continuación autorizada mediante el formateador local sobre la ruta explícita propia, sin cambios de contrato ni formato masivo ajeno:
+
+| Comando posterior en backend | Resultado real |
+| --- | --- |
+| `npm.cmd exec -- prettier --write docs/api/openapi.yaml` | Correcto (exit 0); normalizados finales de línea del OpenAPI propio. No hubo permiso denegado para esta acción. |
+| `npm.cmd run format:check` | Correcto (exit 0): todos los archivos comprobados cumplen Prettier. Sin escritura masiva. |
+| `npm.cmd run api:validate` | Correcto (exit 0): OpenAPI válido, **67 ejemplos** conformes a esquema/ruta. |
+
+`git diff --check` **no ejecutado**, por restricción expresa tras denegación previa al verificador; no se sustituyó ni rodeó esa comprobación. Verificación independiente aún pendiente; no presentar el resultado previo del backlog como verificación de este contrato. Esta corrección de formato no aprueba el contrato ni inicia E2-01 ni crea commit.
+
+Sin suites runtime/HTTP/BD/V-BE/V-FE/V-VIS/V-REAL: no aplican a esta redacción; las pruebas de permisos, coste, concurrencia, microsegundos y DST real se especifican, no se atribuyen a ejemplos ni a Ajv. No acceso a secretos, instalación, migraciones, proveedores, UI, CSV, SQL ejecutable ni commits. La autorización de entorno E1 no se extiende.
+
+### Siguiente puerta
+
+Solicitar verificación y revisión independientes del contrato y de la evidencia de resolución del fallo de formato. Después, someter al responsable la aceptación agrupada de los seis puntos de la sección final del contrato (ruta/DTO, precisión, buckets/DST, límites/coste, consistencia y seguridad/errores/cabeceras). Ninguno se autoacepta por haber redactado el documento o por pasar `api:validate`; no iniciar E2-01 mientras falte aceptación explícita y cierre de las puertas pertinentes.
+
+### Corrección documental F1 del verificador — offset histórico con segundos
+
+- Hallazgo recibido de `dashboard-verifier`: dominio 0001–9999 incompatible con `localStart` limitado a offset ±HH:mm, pues Tijuana tiene offsets históricos LMT con segundos. Se propone conservar exactitud IANA en todo el dominio admitido, sin reducir fechas ni modificar E1.
+- Patch exclusivo del contrato propuesto y OpenAPI: `localStart` admite ±HH:mm o extensión ±HH:mm:ss cuando los segundos del offset no son cero. Se elimina solo su `format: date-time`, incompatible con offsets con segundos en RFC 3339, y se define patrón acotado más validación semántica de fecha/zona/igualdad exacta. Los instantes UTC siguen ISO/RFC 3339 con ms y `start` es la identidad interoperable. Ejemplo LMT 1880-01-01T00:00:00-07:48:04 = 1880-01-01T07:48:04.000Z; ejemplos modernos conservados; escenario S04-F1 añadido.
+- Revisión realizada aquí: **solo estática** de patrón, ejemplos, límites y coherencia entre documentos. No ejecución nueva de patrón, formato, esquema, enlaces, HTTP/BD o runtime. El chequeo documental anterior con `Date.parse(localStart)` solo cubría offsets modernos; no demuestra esta extensión histórica y deberá adaptarse en una verificación posterior autorizada.
+- **Nueva verificación bloqueada**: el coordinador informó denegaciones al verificador de `format:check`, `api:validate` y `check-doc-links`. No se ejecutaron esos comandos ni equivalentes por otra herramienta/agente para eludirlas, ni formatter con escritura. Los resultados verdes del autor (format:check y 67 ejemplos api:validate) registrados arriba son **previos a F1**, no validación de esta revisión. Cualquier posible cambio de finales de línea por patch queda sin revalidar, no se declara formato correcto de F1.
+- F1 queda corregido como **propuesta documental pendiente de revalidación/revisión**, no cerrado por autoaprobación. `dashboard-reviewer` y el responsable deben revisar/aceptar la representación extendida dentro del paquete contractual. E2-00 sigue redactada pendiente de verificación/revisión/aceptación explícita; sin runtime, E2-01, `git diff --check` ni commit.
+
+### Revisión independiente — B1 corregido documentalmente; B2 bloqueado
+
+- **B1 recibido:** los esquemas UTC nuevos admitían año 0000 pese al dominio 0001–9999 del contrato. Patch en `DashboardSeriesInputInstant` y `DashboardSeriesUtcInstant`: prefijo `^(?!0000)` para excluirlo en entrada y todos los instantes UTC del DTO por referencia. `localStart` ya excluía 0000. No se modifican patrones, contratos ni runtime E1.
+- Añadido escenario negativo S09-B1: from/to año 0000 sin fracción/con ms → 400 propuesto; año 0000 en generatedAt, period.from/to, start/end/effectiveFrom/effectiveTo o localStart → DTO inválido. Son criterios documentales y revisión estática del patrón/referencias, **no pruebas ejecutadas** ni cierre independiente confirmado.
+- Armonizada descripción OpenAPI: días 23/24/25 h y tratamiento DST ejemplificado son casos modernos, no regla exhaustiva histórica. La representación de offset con segundos permanece exacta como propuesta, pero enumerar límites durante transiciones históricas no horarias con horas/medianoches inexistentes/ambiguas **sigue como decisión bloqueante pendiente**. No se inventa normalización, offset, frontera adicional ni restricción moderna por extensión; debe acordarse política determinista y escenarios antes de completar/aceptar el contrato para todo el dominio.
+- **B2 permanece BLOQUEADO:** denegaciones de permisos de `format:check`, `api:validate` y `check-doc-links` comunicadas por coordinación. En esta corrección solo patch y revisión estática; sin shell, validadores, formatter ni comprobaciones equivalentes. Los resultados previos del autor no acreditan F1/B1 ni se presentan como revalidación actual. `git diff --check` no ejecutado.
+- Estado: **contrato propuesto, pendiente de decisión histórica, revalidación, revisión y aceptación explícita**. B1 tiene corrección documental pendiente de confirmación independiente; B2 no resuelto. No afirmar histórico no probado como verificado, tarea cerrada o contrato aprobado. E2-01 NO iniciada; sin runtime ni commit.
+
+### Decisión posterior del responsable — dominio desde 2000 y aceptación contractual
+
+El responsable indicó **«aprobar y continuar»** tras recomendar acotar series E2 a fechas desde 2000. Se acepta el contrato redactado con esta acotación, no runtime, mediciones de coste, nuevas capacidades, infraestructura ni composición visual. Se registra aceptación ajena al autor, no autoaprobación. **E2-00 queda lista para commit documental; E2-01 no se inicia en este registro.** La revisión independiente final de esta versión no detectó bloqueantes de contenido y la consideró apta para commit documental, sin certificar por sí sola el diff Git.
+
+- Mínimo: **2000-01-01 00:00 America/Tijuana = 2000-01-01T08:00:00.000Z**. `from` anterior → 400 `VALIDATION_ERROR` explícito, sin truncar/normalizar, incluso si `to` ya está dentro. Patrones de entrada/DTO años 2000–9999; comparación semántica adicional para las primeras ocho horas UTC del 01/01/2000 y límites naturales. E1, contratos/rutas antiguas e históricos de BD intactos.
+- El dominio 0001–9999 y la política histórica no horaria pendiente quedan **reemplazados/resueltos por acotación aceptada**, no por supuesta prueba del histórico excluido. Se retira la extensión de segundos de offset de localStart, ahora ISO/RFC 3339 ±HH:mm (-08:00/-07:00), conservando identidad UTC y ambas horas repetidas. Fronteras hour por ocurrencias locales alineadas a hora sobre timeline IANA, fronteras day por medianoches únicas en reglas examinadas. Se mantienen las métricas, precisión ms de entrada, microsegundos de filas y demás reglas contractuales; límites de coste aceptados pero aún no medidos.
+- Fuente documental: consulta web de `northamerica`/reglas US e IANA `tzdata.zi` (enlaces en el contrato) y fragmentos de zona Tijuana: Mexico hasta 2001, US hasta 2002-02-20, Mexico hasta 2010, US después, base -08:00, SAVE 0/1 h y cambios a 02:00 local. Los cambios de conjunto de reglas en invierno no introducen salto. No se encontraron casos no horarios/medianoches ambiguas desde 2000 en esas reglas; las fechas DST Mexico 2007–2009 no se sustituyen por US. El acceso por grep a la copia gestionada de salida web fuera del workspace fue denegado (`external_directory`); no se accedió a ese archivo por otra vía. La evidencia de cálculo siguiente usa Intl local, no esa copia.
+
+### Revalidación actual por el autor, autorizada expresamente en este nuevo encargo
+
+Las denegaciones anteriores se conservan como evidencia histórica, no se presentan como pruebas aprobadas ni se eluden sus archivos. El nuevo encargo autoriza al autor reejecutar los comandos indicados; las llamadas siguientes se completaron sin denegación. Si hubiera sido denegado un comando se habría detenido sin equivalente alternativo. `git diff --check` continúa sin ejecutarse por la restricción vigente.
+
+| Comando / comprobación actual | Resultado real |
+| --- | --- |
+| Node stdin, Intl America/Tijuana, Node 22.14.0 / ICU 76.1 / tzdb **2024b** | Mínimo UTC confirmado. **2 921 941 muestras diarias**, desde mínimo hasta 9999-12-31T23:59:59Z; **16 000 cambios detectados** localizados por bisección al segundo. Todos ±1 h en hora UTC exacta, 01:59:59 local → 03:00:00 o 01:00:00, offsets solo -08:00/-07:00; **0 cambios anómalos detectados**. Rangos DST 2026 confirmados 23/25 h y medianoches. Muestreo diario + inspección de reglas, no recorrido de cada instante ni garantía de leyes futuras; proyección futura de tzdb vigente, no histórico anterior a 2000 verificado. |
+| `npm.cmd run format:check`, primera corrida actual | Falló señalando solo OpenAPI por edición de formato/finales de línea; no se ocultó como éxito. |
+| `npm.cmd exec -- prettier --write docs/api/openapi.yaml` | Correcto, solo ruta explícita propia. No formato masivo ajeno ni cambios contractuales por formatter. |
+| `npm.cmd run format:check`, corrida final | **Correcto**, todos los archivos comprobados cumplen Prettier. |
+| `npm.cmd run api:validate` (primera y final) | **Correcto**, OpenAPI válido; **67 ejemplos** conformes a esquema/ruta en ambas corridas. |
+| `node scripts/check-doc-links.mjs` (primera y final) | **286 enlaces locales, 0 inexistentes**; fragmentos no comprobados. |
+| Node stdin con SwaggerParser/Ajv y ejemplos/documentos propios | **Correcto**: 3 respuestas completas existentes más ejemplo day adicional en frontera mínima; sumas BigInt, bucketCount, identidad/contigüidad/partial/extremos. 4 entradas válidas; 9 negativas sintácticas; 2 entradas 2000 anteriores a 08Z aceptadas por schema pero correctamente rechazadas por comparación semántica de ejemplo; 16 DTO negativos de años 0000/1999 y uno de offset con segundos; vector exacto grande correcto. **18 enlaces locales propios, 0 inexistentes**, sin comprobar fragmentos. No HTTP/BD/runtime ni verificación independiente. |
+
+Resultado actual: B1 armonizado con mínimo aceptado y negativos revalidados documentalmente; la cuestión histórica F1 queda fuera del dominio, no se mantiene una política indeterminada aplicable desde 2000. B2 cuenta ahora con verificaciones actuales correctas por el autor bajo autorización expresa; las denegaciones anteriores del verificador no se convierten en ejecuciones suyas. Revisión independiente final: sin bloqueantes de contenido y apta para commit documental. `git diff --check` fue ejecutado por coordinación y resultó correcto, sin errores de espacios; no sustituye la verificación independiente de las suites. Una futura actualización tzdb/ley requerirá evaluación si cambia reglas relevantes. Commit de la tarea: `mismo commit`.
+
+Pendientes de tareas posteriores, no cumplidos por E2-00: coste medido, HTTP/BD de permisos/precisión/concurrencia, implementación backend/frontend, V-VIS y V-REAL con entorno/dataset autorizado. No dependencias, migraciones, SQL ejecutable, secretos, proveedores reales, CSV, runtime ni commit. E2-01 NO iniciada en este encargo.
