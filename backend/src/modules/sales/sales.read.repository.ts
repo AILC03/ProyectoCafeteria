@@ -23,6 +23,30 @@ export type SalesSeriesAggregate = {
   unitsSold: string;
 };
 
+export type SalesRankingAggregateItem = {
+  productId: string;
+  name: string;
+  nameSource: 'current' | 'snapshot';
+  unitsSold: string;
+  totalCents: string;
+};
+
+export type SalesRankingAggregate = {
+  matchedProductCount: string;
+  matchedUnitsSold: string;
+  matchedTotalCents: string;
+  items: SalesRankingAggregateItem[];
+};
+
+export type SalesRankingInput = {
+  from: Date;
+  to: Date;
+  method?: 'CASH' | 'STRIPE';
+  metric: 'units' | 'amount';
+  direction: 'top' | 'bottom';
+  limit: number;
+};
+
 export class SalesRepository {
   constructor(private db: PrismaClient) {}
   read<T>(actor: Principal, fn: (tx: Prisma.TransactionClient) => Promise<T>) {
@@ -141,6 +165,88 @@ export class SalesRepository {
           unitsSold: row.unitsSold,
         };
       });
+    });
+  }
+  /**
+   * Ranking E2 en una sola lectura agregada. Agrupa por `product_id` sin unir
+   * opciones, reembolsos, eventos ni reintentos de pago; suma el histórico de
+   * líneas y calcula los metadatos antes de recortar a `top`. El nombre de una
+   * baja usa el snapshot más reciente del conjunto filtrado (`sold_at DESC,
+   * item_id DESC`) resuelto en el mismo CTE. `sold_at` permanece en PostgreSQL
+   * (microsegundos intactos) y D11 no filtra por estado del pago.
+   */
+  rankingAggregates(actor: Principal, input: SalesRankingInput) {
+    const method = input.method ? Prisma.sql`AND p.method::text = ${input.method}` : Prisma.empty;
+    const direction = input.direction === 'top' ? Prisma.sql`DESC` : Prisma.sql`ASC`;
+    const primary = input.metric === 'units' ? Prisma.sql`r.units_sold` : Prisma.sql`r.total_cents`;
+    const secondary =
+      input.metric === 'units' ? Prisma.sql`r.total_cents` : Prisma.sql`r.units_sold`;
+    return this.read(actor, async (tx) => {
+      const [row] = await tx.$queryRaw<SalesRankingAggregate[]>(Prisma.sql`
+        WITH filtered_sales AS (
+          SELECT s.order_id,s.sold_at
+          FROM sales s JOIN payments p ON p.id=s.payment_id
+          WHERE s.sold_at >= ${input.from}::timestamptz
+            AND s.sold_at < ${input.to}::timestamptz ${method}
+        ),
+        product_totals AS (
+          SELECT oi.product_id,
+                 sum(oi.quantity)::numeric AS units_sold,
+                 sum(oi.line_total_cents)::numeric AS total_cents
+          FROM filtered_sales fs JOIN order_items oi ON oi.order_id=fs.order_id
+          GROUP BY oi.product_id
+          HAVING sum(oi.quantity) > 0
+        ),
+        latest_snapshots AS (
+          SELECT DISTINCT ON (oi.product_id)
+                 oi.product_id,oi.product_name_snapshot
+          FROM filtered_sales fs JOIN order_items oi ON oi.order_id=fs.order_id
+          ORDER BY oi.product_id,fs.sold_at DESC,oi.id DESC
+        ),
+        matched AS (
+          SELECT count(*)::text AS product_count,
+                 coalesce(sum(pt.units_sold),0)::numeric AS units,
+                 coalesce(sum(pt.total_cents),0)::numeric AS cents
+          FROM product_totals pt
+        ),
+        ranked AS (
+          SELECT pt.product_id,pt.units_sold,pt.total_cents,
+                 CASE WHEN pr.deleted_at IS NULL THEN pr.name ELSE ls.product_name_snapshot END AS name,
+                 CASE WHEN pr.deleted_at IS NULL THEN 'current' ELSE 'snapshot' END AS name_source
+          FROM product_totals pt
+          JOIN products pr ON pr.id=pt.product_id
+          LEFT JOIN latest_snapshots ls ON ls.product_id=pt.product_id
+        ),
+        top_items AS (
+          SELECT r.product_id,r.name,r.name_source,r.units_sold,r.total_cents
+          FROM ranked r
+          ORDER BY ${primary} ${direction},${secondary} ${direction},
+                   r.name COLLATE "C" ASC,r.product_id ASC
+          LIMIT ${input.limit}
+        )
+        SELECT m.product_count AS "matchedProductCount",
+               m.units::text AS "matchedUnitsSold",
+               m.cents::text AS "matchedTotalCents",
+               coalesce(
+                 jsonb_agg(
+                   jsonb_build_object(
+                     'productId',r.product_id::text,
+                     'name',r.name,
+                     'nameSource',r.name_source,
+                     'unitsSold',r.units_sold::text,
+                     'totalCents',r.total_cents::text
+                   )
+                   ORDER BY ${primary} ${direction},${secondary} ${direction},
+                            r.name COLLATE "C" ASC,r.product_id ASC
+                 ) FILTER (WHERE r.product_id IS NOT NULL),
+                 '[]'::jsonb
+               ) AS items
+        FROM matched m LEFT JOIN top_items r ON TRUE
+        GROUP BY m.product_count,m.units,m.cents`);
+      // El agregado de metadatos siempre produce una fila; su ausencia es un
+      // fallo interno y nunca se sustituye por ceros inventados.
+      if (!row) throw new Error('Agregado de ranking incompleto');
+      return row;
     });
   }
   administrativeSummary(actor: Principal, input: DashboardSummaryQuery) {

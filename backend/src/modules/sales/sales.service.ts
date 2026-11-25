@@ -6,6 +6,7 @@ import {
   type DashboardSummaryQuery,
   type SalesFilters,
   type SalesOrder,
+  type SalesRankingQuery,
   type SalesSeriesQuery,
 } from './sales.validation.js';
 import type { SalesRepository } from './sales.read.repository.js';
@@ -271,6 +272,58 @@ export class SalesService {
           unitsSold: totals.unitsSold.toString(),
         },
         buckets: series,
+      },
+    };
+  }
+  async productRanking(actor: Principal, input: SalesRankingQuery) {
+    const from = parseSalesSeriesInstant(input.from),
+      to = parseSalesSeriesInstant(input.to);
+    const top = Number(input.top);
+    const aggregate = await this.repository.rankingAggregates(actor, {
+      from: new Date(from),
+      to: new Date(to),
+      method: input.method,
+      metric: input.metric,
+      direction: input.direction,
+      limit: top,
+    });
+    if (!aggregate || !Array.isArray(aggregate.items))
+      throw new Error('Agregado de ranking incompleto');
+    const items = aggregate.items.map((item, index) => {
+      // El nombre se resuelve en SQL; si una baja no tuviera snapshot, el fallo
+      // es explícito en lugar de inventar un nombre.
+      if (typeof item.name !== 'string') throw new Error('Nombre de producto no resuelto');
+      if (item.nameSource !== 'current' && item.nameSource !== 'snapshot')
+        throw new Error('Origen de nombre de producto inválido');
+      return {
+        position: (index + 1).toString(),
+        productId: item.productId,
+        name: item.name,
+        nameSource: item.nameSource,
+        unitsSold: item.unitsSold,
+        totalCents: item.totalCents,
+      };
+    });
+    return {
+      data: {
+        generatedAt: this.now().toISOString(),
+        currency: 'MXN',
+        period: {
+          from: new Date(from).toISOString(),
+          to: new Date(to).toISOString(),
+          timeZone: TIJUANA_TIME_ZONE,
+        },
+        method: input.method ?? null,
+        metric: input.metric,
+        direction: input.direction,
+        top: input.top,
+        matchedProductCount: aggregate.matchedProductCount,
+        matchedTotals: {
+          unitsSold: aggregate.matchedUnitsSold,
+          totalCents: aggregate.matchedTotalCents,
+        },
+        truncated: BigInt(aggregate.matchedProductCount) > BigInt(items.length),
+        items,
       },
     };
   }

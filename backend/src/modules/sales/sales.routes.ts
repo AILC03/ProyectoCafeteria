@@ -9,6 +9,7 @@ import {
   dashboardSummaryQuery,
   salesFilters,
   salesQuery,
+  salesRankingQuery,
   salesSeriesQuery,
 } from './sales.validation.js';
 import type { SalesService } from './sales.service.js';
@@ -56,6 +57,19 @@ export function salesRoutes(auth: AuthService, service: SalesService) {
         throw invalidInput();
       res.json(
         jsonValue(await service.salesSeries(principal(res), salesSeriesQuery.parse(req.query))),
+      );
+    },
+  );
+  router.get(
+    '/admin/dashboard/product-ranking',
+    privateCashResponse,
+    authenticate(auth),
+    authorize('ADMINISTRADOR'),
+    async (req, res) => {
+      if (req.headers['transfer-encoding'] || Number(req.headers['content-length'] ?? 0))
+        throw invalidInput();
+      res.json(
+        jsonValue(await service.productRanking(principal(res), salesRankingQuery.parse(req.query))),
       );
     },
   );

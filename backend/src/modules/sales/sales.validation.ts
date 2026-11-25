@@ -92,6 +92,46 @@ export const salesSeriesQuery = z
       });
   });
 export type SalesSeriesQuery = z.infer<typeof salesSeriesQuery>;
+const RANKING_TOP_VALUES = ['5', '10', '20'] as const;
+/**
+ * Entrada E2 de ranking: reutiliza la precisión y el dominio de series sin
+ * cambiar su contrato. `top` es una forma léxica exacta (sin coerción) y el
+ * default se materializa al parsear para poder hacer eco del valor efectivo.
+ */
+export const salesRankingQuery = z
+  .object({
+    from: salesSeriesInstant,
+    to: salesSeriesInstant,
+    metric: z.enum(['units', 'amount']),
+    direction: z.enum(['top', 'bottom']),
+    top: z.enum(RANKING_TOP_VALUES).optional().default('5'),
+    method: z.enum(['CASH', 'STRIPE']).optional(),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    const from = parseSalesSeriesInstant(value.from),
+      to = parseSalesSeriesInstant(value.to);
+    if (!Number.isFinite(from) || !Number.isFinite(to)) return;
+    if (from < SALES_SERIES_MIN_INSTANT_MS)
+      context.addIssue({
+        code: 'custom',
+        message: 'El inicio no puede ser anterior al dominio aceptado',
+        path: ['from'],
+      });
+    if (!(from < to))
+      context.addIssue({
+        code: 'custom',
+        message: 'El rango debe ser positivo y exclusivo al final',
+        path: ['to'],
+      });
+    if (to - from > SALES_SERIES_MAX_DAY_RANGE_MS)
+      context.addIssue({
+        code: 'custom',
+        message: 'El rango supera el límite aceptado',
+        path: ['to'],
+      });
+  });
+export type SalesRankingQuery = z.infer<typeof salesRankingQuery>;
 /** Rango obligatorio y acotado para evitar agregaciones sin límite. */
 export const dashboardSummaryQuery = z
   .object({

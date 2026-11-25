@@ -800,4 +800,56 @@ El responsable **aceptó el paquete propuesto el 2026-11-25**: ruta `GET /api/v1
 
 ### Siguiente puerta
 
-E2-04 queda cerrada documentalmente con commit pendiente de autorización. E2-05 (backend de ranking) no está iniciada y requiere tarea/autorización propia, verificación, revisión independiente y entorno de prueba autorizado. CSV-03 sigue siendo el cierre de E2.
+E2-04 queda cerrada documentalmente con commit pendiente de autorización. E2-05 se ejecutó después con autorización de secuencia; su estado se registra en la sección siguiente. CSV-03 sigue siendo el cierre de E2.
+
+## TASK-DA-E2-05 — Backend de ranking
+
+Estado actual: **implementado, verificado y revisado sin bloqueantes; commit pendiente de autorización. NO cierra E2/CSV.** Autor: `dashboard-backend-implementer`; verificación: `dashboard-verifier`; revisión: `dashboard-reviewer`.
+
+### Archivos
+
+- `backend/src/modules/sales/sales.validation.ts`: `salesRankingQuery` estricto.
+- `backend/src/modules/sales/sales.read.repository.ts`: `rankingAggregates` con CTE única.
+- `backend/src/modules/sales/sales.service.ts`: `productRanking` y DTO.
+- `backend/src/modules/sales/sales.routes.ts`: ruta ADMINISTRADOR.
+- `backend/tests/dashboard-ranking.test.ts`: 13 unitarias.
+- `backend/tests/integration/dashboard-ranking.integration.test.ts`: 15 integraciones.
+- `backend/scripts/benchmark-dashboard-ranking.ts`: benchmark aislado.
+- `backend/docs/api/openapi.yaml`: solo descripción de implementación; contrato aceptado intacto.
+- Sin cambios de `app.ts`, esquema, migraciones, frontend, CSV, `validation.md` previo ni `tasks.md` por parte del autor.
+
+### Comandos ejecutados
+
+| Comando | Resultado real |
+| --- | --- |
+| `npm.cmd run format:check` | Correcto. |
+| `npm.cmd run typecheck` | Correcto. |
+| `npm.cmd run lint` | Correcto. |
+| `npm.cmd test` | **152** unitarias correctas; 170 integraciones omitidas por diseño. |
+| `npm.cmd run build` | Correcto. |
+| `npm.cmd run api:validate` | OpenAPI válido; **68 ejemplos** conformes. |
+| `npm.cmd run db:validate` | Esquema Prisma válido. |
+| `npm.cmd run test:integration` | **170/170** en 9 archivos; ranking **15/15**. |
+| `git diff --check` | Sin errores; avisos LF→CRLF preexistentes. |
+
+### Cobertura
+
+- Validación estricta: `from`/`to` 0–3 decimales, mínimo 2000, máximo 366 días, `metric`/`direction` obligatorios, `top` léxico 5/10/20 default 5, `method` opcional, extras/repetidos/arrays/body → 400.
+- SQL: una agregación sin N+1; agrupación por `product_id`; `SUM(quantity)`/`SUM(line_total_cents)` exactos; sin opciones/refunds/eventos/intentos; metadatos antes del top; snapshot de baja `soldAt DESC, item.id DESC`; orden primario/secundario/`COLLATE "C"`/`productId`; `sold_at` sin conversión a `Date`; D11 sin filtro de pago por defecto.
+- DTO: strings exactos, `method:null`, `top` echo, `truncated`, `position`/`nameSource`, `generatedAt`, error si falta agregado; sin PII.
+- Ruta: ADMINISTRADOR, 401/403 incluidos GERENTE/PIN, cabeceras privadas, 400/413/429/500/503 saneados.
+- Integración: units/amount, top/bottom, top 5/10/20 y default, empates por nombre/ID, nombres iguales/renombrados/bajas, cambio de precio, opciones, reembolso, pagos sin venta, D11, >20 productos y >100 ventas, enteros grandes de ID, bordes µs, cero, roles/cabeceras, conciliación con resumen y `/sales/summary`, concurrencia acotada.
+
+### Coste medido (benchmark aislado, no SLA)
+
+- Volumen: **20 000 ventas**, 30 días, **120 productos** (7 dados de baja), **30 000 líneas**, 6 666 CASH / 13 334 STRIPE; base temporal eliminada.
+- Medianas: `units/top/5` **48.12 ms**, `amount/top/20` **48.65 ms**, `units/bottom/5` **48.04 ms** (medición del coordinador; el autor reportó 49.14/48.56/48.72 ms en otra corrida).
+- Por corrida: **1 agregación** (~40 ms) + 5 revalidaciones de actor + COMMIT; `EXPLAIN` con `Aggregate`/`Hash Join`/`Sort`, 1 366–1 375 buffer hits, 0 lecturas; sin índices nuevos.
+- **100 000 ventas y 366 días no medidos**; no se declara SLA ni se añaden índices/migraciones.
+
+### Revisión independiente y residuales
+
+- Revisión sin bloqueantes de contrato, seguridad, SQL, DTO y pruebas.
+- R-2 corregido: el benchmark imprime `cleanup` real tras el DROP y no serializa URLs/credenciales.
+- Residuales no bloqueantes registrados: prueba de µs no discrimina truncación interna (se apoya en SQL inspeccionado); sumas >2^53 no acreditadas end-to-end por constraints (unitarias/SQL `numeric` sí); integración no monta `adminRoutes` de producción; errores no validados contra todo el esquema `Problem`; 100k/366 días no medidos; `position`/`nameSource` emitidos siempre aunque OpenAPI los declara opcionales; casos teóricos de producto huérfano o cantidad neta 0 no montables bajo constraints.
+- **No cierra E2 ni CSV**; E2-06/07 y CSV-03 siguen pendientes. Commit de E2-05 pendiente de autorización.

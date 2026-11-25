@@ -6625,8 +6625,9 @@ paths:
       summary: readAdministrativeProductRanking
       operationId: readAdministrativeProductRanking
       description: >-
-        CONTRATO TASK-DA-E2-04 aceptado por el responsable el 2026-11-25. No autoriza
-        runtime, UI, CSV ni cambios de esquema; la implementación corresponde a E2-05/06/07.
+        CONTRATO TASK-DA-E2-04 aceptado por el responsable el 2026-11-25 e implementado
+        en el backend por TASK-DA-E2-05. El esquema aceptado no cambia; UI y CSV siguen
+        fuera de esta implementación.
         Solo ADMINISTRADOR con sesión
         vigente. Ranking de productos con movimiento sobre ventas pagadas brutas del periodo
         UTC semiabierto [from,to) y método opcional. La fuente Sale implica pago exitoso; el

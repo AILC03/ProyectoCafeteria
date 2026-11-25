@@ -393,4 +393,4 @@ Previsto y ejecutado solo como validación documental, sin runtime, integración
 - [Permisos](../../../../../backend/docs/permissions.md) — solo ADMINISTRADOR para dashboard administrativo.
 - [Esquema Prisma](../../../../../backend/prisma/schema.prisma) — `Sale`, `Payment`, `OrderItem`, `Product`, `Category`, `Refund`.
 
-**Contrato documental aceptado el 2026-11-25; sin runtime. E2-05 no iniciada; commit pendiente de autorización; E2 y CSV siguen abiertos.**
+**Contrato documental aceptado el 2026-11-25; E2-05 backend implementado, verificado y revisado sin bloqueantes. Commit pendiente de autorización; E2 y CSV siguen abiertos.**
