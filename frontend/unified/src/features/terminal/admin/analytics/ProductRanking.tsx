@@ -111,7 +111,12 @@ function RankingFilters({
 
 function RankingTable({ ranking }: { ranking: ProductRankingData }) {
   return (
-    <div className="dashboard-ranking-table-wrap">
+    <div
+      className="dashboard-ranking-table-wrap"
+      role="region"
+      aria-label="Tabla desplazable del ranking de productos"
+      tabIndex={0}
+    >
       <table className="dashboard-ranking-table">
         <caption>{rankingCaption(ranking.metric, ranking.direction, ranking.top)}</caption>
         <thead>

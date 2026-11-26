@@ -3,6 +3,7 @@ import { delay, HttpResponse, http } from 'msw';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { server } from '../../../../test/server';
+import { categoryParticipationForUrl } from '../../../../test/categoryFixture';
 import { noMovementForUrl } from '../../../../test/noMovementFixture';
 import {
   canonicalRanking,
@@ -113,6 +114,9 @@ beforeEach(() => {
     http.get('/api/v1/admin/dashboard/no-movement-products', ({ request }) =>
       HttpResponse.json({ data: noMovementForUrl(request.url, []) }),
     ),
+    http.get('/api/v1/admin/dashboard/category-participation', ({ request }) =>
+      HttpResponse.json({ data: categoryParticipationForUrl(request.url) }),
+    ),
   );
 });
 
@@ -128,6 +132,11 @@ describe('product-ranking panel', () => {
     renderRanking();
     expect(await screen.findByRole('heading', { name: 'Ranking de productos' })).toBeInTheDocument();
     expect(await screen.findByRole('table', { name: /Ranking de productos por unidades/ })).toBeInTheDocument();
+    const scrollRegion = screen.getByRole('region', { name: 'Tabla desplazable del ranking de productos' });
+    expect(scrollRegion).toHaveAttribute('tabindex', '0');
+    expect(scrollRegion).toContainElement(screen.getByRole('table'));
+    scrollRegion.focus();
+    expect(scrollRegion).toHaveFocus();
     expect(queries).toHaveLength(1);
     expect(queries[0].get('metric')).toBe('units');
     expect(queries[0].get('direction')).toBe('top');

@@ -91,7 +91,12 @@ function NoMovementUniverseNote({ universe }: { universe: NoMovementUniverse }) 
 
 function NoMovementTable({ items }: { items: NoMovementItem[] }) {
   return (
-    <div className="dashboard-no-movement-table-wrap">
+    <div
+      className="dashboard-no-movement-table-wrap"
+      role="region"
+      aria-label="Tabla desplazable de activos sin movimiento"
+      tabIndex={0}
+    >
       <table className="dashboard-no-movement-table">
         <caption>
           Productos sin movimiento en el rango y método seleccionados, en el orden del catálogo por
@@ -153,6 +158,7 @@ export function NoMovementProducts({
   const [state, setState] = useState<NoMovementState>(() => emptyState(key));
   const request = useRef(0);
   const moreController = useRef<AbortController | null>(null);
+  const refreshPending = useRef(false);
 
   useEffect(() => {
     const id = request.current + 1;
@@ -187,6 +193,9 @@ export function NoMovementProducts({
           error: formatNoMovementError(reason),
           moreError: null,
         });
+      })
+      .finally(() => {
+        if (request.current === id && !controller.signal.aborted) refreshPending.current = false;
       });
     return () => {
       controller.abort();
@@ -198,6 +207,14 @@ export function NoMovementProducts({
   const current = state.key === key ? state : emptyState(key);
   const data = current.data;
   const zero = data !== null && current.items.length === 0;
+
+  function refreshList(): void {
+    // aria-disabled preserves keyboard focus; the synchronous latch also blocks
+    // repeated activation before React commits the loading state.
+    if (current.loading || refreshPending.current) return;
+    refreshPending.current = true;
+    setRefresh((value) => value + 1);
+  }
 
   function loadMore(): void {
     const cursor = current.nextCursor;
@@ -253,8 +270,8 @@ export function NoMovementProducts({
         </div>
         <button
           type="button"
-          onClick={() => setRefresh((value) => value + 1)}
-          disabled={current.loading}
+          onClick={refreshList}
+          aria-disabled={current.loading}
         >
           {current.loading ? 'Consultando…' : 'Actualizar lista'}
         </button>
@@ -289,7 +306,7 @@ export function NoMovementProducts({
       {current.error !== null && (
         <div role="alert" className="dashboard-error">
           <p>{current.error}</p>
-          <button type="button" onClick={() => setRefresh((value) => value + 1)}>
+          <button type="button" onClick={refreshList}>
             Reintentar lista
           </button>
         </div>

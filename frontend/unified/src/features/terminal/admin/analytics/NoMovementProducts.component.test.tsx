@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { delay, HttpResponse, http } from 'msw';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { server } from '../../../../test/server';
@@ -56,6 +56,11 @@ describe('no-movement products panel', () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/No afirma ausencia global de ventas/)).toBeInTheDocument();
     const table = await screen.findByRole('table', { name: /Productos sin movimiento/ });
+    const scrollRegion = screen.getByRole('region', { name: 'Tabla desplazable de activos sin movimiento' });
+    expect(scrollRegion).toHaveAttribute('tabindex', '0');
+    expect(scrollRegion).toContainElement(table);
+    scrollRegion.focus();
+    expect(scrollRegion).toHaveFocus();
     expect(queries).toHaveLength(1);
     expect(queries[0].get('limit')).toBe('20');
     expect(queries[0].has('cursor')).toBe(false);
@@ -295,5 +300,42 @@ describe('no-movement products panel', () => {
     expect(calls).toBe(1);
     fireEvent.click(screen.getByRole('button', { name: 'Actualizar lista' }));
     await waitFor(() => expect(calls).toBe(2));
+  });
+
+  test.each(['success', 'error'] as const)('refresh retains focus, blocks duplicate activation and unlocks after %s', async (outcome) => {
+    let calls = 0;
+    let release: (() => void) | undefined;
+    const pending = new Promise<void>((resolve) => { release = resolve; });
+    server.use(
+      http.get('/api/v1/admin/dashboard/no-movement-products', async ({ request }) => {
+        calls += 1;
+        if (calls === 2) {
+          await pending;
+          if (outcome === 'error') return HttpResponse.json({ title: 'No disponible' }, { status: 503 });
+        }
+        return HttpResponse.json({ data: noMovementForUrl(request.url) });
+      }),
+    );
+    renderNoMovement();
+    await screen.findByRole('table');
+    const refresh = screen.getByRole('button', { name: 'Actualizar lista' });
+    refresh.focus();
+    // Two synchronous clicks before React commits loading exercise the ref latch.
+    act(() => { refresh.click(); refresh.click(); });
+    await waitFor(() => expect(calls).toBe(2));
+    expect(refresh).toHaveAttribute('aria-disabled', 'true');
+    expect(refresh).not.toBeDisabled();
+    expect(refresh).toHaveFocus();
+    fireEvent.click(refresh);
+    expect(calls).toBe(2);
+    if (!release) throw new Error('Missing test response gate.');
+    release();
+    await waitFor(() => expect(refresh).toHaveAttribute('aria-disabled', 'false'));
+    expect(refresh).toHaveFocus();
+    if (outcome === 'error') expect(screen.getByRole('alert')).toHaveTextContent(/no está disponible/);
+    else expect(screen.getByRole('table')).toBeInTheDocument();
+    fireEvent.click(refresh);
+    await waitFor(() => expect(calls).toBe(3));
+    await screen.findByRole('table');
   });
 });

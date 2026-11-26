@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type BrowserContext, type Request } from '@playwright/test';
+import { categoryParticipationForUrl } from '../src/test/categoryFixture';
 import {
   manyNoMovementItems,
   noMovementCursorFor,
@@ -107,6 +108,9 @@ async function mock(
       }
       return json({ data: noMovementForUrl(request.url(), manyNoMovementItems) });
     }
+    if (path === '/api/v1/admin/dashboard/category-participation') {
+      return json({ data: categoryParticipationForUrl(request.url()) });
+    }
     if (path === '/api/v1/cash-sessions/current') return json({ data: null });
     if (path === '/api/v1/sales') {
       return json({ data: [sale], page: { limit: 5, nextCursor: null } });
@@ -117,6 +121,60 @@ async function mock(
 }
 
 test.describe('TASK-DA-E2-10 no-movement products panel', () => {
+  test('B01 retains keyboard focus while busy and ignores repeated refresh activation', async ({ page, context }) => {
+    await mock(context);
+    await page.goto('/terminal/administracion');
+    const panel = page.getByRole('region', { name: 'Activos sin movimiento', exact: true });
+    await expect(panel.getByRole('table')).toBeVisible();
+    let refreshes = 0;
+    let release: (() => void) | undefined;
+    const pending = new Promise<void>((resolve) => { release = resolve; });
+    await page.route('**/api/v1/admin/dashboard/no-movement-products?*', async (route) => {
+      refreshes += 1;
+      await pending;
+      await route.fulfill({ json: { data: noMovementForUrl(route.request().url(), manyNoMovementItems) } });
+    });
+    const refresh = panel.locator('.dashboard-no-movement-heading button');
+    await refresh.focus();
+    await refresh.press('Space');
+    await expect(refresh).toHaveAttribute('aria-disabled', 'true');
+    await expect(refresh).toBeFocused();
+    await refresh.press('Enter');
+    await refresh.press('Space');
+    await expect.poll(() => refreshes).toBe(1);
+    if (!release) throw new Error('Missing response gate.');
+    release();
+    await expect(refresh).toHaveAttribute('aria-disabled', 'false');
+    await expect(refresh).toBeFocused();
+    await expect(refresh).toHaveCSS('outline-width', '3px');
+    await expect(panel.getByRole('table').getByRole('rowheader')).toHaveCount(20);
+    expect(refreshes).toBe(1);
+  });
+
+  test('B02 both tables are named tab stops with visible focus, native horizontal scrolling and full-page axe', async ({ page, context }) => {
+    await mock(context);
+    await page.setViewportSize({ width: 390, height: 900 });
+    await page.goto('/terminal/administracion');
+    for (const [name, precedingSelect] of [
+      ['Tabla desplazable del ranking de productos', 'Cantidad de productos'],
+      ['Tabla desplazable de activos sin movimiento', 'Productos por página'],
+    ] as const) {
+      const region = page.getByRole('region', { name, exact: true });
+      await expect(region.getByRole('table')).toBeVisible();
+      await page.getByLabel(precedingSelect).focus();
+      await page.keyboard.press('Tab');
+      await expect(region).toBeFocused();
+      await expect(region).toHaveCSS('outline-style', 'solid');
+      await expect(region).toHaveCSS('outline-width', '3px');
+      expect(await region.evaluate((node) => node.scrollWidth > node.clientWidth)).toBe(true);
+      await region.press('ArrowRight');
+      await expect.poll(() => region.evaluate((node) => node.scrollLeft)).toBeGreaterThan(0);
+    }
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
+    expect(results.violations).toEqual([]);
+  });
+
   test('renders the separated label, universe cut, exact range/method and multipage list', async ({
     page,
     context,
@@ -125,7 +183,7 @@ test.describe('TASK-DA-E2-10 no-movement products panel', () => {
     await page.goto('/terminal/administracion');
     await expect(page.getByRole('heading', { name: 'Activos sin movimiento' })).toBeVisible();
     await expect(
-      page.getByText('Sin movimiento en el rango y método seleccionados'),
+      page.getByText('Sin movimiento en el rango y método seleccionados', { exact: true }),
     ).toBeVisible();
     await expect(page.getByText(/No afirma ausencia global de ventas/)).toBeVisible();
 
