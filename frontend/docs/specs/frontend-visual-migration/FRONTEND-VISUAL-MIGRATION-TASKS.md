@@ -48,7 +48,7 @@ Cada task cerrada incluye fila STATUS con evidencia real, decisiones, revisores,
   - Tests primero: fallo por estado inesperado/recurso ausente, aislamiento de cookies/storage y API no simulada; captura smoke sin baseline aprobado.
   - Hecho cuando: originales se sirven en 5183/5184 y unificado en 5173 sin modificar originales, tests funcionales no duplican visuales y Electron usa perfil/bridge reales con mocks; capturas identifican contexto y no se promocionan solas a referencia.
 
-- [ ] **HYB-03 — Aprobar lote visual de terminal y adaptación de login** (H).
+- [x] **HYB-03 — Aprobar lote visual de terminal y adaptación de login** (H).
   - Requisitos: RV-01, RV-02, RV-07, CA-01, CA-03, CA-08, CA-10, CA-12.
   - Dependencias: HYB-01, HYB-02; tema elegido expresamente.
   - Archivos: REFERENCES, escenarios/fixtures de captura y evidence/HYB-03.

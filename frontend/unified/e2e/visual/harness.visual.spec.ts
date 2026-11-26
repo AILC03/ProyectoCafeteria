@@ -95,7 +95,13 @@ test.describe('HYB-02 Isolated visual harness', () => {
       }
     }
 
-    expect(fs.existsSync(EVIDENCE_DIR)).toBe(false);
+    if (fs.existsSync(EVIDENCE_DIR)) {
+      const entries = fs.readdirSync(EVIDENCE_DIR, { recursive: true, withFileTypes: true });
+      const leakedSmokeFiles = entries
+        .filter((entry) => entry.isFile() && entry.name.startsWith('smoke-'))
+        .map((entry) => entry.name);
+      expect(leakedSmokeFiles).toEqual([]);
+    }
   });
 
   test('launches Electron with real preload, ephemeral profile, and synthetic mocks', async () => {

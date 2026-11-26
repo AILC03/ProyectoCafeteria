@@ -56,8 +56,53 @@ Para cliente se proponen 390×844 y 1280×800; comprobar además reflow a 320 px
 
 | ID | Tipo | Superficies | Tema, commit, viewport, rol/estado y fixture | Aprobación del responsable | Estado |
 | --- | --- | --- | --- | --- | --- |
-| REF-T | Lote terminal (HYB-03) | bienvenida, acceso, POS/cabecera/catálogo/panel | Por capturar en HYB-02/03; fuente inicial `c88d01b` | No solicitada | Pendiente |
+| REF-T | Lote terminal (HYB-03) | `bienvenida`, `acceso`, `pos` (`PosHeader` + `OrderingWorkspace`) | Tema elegido: `theme-nordic` (*Nordic Mint*); viewports: `1024×768`, `1280×800`; fuente `c88d01b` / captura `5595892` en `evidence/HYB-03/`; actores sintéticos `visitante` y `CAJERO` | Aprobado explícitamente por el responsable (2026-11-25) | Aprobado |
+| ADAPT-LOGIN-STAFF | Adaptación previa (HYB-03 / HYB-06) | `/terminal/acceso` (`TerminalAuthPage.tsx`) | Tema `theme-nordic`; viewports `1024×768`, `1280×800`; formulario único usuario (hasta 24 chars, `isValidStaffUsername`) y contraseña (`8–24` chars, `isValidStaffPassword`) en `.kiosk-chassis`, estados `loading`, `recoverable-error`, `authenticated` y `role="alert"` | Aprobado explícitamente por el responsable (2026-11-25) | Aprobado |
 | REF-C | Lote cliente (HYB-04) | acceso, menú/cabecera/tarjetas, personalización | Por capturar en HYB-02/04; fuente inicial `c88d01b` | No solicitada | Pendiente |
-| ADAPT-* | Adaptación previa | login staff, caja/cobro/ticket, reimpresión, cuenta, registro y transversales | Por proponer por bloque; nunca sustituir fuente original por UI nueva | No solicitada | Pendiente |
+| ADAPT-* | Adaptación previa (resto de bloques) | caja/cobro/ticket, reimpresión, cuenta, registro y transversales | Por proponer por bloque; nunca sustituir fuente original por UI nueva | No solicitada | Pendiente |
 
-**Decisiones abiertas:** tema de terminal y cliente; viewports definitivos; disponibilidad/licencia de tipografías, iconos e imágenes; adaptación de login staff. El responsable debe decidir los temas antes de HYB-03/04. HYB-01 no los selecciona ni habilita HYB-02 sin aprobación individual.
+## Lote visual de terminal — `REF-T` (HYB-03, Aprobado 2026-11-25)
+
+- **Elección expresa del responsable:** tema `theme-nordic` (*Nordic Mint*) y viewports confirmados `1024×768` y `1280×800`.
+- **Especificación de captura:** [`hyb03-terminal-batch.visual.spec.ts`](file:///c:/Trabajo/Antigravity/ProyectoCafeteria/frontend/unified/e2e/visual/hyb03-terminal-batch.visual.spec.ts) → evidencias en `frontend/docs/specs/frontend-visual-migration/evidence/HYB-03/<surface>/<viewport>/` (`bienvenida`, `acceso`, `pos`).
+
+### Tokens de diseño (`theme-nordic`, extraídos de `frontend/empleados/src/styles/index.css`)
+
+| Rol | Token / Selector | Valor exacto |
+| --- | --- | --- |
+| Fondo principal | `--bg-primary`, `--bg-display`, `--bg-card` | `#ffffff` |
+| Fondo secundario / panel kiosco | `--bg-secondary`, `--bg-kiosk-panel` | `#f8fafc`, `#f1f5f9` |
+| Botón primario (`EMPEZAR`) | `--bg-btn-primary` / `:hover` | `#c2cacf` / `#b0bac0` |
+| Panel derecho bienvenida (`theme-nordic`) | `--welcome-panel-bg` | `linear-gradient(145deg, #f8fafc 0%, #edf2f7 50%, #e2e8f0 100%)` |
+| Tarjeta reloj (`theme-nordic`) | `--welcome-clock-card-bg`, `--welcome-clock-card-border` | `rgba(255, 255, 255, 0.82)`, `rgba(255, 255, 255, 0.95)` |
+| Texto reloj (`theme-nordic`) | `--welcome-date-color`, `--welcome-time-color` | `#64748b`, `#0f172a` |
+| Textos base | `--text-main`, `--text-muted`, `--text-subtle`, `--text-light` | `#0f172a`, `#64748b`, `#94a3b8`, `#ffffff` |
+| Bordes y foco | `--border-light`, `--border-focus` | `#e2e8f0`, `#3b82f6` |
+| Semánticos | `--color-success`, `--color-danger`, `--color-warning`, `--color-accent` | `#10b981`, `#ef4444`, `#f59e0b`, `#2563eb` |
+| Radios | `--radius-sm`, `--radius-md`, `--radius-lg`, `--radius-xl`, píldora | `8px`, `14px`, `20px`, `32px`, `9999px` |
+| Espaciado y contenedores clave | `.welcome-left`/`.welcome-right`, `.welcome-clock-box`, `.kiosk-chassis` | `padding: 3rem`; `padding: 3rem 4rem`; `max-width: 440px`, `padding: 1.75rem`, `border-radius: 32px` |
+
+### Tipografía y resets excluidos
+
+- **Fuentes:** `'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif` (declaradas vía Google Fonts en `frontend/empleados/index.html`). **Licencia y carga efectiva pendientes de verificación** en la ejecución de captura HYB-03 antes de copiar o empaquetar fuentes locales.
+- **Superficies del lote:**
+  1. `bienvenida` (`WelcomeScreen.jsx` → `/terminal`): layout dividido horizontalmente (`.welcome-left` blanca con marca, subtítulo y botón píldora `EMPEZAR`; `.welcome-right.theme-nordic` con tarjeta translúcida de fecha y reloj tabular).
+  2. `acceso` (`EmployeeIdScreen.jsx` + `EmployeePinScreen.jsx` → `/terminal/acceso`): contenedor centrado `.kiosk-chassis` (`440px`, radio `32px`, borde `#e2e8f0`); sujeto a la adaptación `ADAPT-LOGIN-STAFF`.
+  3. `pos` (`PosHeader.jsx` + `OrderingWorkspace.jsx` → `/terminal/pos`): cabecera superior fija `.pos-top-nav` con marca, pestañas por rol y reloj/menú de usuario; rejilla `.pos-workspace-grid` con barra de categorías/búsqueda, tarjetas de producto y panel lateral de orden.
+- **Resets heredados excluidos del destino unificado:** `user-select: none` global, `overflow: hidden` en `html, body` y `#app-viewport`, y `outline: none` en `button` (se conserva foco visible accesible en `unified`).
+
+## Propuesta de adaptación — `ADAPT-LOGIN-STAFF` (Aprobada 2026-11-25)
+
+- **Superficie:** `/terminal/acceso` (`frontend/unified/src/features/terminal/auth/TerminalAuthPage.tsx`).
+- **Motivo:** el original (`EmployeeIdScreen.jsx` + `EmployeePinScreen.jsx`) divide el acceso en dos pasos con lista rápida de empleados (`.quick-employees-list`), selección por avatar/rol y fallback local (`verifyEmployeeCredentials`), lo cual incumple la seguridad del unificado (ADR 0005 / cookies `HttpOnly` de API).
+- **Diseño aprobado:**
+  - Mantener la estética de `theme-nordic` y el contenedor `.kiosk-chassis` (`max-width: 440px`, fondo `#ffffff`, borde `#e2e8f0`, `border-radius: 32px`, `padding: 1.75rem`).
+  - **Formulario único** de usuario (`isValidStaffUsername`, hasta 24 caracteres) y contraseña (`isValidStaffPassword`, `8–24` caracteres) sin dividir en dos pantallas.
+  - **Exclusiones obligatorias:** sin `.quick-employees-list`, sin chips demo, sin selector de rol y sin fallback local ni credenciales en cliente.
+  - **Estados y accesibilidad:**
+    - `loading`: mensaje de comprobación de sesión con `aria-live="polite"`.
+    - `recoverable-error` / error de envío: alerta accesible con `role="alert"` y foco preservado sin perder el contexto del formulario.
+    - `authenticated`: tarjeta resumen dentro de `.kiosk-chassis` con destino real según rol y acción segura de cambio de actor (`replaceActor`).
+- **Estado:** **Aprobado explícitamente por el responsable (2026-11-25)** como entrada para HYB-06 (no aprueba el resultado implementado hasta cerrar HYB-06).
+
+**Decisiones abiertas:** tema y viewports de cliente (`HYB-04`); disponibilidad/licencia y empaquetado local de tipografías `Outfit`/`Inter` antes de cerrar `HYB-05…HYB-08`.
