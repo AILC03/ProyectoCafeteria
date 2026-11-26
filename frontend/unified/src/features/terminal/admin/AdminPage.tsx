@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { formatMxnCents } from '../../../shared/utils/money';
-import { getSalesSummary, formatSalesError, type SalesSummary } from '../sales/salesApi';
+import { DashboardSummary } from './dashboard/DashboardSummary';
+import { SessionSettings } from './SessionSettings';
 import {
   deleteAdmin, formatAdminError, formatAdminMutationError, getConfiguration, isUncertainAdminMutation,
   listAdmin, putConfiguration, writeAdmin,
@@ -45,29 +46,6 @@ function asForm(entity?: AdminEntity): Record<string, string | boolean> {
 function entityLabel(kind: AdminKind, entity: AdminEntity): string {
   if (kind === 'employees' && 'username' in entity) return `${entity.name} (${entity.username})`;
   return entity.name;
-}
-
-function Dashboard() {
-  const [summary, setSummary] = useState<SalesSummary | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
-    let active = true;
-    getSalesSummary({}).then((data) => { if (active) setSummary(data); })
-      .catch((reason) => { if (active) setError(formatSalesError(reason)); });
-    return () => { active = false; };
-  }, []);
-  return <section aria-labelledby="admin-dashboard-title" className="admin-panel">
-    <h2 id="admin-dashboard-title">Dashboard y corte</h2>
-    <p>Totales de ventas de la API, sin datos simulados. Para abrir y cerrar caja usa la vista de caja autorizada.</p>
-    {error !== null && <p role="alert">{error}</p>}
-    {summary !== null && <dl className="cash-summary">
-      <div><dt>Ventas</dt><dd>{summary.count}</dd></div>
-      <div><dt>Total</dt><dd>{formatMxnCents(summary.totalCents)}</dd></div>
-      <div><dt>Efectivo</dt><dd>{formatMxnCents(summary.cashCents)}</dd></div>
-      <div><dt>Tarjeta registrada</dt><dd>{formatMxnCents(summary.stripeCents)}</dd></div>
-    </dl>}
-    <p><Link to="/terminal/caja">Caja y corte</Link> · <Link to="/terminal/historial">Historial operativo</Link></p>
-  </section>;
 }
 
 function ConfigurationEditor({ product }: { product: AdminProduct }) {
@@ -293,23 +271,51 @@ function Collection({ kind }: { kind: AdminKind }) {
 
 export function AdminPage() {
   const location = useLocation();
-  const navigate = useNavigate();
+  const heading = useRef<HTMLHeadingElement>(null);
   const section = location.pathname.split('/').filter(Boolean)[2];
+  const configuration = section === 'configuracion';
   const kind: AdminKind | 'dashboard' = section === 'catalogo' ? 'products'
     : section === 'categorias' ? 'categories' : section === 'grupos' ? 'option-groups'
       : section === 'valores' ? 'option-values' : section === 'personal' ? 'employees' : 'dashboard';
-  const routes: Record<AdminKind | 'dashboard', string> = {
-    dashboard: '', categories: 'categorias', products: 'catalogo', 'option-groups': 'grupos',
-    'option-values': 'valores', employees: 'personal',
-  };
-  return <section className="terminal-admin" aria-labelledby="admin-title">
-    <h1 id="admin-title">Administración</h1>
-    <nav aria-label="Secciones administrativas" className="admin-tabs">
-      {(['dashboard', 'categories', 'products', 'option-groups', 'option-values', 'employees'] as const)
-        .map((tab) => <button type="button" key={tab} aria-current={kind === tab ? 'page' : undefined}
-          onClick={() => { void navigate(`/terminal/administracion${routes[tab] === '' ? '' : `/${routes[tab]}`}`); }}>
-          {tab === 'dashboard' ? 'Dashboard y corte' : LABELS[tab]}</button>)}
-    </nav>
-    {kind === 'dashboard' ? <Dashboard /> : <Collection key={kind} kind={kind} />}
-  </section>;
+  useEffect(() => { heading.current?.focus(); }, [location.pathname]);
+  return <div className="terminal-admin terminal-admin-shell">
+    <aside className="admin-sidebar">
+      <nav aria-label="Secciones administrativas">
+        <div className="admin-nav-group">
+          <p className="admin-nav-label">Operación</p>
+          <ul>
+            <li><NavLink end to="/terminal/administracion">Inicio</NavLink></li>
+            <li><NavLink to="/terminal/historial">Ventas</NavLink></li>
+            <li><NavLink to="/terminal/caja">Caja</NavLink></li>
+          </ul>
+        </div>
+        <div className="admin-nav-group">
+          <p className="admin-nav-label">Catálogo</p>
+          <ul>
+            <li><NavLink to="/terminal/administracion/catalogo">{LABELS.products}</NavLink></li>
+            <li><NavLink to="/terminal/administracion/categorias">{LABELS.categories}</NavLink></li>
+            <li><NavLink to="/terminal/administracion/grupos">{LABELS['option-groups']}</NavLink></li>
+            <li><NavLink to="/terminal/administracion/valores">{LABELS['option-values']}</NavLink></li>
+          </ul>
+        </div>
+        <div className="admin-nav-group">
+          <p className="admin-nav-label">Equipo</p>
+          <ul>
+            <li><NavLink to="/terminal/administracion/personal">{LABELS.employees}</NavLink></li>
+            <li><NavLink to="/terminal/administracion/configuracion">Configuración</NavLink></li>
+          </ul>
+        </div>
+      </nav>
+    </aside>
+    <section className="admin-main" aria-labelledby="admin-title">
+      <h1 id="admin-title" ref={heading} tabIndex={-1}>Administración</h1>
+      {configuration ? (
+        <SessionSettings />
+      ) : kind === 'dashboard' ? (
+        <DashboardSummary />
+      ) : (
+        <Collection key={kind} kind={kind} />
+      )}
+    </section>
+  </div>;
 }

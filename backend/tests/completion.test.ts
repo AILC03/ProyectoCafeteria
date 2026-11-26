@@ -14,7 +14,7 @@ import {
   employeeCreate,
   employeeUpdate,
 } from '../src/modules/accounts/accounts.validation.js';
-import { salesQuery } from '../src/modules/sales/sales.validation.js';
+import { dashboardSummaryQuery, salesQuery } from '../src/modules/sales/sales.validation.js';
 
 describe('FIN-01: validación y proveedores sin red', () => {
   it('cifra por referencia y versión, rechaza corrupción y no expone el token', () => {
@@ -51,6 +51,53 @@ describe('FIN-01: validación y proveedores sin red', () => {
       salesQuery.safeParse({ from: '2026-11-11T00:00:00Z', to: '2026-11-10T00:00:00Z' }).success,
     ).toBe(false);
     expect(salesQuery.safeParse({ limit: '101' }).success).toBe(false);
+    expect(salesQuery.safeParse({ order: 'desc' }).success).toBe(true);
+    expect(salesQuery.safeParse({ order: 'sideways' }).success).toBe(false);
+  });
+  it('valida el rango acotado y estricto del resumen administrativo', () => {
+    expect(
+      dashboardSummaryQuery.safeParse({
+        from: '2026-11-24T08:00:00.000Z',
+        to: '2026-11-25T08:00:00.000Z',
+      }).success,
+    ).toBe(true);
+    expect(
+      dashboardSummaryQuery.safeParse({
+        from: '2026-01-01T00:00:00.000Z',
+        to: '2027-01-02T00:00:00.000Z',
+      }).success,
+    ).toBe(true);
+    expect(
+      dashboardSummaryQuery.safeParse({
+        from: '2026-11-24T08:00:00.000Z',
+        to: '2026-11-24T08:00:00.000Z',
+      }).success,
+    ).toBe(false);
+    expect(
+      dashboardSummaryQuery.safeParse({
+        from: '2026-11-24T08:00:00.000Z',
+        to: '2027-11-26T08:00:00.000Z',
+      }).success,
+    ).toBe(false);
+    expect(
+      dashboardSummaryQuery.safeParse({
+        from: '2026-01-01T00:00:00.000Z',
+        to: '2027-01-02T00:00:00.001Z',
+      }).success,
+    ).toBe(false);
+    expect(
+      dashboardSummaryQuery.safeParse({
+        from: '2026-11-24T08:00:00.000Z',
+        to: '2026-11-25T08:00:00.000Z',
+        limit: '20',
+      }).success,
+    ).toBe(false);
+    expect(
+      dashboardSummaryQuery.safeParse({
+        from: '2026-11-24T08:00:00+01:00',
+        to: '2026-11-25T08:00:00.000Z',
+      }).success,
+    ).toBe(false);
   });
   it('verifica firma Stripe sobre bytes raw, nunca usa parser JSON primero', async () => {
     const secret = `whsec_${randomBytes(32).toString('hex')}`;

@@ -12,6 +12,8 @@ export class HttpProblem extends Error {
   }
 }
 export const invalidInput = () => new HttpProblem(400, 'VALIDATION_ERROR', 'Solicitud inválida');
+export const exportLimitExceeded = () =>
+  new HttpProblem(400, 'EXPORT_LIMIT_EXCEEDED', 'Límite de exportación excedido');
 export const notFound = () => new HttpProblem(404, 'NOT_FOUND', 'Recurso no encontrado');
 export const unavailable = () =>
   new HttpProblem(503, 'DEPENDENCY_UNAVAILABLE', 'Servicio indisponible');

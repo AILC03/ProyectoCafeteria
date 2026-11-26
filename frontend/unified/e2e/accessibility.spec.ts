@@ -1,5 +1,9 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
+import { categoryParticipationForUrl } from '../src/test/categoryFixture';
+import { noMovementForUrl } from '../src/test/noMovementFixture';
+import { productRankingForUrl } from '../src/test/rankingFixture';
+import { salesSeriesForUrl } from '../src/test/seriesFixture';
 
 type MockActor = {
   id: string;
@@ -24,6 +28,35 @@ const product = {
 };
 
 const salesSummary = { count: '1', totalCents: '6500', cashCents: '6500', stripeCents: '0' };
+
+function dashboardSummary(url: string) {
+  const query = new URL(url).searchParams;
+  const from = query.get('from')!;
+  const to = query.get('to')!;
+  const duration = Date.parse(to) - Date.parse(from);
+  return {
+    generatedAt: '2026-11-24T18:30:00.000Z',
+    currency: 'MXN',
+    period: {
+      from,
+      to,
+      timeZone: 'America/Tijuana',
+      previousFrom: new Date(Date.parse(from) - duration).toISOString(),
+      previousTo: from,
+    },
+    totalCents: '6500',
+    ticketCount: '1',
+    averageTicketCents: '6500',
+    unitsSold: '1',
+    paymentMix: { cashCents: '6500', stripeCents: '0' },
+    comparison: {
+      totalCents: { previous: '0', change: '6500', changePercent: null },
+      ticketCount: { previous: '0', change: '1', changePercent: null },
+      averageTicketCents: { previous: '0', change: '6500', changePercent: null },
+      unitsSold: { previous: '0', change: '1', changePercent: null },
+    },
+  };
+}
 
 /**
  * Mocks every API call the audited pages need. `actor === null` behaves like a
@@ -56,11 +89,29 @@ async function mockApi(context: BrowserContext, actor: MockActor | null) {
     if (path === '/api/v1/products' && request.method() === 'GET') {
       return json({ data: [product], page: { limit: 100, nextCursor: null } });
     }
+    if (path === '/api/v1/admin/dashboard/summary' && request.method() === 'GET') {
+      return json({ data: dashboardSummary(request.url()) });
+    }
+    if (path === '/api/v1/admin/dashboard/sales-series' && request.method() === 'GET') {
+      return json({ data: salesSeriesForUrl(request.url()) });
+    }
+    if (path === '/api/v1/admin/dashboard/product-ranking' && request.method() === 'GET') {
+      return json({ data: productRankingForUrl(request.url()) });
+    }
+    if (path === '/api/v1/admin/dashboard/no-movement-products' && request.method() === 'GET') {
+      return json({ data: noMovementForUrl(request.url(), []) });
+    }
+    if (path === '/api/v1/admin/dashboard/category-participation' && request.method() === 'GET') {
+      return json({ data: categoryParticipationForUrl(request.url()) });
+    }
     if (path === '/api/v1/sales/summary' && request.method() === 'GET') {
       return json({ data: salesSummary });
     }
     if (path === '/api/v1/cash-sessions/current' && request.method() === 'GET') {
       return json({ data: null });
+    }
+    if (path === '/api/v1/sales' && request.method() === 'GET') {
+      return json({ data: [], page: { limit: 5, nextCursor: null } });
     }
 
     return json({ code: 'NOT_FOUND' }, 404);
@@ -128,6 +179,9 @@ test.describe('Automated accessibility (axe-core, WCAG 2.1 A/AA)', () => {
     await page.goto('/terminal/administracion');
     await expect(page.getByRole('heading', { name: 'Administración' })).toBeVisible();
     await expect(page.getByText('$65.00').first()).toBeVisible();
+    await expect(
+      page.getByRole('table', { name: /Series de ventas por hora/ }),
+    ).toBeVisible();
     await expectNoA11yViolations(page, '/terminal/administracion (ADMINISTRADOR)');
   });
 });

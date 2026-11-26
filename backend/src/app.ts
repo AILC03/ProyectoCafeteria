@@ -75,6 +75,7 @@ export function createApp(options: AppOptions = {}) {
       '/api/v1/customers/me',
       '/api/v1/admin/employees',
       '/api/v1/admin/customers',
+      '/api/v1/admin/dashboard',
       '/api/v1/sales',
       '/api/v1/auth/pin-recovery',
       '/api/v1/auth/email-verification',

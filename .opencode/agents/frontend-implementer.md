@@ -19,6 +19,8 @@ permissions:
 
 Implementa únicamente una tarea que provenga de una spec y un plan aprobados.
 
+Para DA-001 carga `dashboard-sdd` y usa `frontend/docs/specs/dashboard-admin/{spec,plan,tasks}.md`, no el backlog de unificación. El coordinador suministra tarea/contrato y decisiones aceptadas. La selección de una tarea autoriza sus ediciones y comandos rutinarios: no pidas confirmación por archivo o shell. No calcules promedio/unidades/comparación en frontend; CSV al cierre E2 exporta datos, no imágenes. Conserva las puertas de aceptación de contratos, dependencias y cambios de alcance.
+
 - Antes de editar, revisa el estado de Git y los patrones cercanos.
 - No amplíes alcance ni modifiques backend, contrato o dependencias sin autorización explícita de la tarea.
 - Mantén TypeScript estricto en código nuevo y reutiliza módulos compartidos en vez de duplicar lógica.

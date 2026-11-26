@@ -6,6 +6,8 @@ color: "#7c3aed"
 
 Coordina la migración del frontend de Coffee's POS con spec-first development.
 
+Si el encargo corresponde al dashboard DA-001, usa `dashboard-sdd-coordinator` y carga `dashboard-sdd`: sus spec/plan/tasks y registros son independientes de la unificación. No vuelvas a solicitar aprobación documental ya registrada ni escribas cierres DA-001 en STATUS de unificación. Dentro de la tarea seleccionada, no preguntes por cada archivo o comando rutinario. Las instrucciones de unificación que siguen se conservan para ese proyecto, no sustituyen el flujo de DA-001.
+
 ## Secuencia obligatoria
 
 1. Investiga y redacta la spec. No implementes antes de que el responsable apruebe la spec.

@@ -1,16 +1,34 @@
-import { Router } from 'express';
+import { Router, type Response } from 'express';
 import { authenticate, authorize } from '../../middleware/authenticate.js';
 import type { AuthService } from '../auth/auth.service.js';
 import { principal } from '../auth/auth.http.js';
 import { privateCashResponse } from '../cash/cash.routes.js';
 import { jsonValue } from '../../shared/http/serialization.js';
 import { invalidInput } from '../../shared/http/problem.js';
-import { salesFilters, salesQuery } from './sales.validation.js';
+import type { CsvExport } from './sales.export.js';
+import {
+  dashboardSummaryQuery,
+  salesCategoryParticipationQuery,
+  salesExportQuery,
+  salesFilters,
+  salesNoMovementQuery,
+  salesQuery,
+  salesRankingQuery,
+  salesSeriesQuery,
+} from './sales.validation.js';
 import type { SalesService } from './sales.service.js';
+
+/** Envía un CSV ya serializado por completo: nunca hay cabeceras con cuerpo parcial. */
+function sendCsv(response: Response, file: CsvExport) {
+  response.set('Content-Type', 'text/csv; charset=utf-8');
+  response.set('Content-Disposition', `attachment; filename="${file.filename}"`);
+  response.send(file.body);
+}
 export function salesRoutes(auth: AuthService, service: SalesService) {
   const router = Router();
   router.use('/sales', privateCashResponse);
   const access = [authenticate(auth), authorize('CAJERO', 'GERENTE')];
+  const csvAccess = [privateCashResponse, authenticate(auth), authorize('ADMINISTRADOR')] as const;
   router.get('/sales', ...access, async (req, res) => {
     if (req.headers['transfer-encoding'] || Number(req.headers['content-length'] ?? 0))
       throw invalidInput();
@@ -23,5 +41,123 @@ export function salesRoutes(auth: AuthService, service: SalesService) {
     if (input.from && input.to && new Date(input.from) >= new Date(input.to)) throw invalidInput();
     res.json(jsonValue(await service.summary(principal(res), input)));
   });
+  router.get(
+    '/admin/dashboard/summary',
+    privateCashResponse,
+    authenticate(auth),
+    authorize('ADMINISTRADOR'),
+    async (req, res) => {
+      if (req.headers['transfer-encoding'] || Number(req.headers['content-length'] ?? 0))
+        throw invalidInput();
+      res.json(
+        jsonValue(
+          await service.administrativeSummary(
+            principal(res),
+            dashboardSummaryQuery.parse(req.query),
+          ),
+        ),
+      );
+    },
+  );
+  router.get(
+    '/admin/dashboard/sales-series',
+    privateCashResponse,
+    authenticate(auth),
+    authorize('ADMINISTRADOR'),
+    async (req, res) => {
+      if (req.headers['transfer-encoding'] || Number(req.headers['content-length'] ?? 0))
+        throw invalidInput();
+      res.json(
+        jsonValue(await service.salesSeries(principal(res), salesSeriesQuery.parse(req.query))),
+      );
+    },
+  );
+  router.get(
+    '/admin/dashboard/product-ranking',
+    privateCashResponse,
+    authenticate(auth),
+    authorize('ADMINISTRADOR'),
+    async (req, res) => {
+      if (req.headers['transfer-encoding'] || Number(req.headers['content-length'] ?? 0))
+        throw invalidInput();
+      res.json(
+        jsonValue(await service.productRanking(principal(res), salesRankingQuery.parse(req.query))),
+      );
+    },
+  );
+  router.get(
+    '/admin/dashboard/no-movement-products',
+    privateCashResponse,
+    authenticate(auth),
+    authorize('ADMINISTRADOR'),
+    async (req, res) => {
+      if (req.headers['transfer-encoding'] || Number(req.headers['content-length'] ?? 0))
+        throw invalidInput();
+      res.json(
+        jsonValue(
+          await service.noMovementProducts(principal(res), salesNoMovementQuery.parse(req.query)),
+        ),
+      );
+    },
+  );
+  router.get(
+    '/admin/dashboard/category-participation',
+    privateCashResponse,
+    authenticate(auth),
+    authorize('ADMINISTRADOR'),
+    async (req, res) => {
+      if (req.headers['transfer-encoding'] || Number(req.headers['content-length'] ?? 0))
+        throw invalidInput();
+      res.json(
+        jsonValue(
+          await service.categoryParticipation(
+            principal(res),
+            salesCategoryParticipationQuery.parse(req.query),
+          ),
+        ),
+      );
+    },
+  );
+  router.get('/admin/dashboard/sales-export.csv', ...csvAccess, async (req, res) => {
+    if (req.headers['transfer-encoding'] || Number(req.headers['content-length'] ?? 0))
+      throw invalidInput();
+    sendCsv(res, await service.salesCsv(principal(res), salesExportQuery.parse(req.query)));
+  });
+  router.get('/admin/dashboard/sales-series-export.csv', ...csvAccess, async (req, res) => {
+    if (req.headers['transfer-encoding'] || Number(req.headers['content-length'] ?? 0))
+      throw invalidInput();
+    sendCsv(res, await service.salesSeriesCsv(principal(res), salesSeriesQuery.parse(req.query)));
+  });
+  router.get('/admin/dashboard/product-ranking-export.csv', ...csvAccess, async (req, res) => {
+    if (req.headers['transfer-encoding'] || Number(req.headers['content-length'] ?? 0))
+      throw invalidInput();
+    sendCsv(
+      res,
+      await service.productRankingCsv(principal(res), salesRankingQuery.parse(req.query)),
+    );
+  });
+  router.get('/admin/dashboard/no-movement-products-export.csv', ...csvAccess, async (req, res) => {
+    if (req.headers['transfer-encoding'] || Number(req.headers['content-length'] ?? 0))
+      throw invalidInput();
+    sendCsv(
+      res,
+      await service.noMovementProductsCsv(principal(res), salesExportQuery.parse(req.query)),
+    );
+  });
+  router.get(
+    '/admin/dashboard/category-participation-export.csv',
+    ...csvAccess,
+    async (req, res) => {
+      if (req.headers['transfer-encoding'] || Number(req.headers['content-length'] ?? 0))
+        throw invalidInput();
+      sendCsv(
+        res,
+        await service.categoryParticipationCsv(
+          principal(res),
+          salesCategoryParticipationQuery.parse(req.query),
+        ),
+      );
+    },
+  );
   return router;
 }

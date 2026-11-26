@@ -19,6 +19,7 @@
     "test:components": "vitest run --project components",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test --pass-with-no-tests",
+    "test:e2e:live": "playwright test -c playwright.live.config.ts",
     "electron:dev": "electron .",
     "dist:win": "electron-builder --win portable nsis --x64"
   },

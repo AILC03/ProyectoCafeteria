@@ -246,6 +246,84 @@ export function apiFetch<T = void>(endpoint: string, options: ApiFetchOptions = 
   return apiFetchInternal<T>(endpoint, options, 'normal');
 }
 
+export interface ApiFileResponse {
+  blob: Blob;
+  /** Raw header value; filename parsing/sanitizing belongs to the feature. */
+  contentDisposition: string | null;
+}
+
+export type ApiFileOptions = Omit<ApiFetchOptions, 'body' | 'method'>;
+
+/**
+ * Bounded GET extension for file downloads. It reuses the same credentials,
+ * Problem Details parsing and auth events as apiFetch, but returns the body as
+ * a Blob plus the Content-Disposition header instead of parsing JSON/text.
+ */
+export async function apiFetchFile(endpoint: string, options: ApiFileOptions = {}): Promise<ApiFileResponse> {
+  const headers = new Headers(options.headers);
+  if (!headers.has('Accept')) {
+    headers.set('Accept', 'text/csv, application/problem+json');
+  }
+
+  const init: RequestInit = {
+    ...options,
+    method: 'GET',
+    headers,
+    credentials: 'include',
+  };
+  const url = endpointUrl(endpoint);
+
+  let response: Response;
+  try {
+    response = await fetchResponse(url, init);
+  } catch (error) {
+    if (options.signal?.aborted) {
+      throw new DOMException('La descarga fue cancelada', 'AbortError');
+    }
+    throw error;
+  }
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      publishApiAuthEvent({ type: 'session-expired' });
+    }
+    const problem = await readProblem(response);
+    if (problem !== undefined) {
+      if (response.status === 403 && problem.code === 'PIN_CHANGE_REQUIRED') {
+        publishApiAuthEvent({ type: 'pin-change-required' });
+      }
+      throw toApiError(response.status, response.statusText, problem);
+    }
+    const text = await response.text().catch(() => '');
+    throw new ApiError(response.status, text || response.statusText);
+  }
+
+  const contentType = (response.headers.get('content-type') ?? '').trim();
+  if (!/^text\/csv(?:;|$)/i.test(contentType)) {
+    const problem = await readProblem(response);
+    const fallbackProblem: ProblemDetails = problem ?? {};
+    throw new ApiError(response.status, 'Unexpected non-CSV response', {
+      ...fallbackProblem,
+      code: problem?.code ?? 'UNEXPECTED_CONTENT_TYPE',
+    });
+  }
+
+  let blob: Blob;
+  try {
+    blob = await response.blob();
+  } catch (error) {
+    if (options.signal?.aborted) {
+      throw new DOMException('La descarga fue cancelada', 'AbortError');
+    }
+    throw error;
+  }
+
+  return {
+    blob,
+    contentDisposition: response.headers.get('content-disposition'),
+  };
+}
+
 /**
  * Dedicated path for a previously-created idempotent operation. It still uses
  * CSRF, credentials, Problem Details and auth events, but never replays a

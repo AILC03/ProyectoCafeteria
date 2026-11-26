@@ -28,6 +28,7 @@ export function userDto(user: AuthUser) {
     name: user.name,
     role: user.role.name,
     accountType: user.accountType,
+    username: user.accountType === 'STAFF' ? user.username : null,
     mustChangePin: user.mustChangePin,
   };
 }

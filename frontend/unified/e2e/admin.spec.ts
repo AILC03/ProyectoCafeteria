@@ -1,4 +1,8 @@
 import { expect, test, type BrowserContext } from '@playwright/test';
+import { categoryParticipationForUrl } from '../src/test/categoryFixture';
+import { noMovementForUrl } from '../src/test/noMovementFixture';
+import { productRankingForUrl } from '../src/test/rankingFixture';
+import { salesSeriesForUrl } from '../src/test/seriesFixture';
 
 const administrator = { id: '1', name: 'Ana', role: 'ADMINISTRADOR', accountType: 'STAFF', mustChangePin: false };
 const cashier = { id: '2', name: 'Caja', role: 'CAJERO', accountType: 'STAFF', mustChangePin: false };
@@ -13,6 +17,58 @@ const employee = { id: '3', name: 'María', username: 'maria_3', role: 'CAJERO',
 const group = { id: '4', name: 'Tamaño', pricingScope: 'GLOBAL', deletedAt: null };
 const value = { id: '5', optionGroupId: '4', name: 'Grande', globalSurchargeCents: '500', isAvailable: true, deletedAt: null };
 const config = { groups: [{ groupId: '4', minSelections: 0, maxSelections: 1, values: [{ valueId: '5' }] }] };
+const sale = {
+  id: '9',
+  saleNumber: 'V000009',
+  orderId: '8',
+  paymentId: '7',
+  totalCents: '4500',
+  soldAt: '2026-11-24T18:00:00.000Z',
+  method: 'STRIPE',
+};
+const ticket = {
+  saleId: '9',
+  saleNumber: 'V000009',
+  orderFolio: 'A000009',
+  soldAt: '2026-11-24T18:00:00.000Z',
+  currency: 'MXN',
+  totalCents: '4500',
+  cashReceivedCents: null,
+  changeCents: null,
+  items: [
+    { productName: 'Café', quantity: 1, unitPriceCents: '4500', lineTotalCents: '4500' },
+  ],
+  registration: null,
+};
+
+function dashboardSummary(url: string) {
+  const query = new URL(url).searchParams;
+  const from = query.get('from')!;
+  const to = query.get('to')!;
+  const duration = Date.parse(to) - Date.parse(from);
+  return {
+    generatedAt: '2026-11-24T18:30:00.000Z',
+    currency: 'MXN',
+    period: {
+      from,
+      to,
+      timeZone: 'America/Tijuana',
+      previousFrom: new Date(Date.parse(from) - duration).toISOString(),
+      previousTo: from,
+    },
+    totalCents: '4500',
+    ticketCount: '1',
+    averageTicketCents: '4500',
+    unitsSold: '1',
+    paymentMix: { cashCents: '4500', stripeCents: '0' },
+    comparison: {
+      totalCents: { previous: '0', change: '4500', changePercent: null },
+      ticketCount: { previous: '0', change: '1', changePercent: null },
+      averageTicketCents: { previous: '0', change: '4500', changePercent: null },
+      unitsSold: { previous: '0', change: '1', changePercent: null },
+    },
+  };
+}
 
 async function mock(context: BrowserContext, actor = administrator) {
   const requests: Array<{ method: string; path: string; body: unknown; csrf: string | null }> = [];
@@ -32,6 +88,24 @@ async function mock(context: BrowserContext, actor = administrator) {
       if (path.endsWith('/configuration')) return json({ data: config });
       return json({}, 404);
     }
+    if (path === '/api/v1/admin/dashboard/summary') {
+      return json({ data: dashboardSummary(request.url()) });
+    }
+    if (path === '/api/v1/admin/dashboard/sales-series') {
+      return json({ data: salesSeriesForUrl(request.url()) });
+    }
+    if (path === '/api/v1/admin/dashboard/product-ranking') {
+      return json({ data: productRankingForUrl(request.url()) });
+    }
+    if (path === '/api/v1/admin/dashboard/no-movement-products') {
+      return json({ data: noMovementForUrl(request.url(), []) });
+    }
+    if (path === '/api/v1/admin/dashboard/category-participation') {
+      return json({ data: categoryParticipationForUrl(request.url()) });
+    }
+    if (path === '/api/v1/cash-sessions/current') return json({ data: null });
+    if (path === '/api/v1/sales') return json({ data: [sale], page: { limit: 5, nextCursor: null } });
+    if (path === '/api/v1/sales/9/ticket') return json({ data: ticket });
     if (path === '/api/v1/sales/summary') return json({ data: { count: '1', totalCents: '4500', cashCents: '4500', stripeCents: '0' } });
     if (path === '/api/v1/admin/categories') return json({ data: [category], page: { limit: 20, nextCursor: null } });
     if (path === '/api/v1/admin/products') return json({ data: [product], page: { limit: 20, nextCursor: null } });
@@ -51,7 +125,7 @@ test.describe('TASK-19 administrative workspace', () => {
     await page.goto('/terminal/administracion');
     await expect(page.getByRole('heading', { name: 'Administración' })).toBeVisible();
     await expect(page.getByText('$45.00').first()).toBeVisible();
-    const categories = page.getByRole('button', { name: 'Categorías' });
+    const categories = page.getByRole('link', { name: 'Categorías' });
     await categories.focus();
     await page.keyboard.press('Enter');
     await expect(page.getByText('Bebidas')).toBeVisible();
@@ -63,10 +137,20 @@ test.describe('TASK-19 administrative workspace', () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
   });
 
+  test('opens a protected ticket from latest sales without charging', async ({ page, context }) => {
+    await mock(context);
+    await page.goto('/terminal/administracion');
+    await page.getByRole('button', { name: 'Ver ticket V000009' }).click();
+    await expect(page.getByRole('heading', { name: 'Ticket reimpreso' })).toBeVisible();
+    await expect(page.getByText('Ticket V000009')).toBeVisible();
+    await page.getByRole('button', { name: 'Cerrar ticket' }).click();
+    await expect(page.getByRole('heading', { name: 'Ticket reimpreso' })).toBeHidden();
+  });
+
   test('configuration only uses API groups and rejects invalid edits before mutation', async ({ page, context }) => {
     const writes = await mock(context);
     await page.goto('/terminal/administracion');
-    await page.getByRole('button', { name: 'Productos', exact: true }).click();
+    await page.getByRole('link', { name: 'Productos', exact: true }).click();
     await page.getByRole('button', { name: 'Opciones de Café' }).click();
     const editor = page.getByRole('textbox', { name: 'Grupos, límites y valores (JSON)' });
     await expect(editor).toContainText('groupId');
@@ -97,7 +181,7 @@ test.describe('TASK-19 administrative workspace', () => {
     await page.getByRole('textbox', { name: 'Nombre' }).fill('Tamaño');
     await page.getByRole('button', { name: 'Guardar', exact: true }).click();
     await expect(page.getByRole('status').filter({ hasText: 'guardado' })).toBeVisible();
-    await page.getByRole('button', { name: 'Valores de opciones' }).click();
+    await page.getByRole('link', { name: 'Valores de opciones' }).click();
     await page.getByRole('textbox', { name: 'ID del grupo de opciones' }).fill('4');
     await page.getByRole('textbox', { name: 'Nombre' }).fill('Grande');
     await page.getByRole('textbox', { name: 'Recargo global en centavos (vacío si es por producto)' }).fill('500');

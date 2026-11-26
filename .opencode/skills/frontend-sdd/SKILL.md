@@ -7,6 +7,8 @@ description: Dirige la unificación del frontend con el orden spec, plan, tasks 
 
 Usa esta skill para el trabajo de unificación de clientes y empleados.
 
+Para el dashboard DA-001 usa la skill `dashboard-sdd` y sus spec/plan/tasks propios; no reutilices tareas ni STATUS históricos de unificación para cerrar trabajo del dashboard. Dentro de una tarea autorizada no solicites aprobación por cada edición o comando rutinario: la aprobación SDD del alcance es distinta del permiso técnico de herramientas.
+
 ## Orden innegociable
 
 1. **Spec:** problema, objetivos, alcance, exclusiones, actores, rutas, sesiones, roles, Electron, migración, riesgos y criterios de aceptación.

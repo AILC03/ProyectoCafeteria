@@ -5,6 +5,7 @@ export type Actor = {
   name: string;
   role: string;
   accountType: string;
+  username?: string | null;
   mustChangePin: boolean;
 };
 
