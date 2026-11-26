@@ -1,0 +1,42 @@
+/* HYB-12: KDS and availability presentation; no polling, status or permission changes. */
+.terminal-layout .terminal-kitchen,
+.terminal-layout .terminal-availability { width: 100%; max-width: 78rem; margin: 0 auto; padding: clamp(1rem, 2.5vw, 2rem); align-content: start; background: var(--term-bg-secondary); min-height: calc(100vh - 5rem); }
+.terminal-layout .kitchen-page-header,
+.terminal-layout .availability-page-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
+.terminal-layout .kitchen-page-header h1,
+.terminal-layout .availability-page-header h1 { margin: 0; font-size: clamp(1.45rem, 2.5vw, 1.8rem); font-weight: 800; }
+.terminal-layout .kitchen-page-header p,
+.terminal-layout .availability-page-header p { margin: .3rem 0 0; color: var(--term-text-muted); }
+.terminal-layout .kitchen-page-header button,
+.terminal-layout .availability-page-header button { min-height: 44px; border-radius: 999px; background: #fff; border-color: #cbd5e1; color: #334155; font-weight: 700; }
+.terminal-layout .kitchen-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }
+.terminal-layout .kitchen-count { padding: .25rem .65rem; border-radius: 999px; background: #9a3412; color: #fff; font-size: .8rem; font-weight: 700; }
+.terminal-layout .kitchen-empty,
+.terminal-layout .availability-empty { background: #fff; border: 1px dashed #cbd5e1; border-radius: 16px; padding: 3rem 1.5rem; text-align: center; color: #475569; font-weight: 700; }
+.terminal-layout .kitchen-cards { grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr)); gap: 1.25rem; }
+.terminal-layout .kitchen-card { display: flex; flex-direction: column; padding: 0; overflow: hidden; background: #fff; border: 2px solid var(--term-border-light); border-radius: 16px; box-shadow: var(--term-shadow-md); }
+.terminal-layout .kitchen-card-heading { display: flex; justify-content: space-between; flex-wrap: wrap; gap: .5rem; padding: .9rem 1.1rem; background: var(--term-bg-secondary); border-bottom: 1px solid var(--term-border-light); }
+.terminal-layout .kitchen-card-heading h2 { font-size: 1.15rem; font-weight: 800; }
+.terminal-layout .kitchen-card-heading p { margin-top: .2rem; color: var(--term-text-muted); }
+.terminal-layout .kitchen-time { align-self: start; padding: .25rem .5rem; border: 1px solid #ffedd5; border-radius: 6px; background: #fff7ed; color: #9a3412; font-size: .76rem; font-weight: 700; }
+.terminal-layout .kitchen-card-content { flex: 1; display: grid; align-content: start; gap: .75rem; padding: 1.1rem; }
+.terminal-layout .kitchen-items { gap: .75rem; }
+.terminal-layout .kitchen-items li { border-bottom: 1px dashed var(--term-border-light); padding-bottom: .75rem; }
+.terminal-layout .kitchen-items li > span { color: #0f172a; font-weight: 700; }
+.terminal-layout .kitchen-items small { font-size: .82rem; line-height: 1.45; }
+.terminal-layout .kitchen-card-action { padding: 1rem; border-top: 1px solid var(--term-border-light); background: #fafafa; }
+.terminal-layout .kitchen-card-action button { width: 100%; min-height: 44px; border-radius: 10px; background: #15803d; border-color: #15803d; font-weight: 800; }
+.terminal-layout .kitchen-pagination { justify-content: center; }
+.terminal-layout .kitchen-feedback:not(:empty) p,
+.terminal-layout .terminal-kitchen > [role='alert'],
+.terminal-layout .terminal-availability > [role='alert'] { padding: .9rem 1.1rem; border-radius: 12px; background: #f1f5f9; border: 1px solid #cbd5e1; }
+.terminal-layout .kitchen-feedback [role='alert'],
+.terminal-layout .terminal-kitchen > [role='alert'],
+.terminal-layout .terminal-availability > [role='alert'] { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+.terminal-layout .availability-list { gap: .65rem; }
+.terminal-layout .availability-item { background: #fff; border: 1px solid var(--term-border-light); border-radius: 12px; padding: 1rem; box-shadow: var(--term-shadow-sm); min-width: 0; }
+.terminal-layout .availability-name { color: #0f172a; font-weight: 700; min-width: 0; }
+.terminal-layout .availability-price { color: #334155; font-weight: 700; }
+.terminal-layout .availability-state { border: 1px solid #86efac; border-radius: 999px; padding: .25rem .55rem; background: #f0fdf4; color: #14532d; font-size: .8rem; font-weight: 700; white-space: nowrap; }
+.terminal-layout .availability-state-soldout { border-color: #fca5a5; background: #fef2f2; color: #991b1b; }
+.terminal-layout .availability-item button { min-height: 44px; border-radius: 10px; font-weight: 700; }

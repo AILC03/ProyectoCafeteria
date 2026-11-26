@@ -132,8 +132,12 @@ export function KitchenPage() {
 
   return (
     <section className="terminal-kitchen" aria-labelledby="kitchen-title">
-      <h1 id="kitchen-title" tabIndex={-1}>Cola de cocina</h1>
-      <button type="button" className="secondary-button" onClick={reload} disabled={loading}>Actualizar cola</button>
+      <header className="kitchen-page-header">
+        <div><div className="kitchen-title-row"><h1 id="kitchen-title" tabIndex={-1}>Cola de cocina</h1>
+          {!loading && page !== null && <span className="kitchen-count">{page.items.length} en esta página</span>}
+        </div><p>Órdenes pagadas en espera de preparación · Actualización manual</p></div>
+        <button type="button" className="secondary-button" onClick={reload} disabled={loading}>Actualizar cola</button>
+      </header>
 
       <div className="kitchen-feedback" ref={feedback} tabIndex={-1}>
         {notice !== null && <p role="status">{notice}</p>}
@@ -141,9 +145,8 @@ export function KitchenPage() {
       </div>
       {error !== null && <p role="alert">{error}</p>}
 
-      {!loading && page !== null && page.items.length === 0 && (
-        <p role="status">No hay órdenes en preparación.</p>
-      )}
+      {loading && <p className="kitchen-empty" role="status">Consultando órdenes de cocina…</p>}
+      {!loading && page !== null && page.items.length === 0 && <p className="kitchen-empty" role="status">No hay órdenes en preparación.</p>}
 
       {!loading && page !== null && page.items.length > 0 && (
         <div className="kitchen-cards">
@@ -151,9 +154,10 @@ export function KitchenPage() {
             const detail = details[order.id];
             return (
               <article className="kitchen-card" key={order.id} aria-labelledby={`kitchen-order-${order.id}`}>
-                <h2 id={`kitchen-order-${order.id}`}>Orden {order.folio}</h2>
-                <p>{order.guestName ?? 'Cliente invitado'}</p>
-                <p>Creada: {createdLabel(order.createdAt)}</p>
+                <div className="kitchen-card-heading"><div><h2 id={`kitchen-order-${order.id}`}>Orden {order.folio}</h2><p>Cliente: {order.guestName ?? 'Cliente invitado'}</p></div>
+                  <span className="kitchen-time">Creada: {createdLabel(order.createdAt)}</span>
+                </div>
+                <div className="kitchen-card-content">
                 {detail === undefined
                   ? detailErrors[order.id] !== undefined
                     ? <p role="alert">Detalle no disponible: {detailErrors[order.id]}. Actualiza la cola para reintentar.</p>
@@ -164,22 +168,25 @@ export function KitchenPage() {
                         <li key={item.id}>
                           <span>{item.quantity} × {item.productName}</span>
                           {item.options.length > 0 && (
-                            <small>{item.options.map((option) => option.optionName).join(', ')}</small>
+                            <small>{item.options.map((option, index) => <span key={`${option.optionValueId}-${index}`}>{option.groupName}: <span>{option.optionName}</span>{index < item.options.length - 1 ? ' · ' : ''}</span>)}</small>
                           )}
                         </li>
                       ))}
                     </ul>
                     <p>Total: <strong>{formatMxnCents(detail.totalCents)}</strong></p>
                   </>}
+                </div>
+                <div className="kitchen-card-action">
                 <button
                   type="button"
                   className="primary-button"
-                  aria-label={`Marcar orden ${order.folio} como LISTO`}
+                  aria-label={busy[order.id] === true ? `Marcando orden ${order.folio} como LISTO…` : `Marcar orden ${order.folio} como LISTO`}
                   disabled={loading || detail === undefined || busy[order.id] === true}
                   onClick={() => { void markReady(order); }}
                 >
-                  {busy[order.id] === true ? 'Marcando…' : 'Marcar como LISTO'}
+                  {busy[order.id] === true ? `Marcando orden ${order.folio} como LISTO…` : `Marcar orden ${order.folio} como LISTO`}
                 </button>
+                </div>
               </article>
             );
           })}

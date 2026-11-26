@@ -5,6 +5,18 @@ import { ActorAreaLink } from '../shared/auth/ActorAreaLink';
 import { useSession, useSessionManager } from '../shared/auth/SessionProvider';
 import '../styles/terminal/tokens.css';
 import '../styles/terminal/shell-welcome.css';
+import '../styles/terminal/staff-login.css';
+import '../styles/terminal/pos-catalog.css';
+import '../styles/terminal/pos-order.css';
+import '../styles/terminal/cash-session.css';
+import '../styles/terminal/cash-payment.css';
+import '../styles/terminal/protected-ticket.css';
+import '../styles/terminal/kitchen-availability.css';
+import '../styles/terminal/history.css';
+import '../styles/terminal/admin-shell.css';
+import '../styles/terminal/admin-catalog.css';
+import '../styles/terminal/admin-options.css';
+import '../styles/terminal/admin-staff.css';
 
 function navTabClass({ isActive }: { isActive: boolean }): string {
   return isActive ? 'pos-view-tab active' : 'pos-view-tab';

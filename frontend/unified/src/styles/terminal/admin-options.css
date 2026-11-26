@@ -1,0 +1,39 @@
+/* HYB-16: derivative of the approved admin shell, not a claimed direct original screen. */
+.terminal-layout .admin-collection-option-groups,
+.terminal-layout .admin-collection-option-values { align-content: start; min-width: 0; }
+.terminal-layout .admin-collection-option-groups > h2,
+.terminal-layout .admin-collection-option-values > h2 { margin: 0; font-size: 1.4rem; font-weight: 800; }
+.terminal-layout .admin-collection-option-groups > p,
+.terminal-layout .admin-collection-option-values > p { margin: 0; color: #475569; }
+.terminal-layout .admin-collection-option-groups > .admin-list,
+.terminal-layout .admin-collection-option-values > .admin-list { background: #fff; border: 1px solid var(--term-border-light); border-radius: 16px; overflow: hidden; box-shadow: var(--term-shadow-sm); }
+.terminal-layout .admin-collection-option-groups .admin-list li,
+.terminal-layout .admin-collection-option-values .admin-list li { border: 0; border-bottom: 1px solid var(--term-border-light); padding: .9rem 1.1rem; gap: .65rem; min-width: 0; }
+.terminal-layout .admin-collection-option-groups .admin-list li:last-child,
+.terminal-layout .admin-collection-option-values .admin-list li:last-child { border-bottom: 0; }
+.terminal-layout .admin-collection-option-groups .admin-list strong,
+.terminal-layout .admin-collection-option-values .admin-list strong { color: #0f172a; min-width: 0; }
+.terminal-layout .admin-collection-option-groups .admin-list button,
+.terminal-layout .admin-collection-option-values .admin-list button { min-height: 44px; border-radius: 8px; border: 1px solid #cbd5e1; background: #f8fafc; color: #334155; font-weight: 700; }
+.terminal-layout .admin-collection-option-groups > button,
+.terminal-layout .admin-collection-option-values > button { justify-self: start; min-height: 44px; border-radius: 999px; border: 1px solid #cbd5e1; background: #fff; color: #334155; }
+.terminal-layout .admin-collection-option-groups > .admin-form,
+.terminal-layout .admin-collection-option-values > .admin-form,
+.terminal-layout .admin-config-editor { width: 100%; max-width: 100%; padding: 1.2rem; background: #fff; border: 1px solid var(--term-border-light); border-radius: 16px; box-shadow: var(--term-shadow-sm); }
+.terminal-layout .admin-collection-option-groups .admin-form h3,
+.terminal-layout .admin-collection-option-values .admin-form h3,
+.terminal-layout .admin-config-editor h3 { margin: 0; font-size: 1.15rem; }
+.terminal-layout .admin-collection-option-groups .admin-form label,
+.terminal-layout .admin-collection-option-values .admin-form label,
+.terminal-layout .admin-config-editor form label { font-weight: 700; color: #334155; }
+.terminal-layout .admin-collection-option-groups .admin-form input:not([type='checkbox']),
+.terminal-layout .admin-collection-option-values .admin-form input:not([type='checkbox']),
+.terminal-layout .admin-collection-option-groups .admin-form select,
+.terminal-layout .admin-collection-option-values .admin-form select,
+.terminal-layout .admin-config-editor textarea { width: 100%; min-width: 0; min-height: 44px; border: 1px solid #94a3b8; border-radius: 10px; padding: .6rem .75rem; font: inherit; }
+.terminal-layout .admin-config-editor textarea { font-family: ui-monospace, 'Courier New', monospace; resize: vertical; }
+.terminal-layout .admin-collection-option-groups .admin-form button,
+.terminal-layout .admin-collection-option-values .admin-form button,
+.terminal-layout .admin-config-editor button { min-height: 44px; border-radius: 10px; }
+.terminal-layout .admin-collection-option-groups .kitchen-pagination,
+.terminal-layout .admin-collection-option-values .kitchen-pagination { justify-content: center; }

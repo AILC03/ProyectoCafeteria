@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { HttpResponse, http } from 'msw';
 import { RouterProvider } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
@@ -58,6 +58,7 @@ beforeEach(() => {
   server.use(
     http.get('/api/v1/auth/me', () => HttpResponse.json({ data: cajero })),
     http.get('/api/v1/auth/csrf', () => HttpResponse.json({ data: { csrfToken: 'csrf-test' } })),
+    http.get('/api/v1/categories', () => HttpResponse.json({ data: [], page: { limit: 100, nextCursor: null } })),
     http.get('/api/v1/products', () => HttpResponse.json({ data: [product], page: { limit: 100, nextCursor: null } })),
     http.get('/api/v1/products/10', () => HttpResponse.json({ data: product })),
     http.get('/api/v1/products/10/options', () => HttpResponse.json({ data: options })),
@@ -72,6 +73,42 @@ afterEach(() => {
 });
 
 describe('Terminal POS (TASK-14)', () => {
+  test('keeps the product catalog usable when only category loading fails', async () => {
+    server.use(http.get('/api/v1/categories', () => HttpResponse.json({ code: 'TEMPORARY' }, { status: 503 })));
+    renderPos();
+    expect(await screen.findByRole('button', { name: /Personalizar.*Latte.*\$65\.00/ })).toBeEnabled();
+    expect(screen.getByRole('status')).toHaveTextContent('No se pudieron cargar las categorías');
+    expect(screen.getByRole('button', { name: 'Reintentar categorías' })).toBeEnabled();
+  });
+
+  test('filters API categories and products without enabling unavailable items or losing accessible price', async () => {
+    const longName = 'Flat White de Especialidad Tostado Medio Origen Único Chiapas';
+    server.use(
+      http.get('/api/v1/categories', () => HttpResponse.json({ data: [
+        { id: '1', name: 'Café' }, { id: '2', name: 'Panadería' },
+      ], page: { limit: 100, nextCursor: null } })),
+      http.get('/api/v1/products', () => HttpResponse.json({ data: [
+        product,
+        { ...product, id: '11', name: longName, imageUrl: null },
+        { ...product, id: '12', name: 'Agotado', isAvailable: false },
+        { ...product, id: '13', categoryId: '2', name: 'Croissant' },
+      ], page: { limit: 100, nextCursor: null } })),
+    );
+    renderPos();
+    const catalog = await screen.findByRole('region', { name: 'Productos disponibles' });
+    expect(await within(catalog).findByRole('button', { name: new RegExp(`Personalizar.*${longName}.*\\$65\\.00`) })).toBeEnabled();
+    expect(within(catalog).getByRole('button', { name: /Personalizar.*Agotado.*\$65\.00/ })).toBeDisabled();
+    expect(within(catalog).getAllByText('Sin imagen')).toHaveLength(4);
+    fireEvent.click(within(catalog).getByRole('button', { name: 'Panadería' }));
+    expect(within(catalog).queryByRole('button', { name: /Personalizar.*Latte.*\$65\.00/ })).not.toBeInTheDocument();
+    expect(within(catalog).getByRole('button', { name: /Personalizar.*Croissant.*\$65\.00/ })).toBeVisible();
+    fireEvent.change(within(catalog).getByRole('searchbox', { name: 'Buscar productos' }), { target: { value: 'ninguno' } });
+    expect(within(catalog).getByText('No se encontraron productos')).toBeInTheDocument();
+    fireEvent.click(within(catalog).getByRole('button', { name: 'Todas' }));
+    fireEvent.change(within(catalog).getByRole('searchbox', { name: 'Buscar productos' }), { target: { value: 'Latte' } });
+    expect(within(catalog).getByRole('button', { name: /Personalizar.*Latte.*\$65\.00/ })).toBeVisible();
+  });
+
   test('creates a pending cashier order with a searched customer and no payment claim', async () => {
     let orderBody: unknown;
     let orderKey: string | undefined;
@@ -96,8 +133,8 @@ describe('Terminal POS (TASK-14)', () => {
 
     renderPos();
     await screen.findByRole('heading', { name: 'Punto de venta' });
-    expect(await screen.findByRole('button', { name: 'Personalizar Latte, $65.00' })).toBeInTheDocument();
-    fireEvent.click(await screen.findByRole('button', { name: /Personalizar Latte/ }));
+    expect(await screen.findByRole('button', { name: /Personalizar.*Latte.*\$65\.00/ })).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: /Personalizar.*Latte/ }));
     fireEvent.click(await screen.findByRole('button', { name: 'Confirmar personalización' }));
     expect(await screen.findByText('1 × Latte (Mediano)')).toBeInTheDocument();
 
@@ -125,8 +162,8 @@ describe('Terminal POS (TASK-14)', () => {
   test('blocks new orders after an unverifiable 201 response', async () => {
     server.use(http.post('/api/v1/cashier/orders', () => HttpResponse.json({ data: { id: '7' } }, { status: 201 })));
     renderPos();
-    expect(await screen.findByRole('button', { name: 'Personalizar Latte, $65.00' })).toBeInTheDocument();
-    fireEvent.click(await screen.findByRole('button', { name: /Personalizar Latte/ }));
+    expect(await screen.findByRole('button', { name: /Personalizar.*Latte.*\$65\.00/ })).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: /Personalizar.*Latte/ }));
     fireEvent.click(await screen.findByRole('button', { name: 'Confirmar personalización' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Crear orden pendiente' }));
 

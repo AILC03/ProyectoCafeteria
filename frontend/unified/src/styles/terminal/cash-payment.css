@@ -1,0 +1,18 @@
+/* HYB-10: CheckoutModal's Nordic hierarchy without simulated payment methods. */
+.terminal-layout .terminal-payment { width: 100%; max-width: 78rem; margin: 0 auto; padding: clamp(1rem, 2.5vw, 2rem); background: var(--term-bg-secondary); min-height: calc(100vh - 5rem); align-content: start; }
+.terminal-layout .payment-header h1 { margin: 0; font-size: clamp(1.45rem, 2vw, 1.8rem); font-weight: 800; }
+.terminal-layout .payment-header p { margin: .35rem 0 0; color: var(--term-text-muted); }
+.terminal-layout .payment-checkout-card { display: grid; gap: 1.25rem; width: min(100%, 34rem); padding: clamp(1rem, 2vw, 1.5rem); background: #fff; border: 1px solid var(--term-border-light); border-radius: 18px; box-shadow: var(--term-shadow-sm); }
+.terminal-layout .payment-total { display: grid; justify-items: center; gap: .4rem; padding: 1.25rem; background: var(--term-bg-secondary); border-radius: 16px; text-align: center; }
+.terminal-layout .payment-total span { color: var(--term-text-muted); font-size: .85rem; font-weight: 700; letter-spacing: .04em; }
+.terminal-layout .payment-total strong { color: var(--term-text-main); font-size: clamp(2rem, 4vw, 2.5rem); line-height: 1.15; overflow-wrap: anywhere; }
+.terminal-layout .payment-cash-form { display: grid; gap: .75rem; }
+.terminal-layout .payment-method { width: fit-content; margin: 0 0 .25rem; padding: .7rem 1.2rem; border-radius: 12px; background: #0f172a; color: #fff; font-weight: 700; }
+.terminal-layout .payment-cash-form label { font-weight: 700; color: #334155; }
+.terminal-layout .payment-cash-form input { width: 100%; min-height: 48px; padding: .65rem .8rem; border: 1px solid #94a3b8; border-radius: 12px; font: inherit; font-size: 1.2rem; font-weight: 700; }
+.terminal-layout .payment-cash-form button:not(.secondary-button) { min-height: 48px; border-radius: 12px; background: #0f172a; border-color: #0f172a; font-weight: 700; }
+.terminal-layout .payment-notice { margin: 0; padding: 1rem; border: 1px solid #cbd5e1; border-radius: 12px; background: #f1f5f9; }
+.terminal-layout .payment-notice p { margin: 0; }
+.terminal-layout .payment-notice p + p { margin-top: .5rem; font-weight: 700; }
+.terminal-layout .payment-notice-error { border-color: #fecaca; background: #fef2f2; color: #991b1b; }
+.terminal-layout .payment-notice-success { border-color: #a7f3d0; background: #ecfdf5; color: #065f46; }
