@@ -3,6 +3,7 @@ import { delay, HttpResponse, http } from 'msw';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, test } from 'vitest';
 import { server } from '../../../../test/server';
+import { categoryParticipationForUrl } from '../../../../test/categoryFixture';
 import { noMovementForUrl } from '../../../../test/noMovementFixture';
 import { productRankingForUrl } from '../../../../test/rankingFixture';
 import { salesSeriesForUrl } from '../../../../test/seriesFixture';
@@ -24,6 +25,9 @@ beforeEach(() => {
     ),
     http.get('/api/v1/admin/dashboard/no-movement-products', ({ request }) =>
       HttpResponse.json({ data: noMovementForUrl(request.url, []) }),
+    ),
+    http.get('/api/v1/admin/dashboard/category-participation', ({ request }) =>
+      HttpResponse.json({ data: categoryParticipationForUrl(request.url) }),
     ),
   );
 });
@@ -456,6 +460,29 @@ describe('Inicio administrative summary', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/No fue posible consultar la caja/);
     expect(screen.getByText('No hay ventas en este periodo.')).toBeInTheDocument();
     expect(screen.queryByText('Sin caja abierta.')).not.toBeInTheDocument();
+  });
+
+  test('keeps other analytical panels when category participation fails', async () => {
+    server.use(
+      http.get('/api/v1/admin/dashboard/summary', ({ request }) =>
+        HttpResponse.json({ data: summaryFor(request.url) }),
+      ),
+      http.get('/api/v1/admin/dashboard/category-participation', () =>
+        HttpResponse.json({ title: 'No disponible' }, { status: 503 }),
+      ),
+    );
+    renderDashboard();
+    expect(await screen.findByText('Ventas registradas')).toBeInTheDocument();
+    expect(
+      await screen.findByRole('table', { name: /Series de ventas por/ }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole('table', { name: /Ranking de productos/ }),
+    ).toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      /participación por categorías no está disponible/,
+    );
+    expect(screen.queryByRole('table', { name: /Participación por categoría/ })).not.toBeInTheDocument();
   });
 
   test('shows an API error and an unverifiable response without inventing data', async () => {

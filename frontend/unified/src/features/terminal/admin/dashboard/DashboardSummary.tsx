@@ -33,6 +33,7 @@ import {
   type DashboardMethod,
   type DashboardSummary as DashboardSummaryData,
 } from './summaryApi';
+import { CategoryParticipation } from '../analytics/CategoryParticipation';
 import { NoMovementProducts } from '../analytics/NoMovementProducts';
 import { ProductRanking } from '../analytics/ProductRanking';
 import { SalesSeries } from '../analytics/SalesSeries';
@@ -421,6 +422,8 @@ export function DashboardSummary({ now = () => new Date() }: { now?: () => Date 
       <ProductRanking from={period.from} to={period.to} method={method} />
 
       <NoMovementProducts from={period.from} to={period.to} method={method} />
+
+      <CategoryParticipation from={period.from} to={period.to} method={method} />
 
       <div className="dashboard-operational">
         <section aria-labelledby="dashboard-cash-title" className="dashboard-operational-card">

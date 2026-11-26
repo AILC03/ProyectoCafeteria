@@ -3,6 +3,7 @@ import { delay, HttpResponse, http } from 'msw';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { server } from '../../../../test/server';
+import { categoryParticipationForUrl } from '../../../../test/categoryFixture';
 import { noMovementForUrl } from '../../../../test/noMovementFixture';
 import { productRankingForUrl } from '../../../../test/rankingFixture';
 import { salesSeriesForUrl } from '../../../../test/seriesFixture';
@@ -199,6 +200,9 @@ beforeEach(() => {
     ),
     http.get('/api/v1/admin/dashboard/no-movement-products', ({ request }) =>
       HttpResponse.json({ data: noMovementForUrl(request.url, []) }),
+    ),
+    http.get('/api/v1/admin/dashboard/category-participation', ({ request }) =>
+      HttpResponse.json({ data: categoryParticipationForUrl(request.url) }),
     ),
   );
 });

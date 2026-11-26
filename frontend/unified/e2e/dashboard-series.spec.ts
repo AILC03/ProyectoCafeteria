@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type BrowserContext } from '@playwright/test';
+import { categoryParticipationForUrl } from '../src/test/categoryFixture';
 import { productRankingForUrl } from '../src/test/rankingFixture';
 import { noMovementForUrl } from '../src/test/noMovementFixture';
 import { salesSeriesForUrl } from '../src/test/seriesFixture';
@@ -84,6 +85,9 @@ async function mock(context: BrowserContext, seriesStatus = 200) {
     }
     if (path === '/api/v1/admin/dashboard/no-movement-products') {
       return json({ data: noMovementForUrl(request.url(), []) });
+    }
+    if (path === '/api/v1/admin/dashboard/category-participation') {
+      return json({ data: categoryParticipationForUrl(request.url()) });
     }
     if (path === '/api/v1/sales') {
       return json({ data: [sale], page: { limit: 5, nextCursor: null } });

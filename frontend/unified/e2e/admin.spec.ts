@@ -1,4 +1,5 @@
 import { expect, test, type BrowserContext } from '@playwright/test';
+import { categoryParticipationForUrl } from '../src/test/categoryFixture';
 import { noMovementForUrl } from '../src/test/noMovementFixture';
 import { productRankingForUrl } from '../src/test/rankingFixture';
 import { salesSeriesForUrl } from '../src/test/seriesFixture';
@@ -98,6 +99,9 @@ async function mock(context: BrowserContext, actor = administrator) {
     }
     if (path === '/api/v1/admin/dashboard/no-movement-products') {
       return json({ data: noMovementForUrl(request.url(), []) });
+    }
+    if (path === '/api/v1/admin/dashboard/category-participation') {
+      return json({ data: categoryParticipationForUrl(request.url()) });
     }
     if (path === '/api/v1/cash-sessions/current') return json({ data: null });
     if (path === '/api/v1/sales') return json({ data: [sale], page: { limit: 5, nextCursor: null } });
