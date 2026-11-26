@@ -8,6 +8,7 @@ import {
   parseSalesSeriesInstant,
   type DashboardSummaryQuery,
   type NoMovementCursorFilters,
+  type SalesCategoryParticipationQuery,
   type SalesFilters,
   type SalesNoMovementQuery,
   type SalesOrder,
@@ -180,6 +181,29 @@ export function buildSalesSeriesBuckets(
 function roundedDivide(numerator: bigint, denominator: bigint): bigint {
   if (denominator <= 0n) throw new Error('Divisor de resumen inválido');
   return (numerator + denominator / 2n) / denominator;
+}
+
+const CANONICAL_NON_NEGATIVE_INTEGER = /^(0|[1-9][0-9]*)$/;
+const CANONICAL_POSITIVE_INTEGER = /^[1-9][0-9]*$/;
+
+/**
+ * E2-13: porcentaje de dos decimales con aritmética entera exacta y redondeo
+ * half-up. `centesimas = floor((valor*10000 + denominador/2) / denominador)`.
+ * Base cero se representa `0.00` solo cuando el contrato conserva ítems; el
+ * servicio no lo usa si no hay líneas. Un valor mayor que el denominador
+ * rompería el rango 0.00–100.00 y se rechaza como agregado incoherente.
+ */
+export function formatSharePercent(value: bigint, denominator: bigint): string {
+  if (value < 0n || denominator < 0n) throw new Error('Porcentaje de categoría inválido');
+  if (denominator === 0n) {
+    if (value === 0n) return '0.00';
+    throw new Error('Porcentaje de categoría sin base');
+  }
+  if (value > denominator) throw new Error('Porcentaje de categoría fuera de rango');
+  const centesimas = (value * 10000n + denominator / 2n) / denominator;
+  const whole = centesimas / 100n;
+  const fraction = (centesimas % 100n).toString().padStart(2, '0');
+  return `${whole}.${fraction}`;
 }
 
 function comparisonMetric(current: bigint, previous: bigint) {
@@ -409,6 +433,99 @@ export class SalesService {
               : null,
         },
         items,
+      },
+    };
+  }
+  /**
+   * E2-13: agrupa el conjunto completo por categoría actual y calcula aquí los
+   * porcentajes half-up sobre la métrica seleccionada. Valida conciliación
+   * exacta entre ítems, denominadores y total; cualquier incoherencia o
+   * integridad no resoluble es un error interno saneado (no se omiten filas ni
+   * se inventan categorías). `items` conserva el orden del repositorio.
+   */
+  async categoryParticipation(actor: Principal, input: SalesCategoryParticipationQuery) {
+    const from = new Date(parseSalesSeriesInstant(input.from)),
+      to = new Date(parseSalesSeriesInstant(input.to));
+    const aggregate = await this.repository.categoryParticipation(actor, {
+      from,
+      to,
+      ...(input.method ? { method: input.method } : {}),
+      metric: input.metric,
+    });
+    if (
+      !aggregate ||
+      typeof aggregate.inconsistentRows !== 'string' ||
+      !CANONICAL_NON_NEGATIVE_INTEGER.test(aggregate.inconsistentRows) ||
+      typeof aggregate.denominatorUnitsSold !== 'string' ||
+      !CANONICAL_NON_NEGATIVE_INTEGER.test(aggregate.denominatorUnitsSold) ||
+      typeof aggregate.denominatorTotalCents !== 'string' ||
+      !CANONICAL_NON_NEGATIVE_INTEGER.test(aggregate.denominatorTotalCents) ||
+      typeof aggregate.totalCategories !== 'string' ||
+      !CANONICAL_NON_NEGATIVE_INTEGER.test(aggregate.totalCategories) ||
+      !Array.isArray(aggregate.items)
+    )
+      throw new Error('Agregado de participación por categorías incompleto');
+    // Una categoría borrada o una línea sin producto/categoría resoluble no se
+    // reclasifica ni se descarta: la petición es válida y el dato es incoherente.
+    if (aggregate.inconsistentRows !== '0')
+      throw new Error('Integridad de categorías no resoluble');
+    let unitsTotal = 0n,
+      centsTotal = 0n;
+    const items = aggregate.items.map((item) => {
+      if (
+        typeof item.categoryId !== 'string' ||
+        !CANONICAL_POSITIVE_INTEGER.test(item.categoryId) ||
+        typeof item.name !== 'string' ||
+        typeof item.isActive !== 'boolean' ||
+        typeof item.unitsSold !== 'string' ||
+        !CANONICAL_NON_NEGATIVE_INTEGER.test(item.unitsSold) ||
+        typeof item.totalCents !== 'string' ||
+        !CANONICAL_NON_NEGATIVE_INTEGER.test(item.totalCents)
+      )
+        throw new Error('Categoría de participación incompleta');
+      const unitsSold = BigInt(item.unitsSold),
+        totalCents = BigInt(item.totalCents);
+      unitsTotal += unitsSold;
+      centsTotal += totalCents;
+      return { item, unitsSold, totalCents };
+    });
+    if (
+      unitsTotal !== BigInt(aggregate.denominatorUnitsSold) ||
+      centsTotal !== BigInt(aggregate.denominatorTotalCents) ||
+      BigInt(aggregate.totalCategories) !== BigInt(items.length)
+    )
+      throw new Error('Agregado de participación por categorías incoherente');
+    const selectedDenominator =
+      input.metric === 'units'
+        ? BigInt(aggregate.denominatorUnitsSold)
+        : BigInt(aggregate.denominatorTotalCents);
+    return {
+      data: {
+        generatedAt: this.now().toISOString(),
+        currency: 'MXN',
+        period: {
+          from: from.toISOString(),
+          to: to.toISOString(),
+          timeZone: TIJUANA_TIME_ZONE,
+        },
+        method: input.method ?? null,
+        metric: input.metric,
+        denominator: {
+          unitsSold: aggregate.denominatorUnitsSold,
+          totalCents: aggregate.denominatorTotalCents,
+        },
+        totalCategories: aggregate.totalCategories,
+        items: items.map(({ item, unitsSold, totalCents }) => ({
+          categoryId: item.categoryId,
+          name: item.name,
+          isActive: item.isActive,
+          unitsSold: item.unitsSold,
+          totalCents: item.totalCents,
+          sharePercent: formatSharePercent(
+            input.metric === 'units' ? unitsSold : totalCents,
+            selectedDenominator,
+          ),
+        })),
       },
     };
   }

@@ -133,6 +133,46 @@ export const salesRankingQuery = z
       });
   });
 export type SalesRankingQuery = z.infer<typeof salesRankingQuery>;
+/**
+ * Entrada E2-13 de participación por categorías: mismo dominio temporal y
+ * precisión de milisegundos que las series/ranking E2, `metric` obligatoria y
+ * sin default (no se materializa un valor que el contrato no acepta), `method`
+ * opcional y sin filtro de categoría. Cualquier extra, repetido o array lo
+ * rechaza `strict`.
+ */
+export const salesCategoryParticipationQuery = z
+  .object({
+    from: salesSeriesInstant,
+    to: salesSeriesInstant,
+    metric: z.enum(['units', 'amount']),
+    method: z.enum(['CASH', 'STRIPE']).optional(),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    const from = parseSalesSeriesInstant(value.from),
+      to = parseSalesSeriesInstant(value.to);
+    if (!Number.isFinite(from) || !Number.isFinite(to)) return;
+    if (from < SALES_SERIES_MIN_INSTANT_MS)
+      context.addIssue({
+        code: 'custom',
+        message: 'El inicio no puede ser anterior al dominio aceptado',
+        path: ['from'],
+      });
+    if (!(from < to))
+      context.addIssue({
+        code: 'custom',
+        message: 'El rango debe ser positivo y exclusivo al final',
+        path: ['to'],
+      });
+    if (to - from > SALES_SERIES_MAX_DAY_RANGE_MS)
+      context.addIssue({
+        code: 'custom',
+        message: 'El rango supera el límite aceptado',
+        path: ['to'],
+      });
+  });
+export type SalesCategoryParticipationQuery = z.infer<typeof salesCategoryParticipationQuery>;
+
 /** Rango obligatorio y acotado para evitar agregaciones sin límite. */
 export const dashboardSummaryQuery = z
   .object({

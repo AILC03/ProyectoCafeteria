@@ -69,6 +69,29 @@ export type SalesNoMovementInput = {
   after?: { name: string; productId: string };
 };
 
+export type SalesCategoryParticipationItem = {
+  categoryId: string;
+  name: string;
+  isActive: boolean;
+  unitsSold: string;
+  totalCents: string;
+};
+
+export type SalesCategoryParticipationAggregate = {
+  inconsistentRows: string;
+  denominatorUnitsSold: string;
+  denominatorTotalCents: string;
+  totalCategories: string;
+  items: SalesCategoryParticipationItem[];
+};
+
+export type SalesCategoryParticipationInput = {
+  from: Date;
+  to: Date;
+  method?: 'CASH' | 'STRIPE';
+  metric: 'units' | 'amount';
+};
+
 export class SalesRepository {
   constructor(private db: PrismaClient) {}
   read<T>(actor: Principal, fn: (tx: Prisma.TransactionClient) => Promise<T>) {
@@ -345,6 +368,89 @@ export class SalesRepository {
       // El total siempre produce una fila; su ausencia es un fallo interno y no
       // se sustituye por ceros ni por una página vacía ficticia.
       if (!row) throw new Error('Agregado de productos sin movimiento incompleto');
+      return row;
+    });
+  }
+  /**
+   * Participación E2-13 en una sola lectura agregada. El universo es la venta
+   * pagada de `[from,to)` y método opcional (sin filtro defensivo de estado,
+   * D11). Cada línea resuelve su categoría **actual** con
+   * `order_items.product_id → products.category_id → categories.id`; los
+   * `LEFT JOIN` permiten detectar una línea no resoluble o una categoría con
+   * `deleted_at` y devolver una señal de integridad en lugar de omitirla. No se
+   * unen opciones, reembolsos, eventos, incidentes ni reintentos. `sold_at`
+   * permanece en PostgreSQL con microsegundos intactos.
+   */
+  categoryParticipation(actor: Principal, input: SalesCategoryParticipationInput) {
+    const method = input.method ? Prisma.sql`AND p.method::text = ${input.method}` : Prisma.empty;
+    const primary =
+      input.metric === 'units' ? Prisma.sql`ct.units_sold` : Prisma.sql`ct.total_cents`;
+    return this.read(actor, async (tx) => {
+      const [row] = await tx.$queryRaw<SalesCategoryParticipationAggregate[]>(Prisma.sql`
+        WITH filtered_sales AS (
+          SELECT s.order_id
+          FROM sales s JOIN payments p ON p.id = s.payment_id
+          WHERE s.sold_at >= ${input.from}::timestamptz
+            AND s.sold_at < ${input.to}::timestamptz ${method}
+        ),
+        line_totals AS (
+          SELECT pr.category_id AS current_category_id,
+                 c.id AS resolved_category_id,
+                 c.name AS category_name,
+                 c.is_active AS category_is_active,
+                 c.deleted_at AS category_deleted_at,
+                 oi.quantity,
+                 oi.line_total_cents
+          FROM filtered_sales fs
+          JOIN order_items oi ON oi.order_id = fs.order_id
+          LEFT JOIN products pr ON pr.id = oi.product_id
+          LEFT JOIN categories c ON c.id = pr.category_id
+        ),
+        integrity AS (
+          SELECT count(*) FILTER (
+            WHERE resolved_category_id IS NULL OR category_deleted_at IS NOT NULL
+          )::text AS "inconsistentRows"
+          FROM line_totals
+        ),
+        category_totals AS (
+          SELECT current_category_id AS category_id,
+                 category_name AS name,
+                 category_is_active AS is_active,
+                 sum(quantity)::numeric AS units_sold,
+                 sum(line_total_cents)::numeric AS total_cents
+          FROM line_totals
+          WHERE resolved_category_id IS NOT NULL AND category_deleted_at IS NULL
+          GROUP BY current_category_id, category_name, category_is_active
+        ),
+        denominator AS (
+          SELECT coalesce(sum(quantity),0)::text AS "denominatorUnitsSold",
+                 coalesce(sum(line_total_cents),0)::text AS "denominatorTotalCents"
+          FROM line_totals
+        )
+        SELECT i."inconsistentRows",
+               d."denominatorUnitsSold",
+               d."denominatorTotalCents",
+               (SELECT count(*)::text FROM category_totals) AS "totalCategories",
+               coalesce(
+                 (
+                   SELECT jsonb_agg(
+                     jsonb_build_object(
+                       'categoryId', ct.category_id::text,
+                       'name', ct.name,
+                       'isActive', ct.is_active,
+                       'unitsSold', ct.units_sold::text,
+                       'totalCents', ct.total_cents::text
+                     )
+                     ORDER BY ${primary} DESC, ct.name COLLATE "C" ASC, ct.category_id ASC
+                   )
+                   FROM category_totals ct
+                 ),
+                 '[]'::jsonb
+               ) AS items
+        FROM integrity i CROSS JOIN denominator d`);
+      // La consulta siempre produce una fila; su ausencia es un fallo interno y
+      // nunca se sustituye por ceros o categorías inventadas.
+      if (!row) throw new Error('Agregado de participación por categorías incompleto');
       return row;
     });
   }

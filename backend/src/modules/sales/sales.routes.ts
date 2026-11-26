@@ -7,6 +7,7 @@ import { jsonValue } from '../../shared/http/serialization.js';
 import { invalidInput } from '../../shared/http/problem.js';
 import {
   dashboardSummaryQuery,
+  salesCategoryParticipationQuery,
   salesFilters,
   salesNoMovementQuery,
   salesQuery,
@@ -85,6 +86,24 @@ export function salesRoutes(auth: AuthService, service: SalesService) {
       res.json(
         jsonValue(
           await service.noMovementProducts(principal(res), salesNoMovementQuery.parse(req.query)),
+        ),
+      );
+    },
+  );
+  router.get(
+    '/admin/dashboard/category-participation',
+    privateCashResponse,
+    authenticate(auth),
+    authorize('ADMINISTRADOR'),
+    async (req, res) => {
+      if (req.headers['transfer-encoding'] || Number(req.headers['content-length'] ?? 0))
+        throw invalidInput();
+      res.json(
+        jsonValue(
+          await service.categoryParticipation(
+            principal(res),
+            salesCategoryParticipationQuery.parse(req.query),
+          ),
         ),
       );
     },
