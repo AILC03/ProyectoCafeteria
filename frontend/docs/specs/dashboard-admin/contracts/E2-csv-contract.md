@@ -1,6 +1,6 @@
 # Contrato E2 propuesto — Exportaciones CSV de ventas y analítica
 
-- Estado: **PROPUESTA DOCUMENTAL, NO ACEPTADA**. Redactada para `TASK-DA-E2-CSV-00` el 2026-11-25. No autoriza runtime, rutas implementadas, UI, SQL ejecutable, migraciones, dependencias, CSV real, commits ni el cierre E2. `CSV-01`/`CSV-02` permanecen bloqueadas hasta aceptación explícita del responsable; `CSV-03` sigue siendo el único cierre de E2.
+- Estado: **CONTRATO DOCUMENTAL ACEPTADO por el responsable el 2026-11-25** tras la corrección de los bloqueantes B-01/B-02 y la revisión independiente; aceptación de D01–D36. Autoriza únicamente la implementación de `CSV-01` (backend) y `CSV-02` (descarga frontend) bajo este contrato; no autoriza commit, push, despliegue, imágenes/XLSX, histórico global ni cambios de negocio. `CSV-03` sigue siendo el único cierre de E2 y requiere su propia aceptación real.
 - Autor de la propuesta: `dashboard-backend-implementer`. Verificación y revisión independientes quedan **pendientes de asignación/ejecución**; este documento no las atribuye.
 - Fuentes: [spec](../spec.md) (RF-21/22/23, H3/H5, cierre E2), [plan](../plan.md) (§Cierre E2 — Exportación solo CSV), [tasks](../tasks.md) (`CSV-00…03`), [validation](../validation.md), contratos aceptados [E1](./E1-summary-contract.md), [series](./E2-series-contract.md), [ranking](./E2-ranking-contract.md), [sin movimiento](./E2-no-movement-contract.md), [categorías](./E2-categories-contract.md), [OpenAPI](../../../../../backend/docs/api/openapi.yaml), [reglas de negocio](../../../../../backend/docs/business-rules.md), [permisos](../../../../../backend/docs/permissions.md), [flujo backend](../../../../../backend/docs/workflow/README.md), [guía de desarrollo](../../../../../backend/docs/development-guide.md), [arquitectura](../../../../../backend/docs/architecture.md), esquema Prisma y módulos `sales` implementados.
 
@@ -22,7 +22,7 @@
 ## Principios comunes
 
 1. **Solo lectura y solo ADMINISTRADOR.** Todas las rutas son `GET`, con cookie de acceso vigente. `ADMINISTRADOR` obtiene `200`; sin sesión `401 UNAUTHENTICATED`; `CLIENTE`, `CAJERO`, `PREPARACION` y `GERENTE` obtienen `403 FORBIDDEN`, sin consultar el conjunto. `PIN_CHANGE_REQUIRED` y `ORIGIN_NOT_ALLOWED` conservan sus códigos actuales.
-2. **Sin CSRF nuevo para GET.** Se reutilizan cookies, sesión, Origin y revalidación de actor existentes. Si en el futuro se propusiera una mutación de exportación, requeriría CSRF y contrato propio. No se aceptan tokens de sesión en la URL.
+2. **Sin CSRF nuevo para GET.** Se reutilizan cookies, sesión, Origin y revalidación de actor existentes. Si en el futuro se propusiera una mutación de exportación, requeriría CSRF y contrato propio. No se aceptan tokens de sesión en la URL: cualquier parámetro extra `token`/`access_token`/`jwt` u otro no contratado → `400 VALIDATION_ERROR`; Origin inválido, PIN y rol se mantienen como `403` con su código (D31).
 3. **Mismos filtros que su endpoint de origen, sin paginación.** Se rechazan `cursor`, `offset`, `page`, `limit` (salvo `limit` del origen de sin movimiento, que aquí **no** aplica), arrays, repetidos —aunque sean iguales—, valores vacíos, corchetes y cualquier parámetro o body extra.
 4. **Un mismo conjunto lógico por archivo.** Cada archivo se genera desde una lectura coherente. `generatedAt` identifica el instante de generación y no es un token de snapshot compartido entre archivos o peticiones. No se exige igualdad entre exportaciones tomadas en instantes distintos con ventas nuevas.
 5. **Sin truncamiento silencioso.** Los topes de rango/filas se validan antes de escribir el primer byte. Si se exceden, se responde Problem Details y **no** se entrega un CSV parcial ni se presenta como completo.
@@ -93,6 +93,8 @@ GET /api/v1/admin/dashboard/category-participation-export.csv?from=...Z&to=...Z&
 
 ## Formato CSV propuesto
 
+> **Fuente normativa (R-10):** este documento markdown es la fuente normativa de columnas, orden, metadatos y semántica CSV. Las descripciones y extensiones de OpenAPI son informativas, aditivas y no prevalecen sobre este contrato; el markdown manda si hay divergencia de detalle.
+
 ### Codificación, delimitador y saltos
 
 - **UTF-8 con BOM** (`EF BB BF`) al inicio del archivo. Se elige BOM para que hojas de cálculo de Windows reconozcan acentos y signos españoles sin un paso manual de importación. Un consumidor programático debe ignorar el BOM; no forma parte del primer encabezado lógico. Alternativa no BOM: decisión D17.
@@ -125,9 +127,9 @@ Metadatos comunes propuestos:
 | `currency` | `MXN` |
 | `timeZone` | `America/Tijuana` |
 | `period.from`, `period.to` | Límites UTC normalizados |
-| `method` | `CASH`, `STRIPE` o `all` |
+| `method` | `CASH`, `STRIPE` o `all`. **R-11:** `all` representa exactamente `method` omitido/null en el DTO de origen; no es un tercer método consultable |
 | `rowCount` | Filas de datos escritas, string decimal |
-| `rowLimit` | Tope contractual de filas |
+| `rowLimit` | Máximo contractual de filas/buckets de la exportación; **no** es el corte efectivo. No se confunde con `top` (corte de ranking) ni con el tamaño real (`rowCount`) |
 | `truncated` | `false`; un archivo truncado no se entrega |
 | `contentKind` | `data` |
 | `containsImage` | `false` |
@@ -136,17 +138,19 @@ Metadatos específicos se detallan por exportación.
 
 ### Fechas, importes y porcentajes
 
-- Fechas UTC de fila: `YYYY-MM-DDTHH:mm:ss.ffffffZ` (seis decimales) cuando la fuente es `soldAt`/`createdAt` PostgreSQL; se preservan microsegundos.
+- Fechas UTC de fila: `YYYY-MM-DDTHH:mm:ss.ffffffZ` (seis decimales) cuando la fuente es `soldAt`/`createdAt` PostgreSQL; se preservan microsegundos. **R-06/D35:** la cadena se produce **en PostgreSQL** (`to_char(ts AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')` o equivalente exacto), nunca formateando un `Date` de JavaScript, que pierde µs. Se prueba seis decimales y el límite `to − 1 µs`; no se redondea ni se trunca silenciosamente.
 - Límites/buckets de contrato: `YYYY-MM-DDTHH:mm:ss.sssZ` (tres decimales), coherentes con el DTO aceptado.
 - Fechas locales: ISO 8601 con offset IANA explícito (`-08:00`/`-07:00`), sin sufijo ambiguo. No se usa offset UTC-8 fijo.
 - Importes: **centavos enteros MXN** en columnas `*Cents`, con `currency=MXN` en metadatos. No se emite un importe decimal alternativo que pueda confundirse con otra unidad.
 - Conteos/unidades/IDs: strings decimales canónicos, sin `Number`, exponentes, fracciones ni separadores de miles.
+- **Precisión (R-02):** los IDs pueden superar `Number.MAX_SAFE_INTEGER` y se serializan siempre como texto decimal exacto. Los importes y conteos agregados están acotados por `orders_check_1` (total por orden ≤ 9 999 900 centavos) y por los topes de filas/buckets; no se siembran de extremo a extremo en la BD y se verifican con vectores controlados de serialización/aritmética junto con los máximos reales. Esto replica el criterio de los contratos aceptados de series/ranking.
 - Porcentajes: `sharePercent` como `72.22`, punto decimal, exactamente dos decimales, sin signo `%`; no se normaliza a 100.
 - Booleanos: `true`/`false` en minúsculas.
 
 ### Escape antifórmulas
 
-- Se aplica **solo a campos de texto** (nombres de producto/categoría, `saleNumber`, `nameSource` si se considerara texto libre, etc.). Si el primer carácter es `=`, `+`, `-`, `@`, tabulador (`\t`) o CR (`\r`), se antepone una comilla simple (`'`).
+- Se aplica **solo a campos de texto** (nombres de producto/categoría, `saleNumber`, `nameSource` si se considerara texto libre, etc.). Se antepone una comilla simple (`'`) cuando el primer carácter es `=`, `+`, `-`, `@`, tabulador (`\t`), CR (`\r`) **o LF (`\n`)**.
+- **R-09 (espacios iniciales):** si el campo empieza por uno o más espacios seguidos de un carácter de fórmula (`=`, `+`, `-`, `@`), también se antepone `'`, porque la hoja de cálculo puede recortar el espacio inicial y evaluar la fórmula. Se neutraliza únicamente ese caso; los espacios internos no se alteran.
 - La comilla es una marca de protección, no parte del valor lógico. Un consumidor que necesite el texto original debe retirar **exactamente una** comilla inicial de esos campos de texto.
 - **No se aplica a importes, unidades, conteos, IDs, fechas ni porcentajes**: sus valores válidos empiezan por dígito o signo negativo solo donde el contrato lo permita; no se altera ningún importe.
 - Ejemplo documental: nombre `=1+1` se emite como `'=1+1`; nombre `-Moka` como `'-Moka`; `Café "La Especial", S.A.` se emite con comillas RFC y comillas duplicadas.
@@ -183,9 +187,11 @@ Metadatos específicos se detallan por exportación.
 
 Sin cliente, nombre de cliente, correo, teléfono, `folio`, ticket, QR, token, NIP, cajero ni datos personales. `orderStatus`, `saleNumber`, IDs internos y método son datos operativos no personales.
 
+**Orden de filas propuesto (B-02):** `soldAtUtc ASC, saleId ASC`. Es determinista aun con ventas en el mismo instante (`soldAt` con microsegundos) y no depende del orden físico ni del frontend. Se publica en metadatos como `rowOrder="soldAtUtc ASC, saleId ASC"` (valor entre comillas RFC por la coma); el consumidor no reordena. `saleId ASC` usa el ID exacto como desempate final estable.
+
 ### Metadatos específicos
 
-`export`, `schemaVersion`, `generatedAt`, `currency`, `timeZone`, `period.from`, `period.to`, `method`, `rowCount`, `rowLimit=20000`, `truncated=false`, `contentKind=data`, `containsImage=false`, `orderStatusScope=current-at-generation`, `totals.totalCents`, `totals.unitsSold`, `totals.lineCount`.
+`export`, `schemaVersion`, `generatedAt`, `currency`, `timeZone`, `period.from`, `period.to`, `method`, `rowOrder=soldAtUtc ASC, saleId ASC`, `rowCount`, `rowLimit=20000` (máximo contractual de filas; no es un corte), `truncated=false`, `contentKind=data`, `containsImage=false`, `orderStatusScope=current-at-generation`, `totals.totalCents`, `totals.unitsSold`, `totals.lineCount`.
 
 `totals.*` se calculan sobre el mismo conjunto de la exportación para conciliación; no son una página.
 
@@ -200,6 +206,7 @@ Sin cliente, nombre de cliente, correo, teléfono, `folio`, ticket, QR, token, N
 #meta,period.from,2026-11-24T08:00:00.000Z
 #meta,period.to,2026-11-25T08:00:00.000Z
 #meta,method,CASH
+#meta,rowOrder,"soldAtUtc ASC, saleId ASC"
 #meta,rowCount,2
 #meta,rowLimit,20000
 #meta,truncated,false
@@ -232,6 +239,8 @@ saleId,saleNumber,orderId,paymentId,soldAtUtc,soldAtLocal,method,orderStatus,cur
 | 10 | `unitsSold` | Unidades del bucket |
 
 No se añade `metric`: se exportan las tres métricas, como el DTO aceptado. Los buckets vacíos se incluyen con ceros. La suma de cada métrica concilia con `totals`.
+
+**Cero resultados (excepción a CSV-R25):** con un rango válido, la serie se construye intersectando el periodo con la rejilla de granularidad, por lo que el archivo contiene **siempre al menos un bucket** (`bucketCount>=1`, `rowCount>=1`), aunque todas las métricas sean `0`. Nunca se entrega un archivo de series solo con metadatos y encabezado. Solo una entrada inválida (rango/precisión/granularidad) produce `400`, y un rango válido no produce `404` ni un archivo vacío de filas.
 
 ### Metadatos específicos
 
@@ -280,7 +289,7 @@ El archivo contiene **hasta `top` filas**, igual que el endpoint. No exporta el 
 
 ### Metadatos específicos
 
-`metric`, `direction`, `top`, `matchedProductCount`, `matchedTotals.unitsSold`, `matchedTotals.totalCents`, `truncated`, además de los comunes.
+`metric`, `direction`, `top` (corte efectivo), `matchedProductCount`, `matchedTotals.unitsSold`, `matchedTotals.totalCents`, `truncated`, además de los comunes. `rowLimit=20` es el máximo contractual del ranking y no el top elegido; `rowCount` coincide con el top efectivo (o con el total disponible si es menor).
 
 ### Ejemplo documental con escape/antifórmulas
 
@@ -402,7 +411,7 @@ Todos los errores son `application/problem+json` con `type,title,status,detail,i
 
 | Código | Uso |
 | --- | --- |
-| `400 VALIDATION_ERROR` | Parámetros faltantes/ inválidos, fechas imposibles, rango/precisión, extras, repetidos, arrays, body no vacío, `top` inválido |
+| `400 VALIDATION_ERROR` | Parámetros faltantes/ inválidos, fechas imposibles, rango/precisión, extras (incluido `token`/`access_token`/`jwt` u otro token en URL), repetidos, arrays, body no vacío, `top` inválido |
 | `400 EXPORT_LIMIT_EXCEEDED` | Filas del conjunto completo superan el tope de la exportación; no se escribe archivo |
 | `401 UNAUTHENTICATED` | Sin sesión vigente |
 | `403 FORBIDDEN` | Rol distinto de ADMINISTRADOR, incluido GERENTE |
@@ -418,8 +427,11 @@ Todos los errores son `application/problem+json` con `type,title,status,detail,i
 ### Frontend futuro (`CSV-02`)
 
 - Descarga autenticada con el cliente HTTP y la sesión única existentes; cookies/`credentials: include`; **sin token en URL**.
+- **Nombre de archivo (R-04/D33):** se sirve desde el mismo origen/proxy autorizado y se usa una **extensión acotada del cliente HTTP existente** para leer `Content-Disposition` y extraer el nombre ASCII seguro. No se añade un cliente nuevo ni una dependencia; si en el futuro se optara por generarlo en frontend, requeriría contrato propio. La prueba de que el nombre se obtiene y aplica correctamente pertenece a `CSV-02`.
 - Distinguir `text/csv` de `application/problem+json`; no descargar un Problem Details como CSV.
-- Estado ocupado, prevención de doble descarga, aborto/descarte al cambiar filtros, liberación de `Blob`/object URL, sin persistencia local de CSV.
+- **401/refresh (R-12):** un único intento de refresh como el resto de la app, sin bucle; si sigue sin sesión, mostrar error y no generar archivo.
+- Estado ocupado, prevención de doble descarga (una sola descarga efectiva por acción), aborto/descarte al cambiar filtros, liberación de `Blob`/object URL, sin persistencia local de CSV.
+- **Accesibilidad (R-08/D36):** botón accesible con nombre, operación por teclado con foco visible, anuncio de estado (ocupado/éxito/error) a lector de pantalla, descarga única y cancelación accesible; prueba en Electron además de navegador.
 - No recalcular ni reconstruir reportes en el navegador; no concatenar páginas visibles.
 
 ## Generación y coste
@@ -427,7 +439,7 @@ Todos los errores son `application/problem+json` con `type,title,status,detail,i
 Se propone **generación acotada en memoria** para las cinco exportaciones, no streaming:
 
 1. Validar entrada estricta y rango.
-2. Ejecutar una lectura coherente (preferentemente en la misma transacción/`REPEATABLE READ`) que cuente el conjunto y obtenga filas/agregados.
+2. Ejecutar **una sola consulta SQL** que cuente y devuelva filas/agregados del mismo conjunto (p. ej. CTE/ventana), de modo que conteo y datos no puedan divergir. `withTransaction` actual no configura `REPEATABLE READ` (usa el aislamiento por defecto de PostgreSQL/Prisma), por lo que **no se promete** ese nivel. Si una implementación futura requiriera aislamiento explícito, deberá configurarse y probarse de forma manifiesta en `CSV-01`; una consulta única es la opción preferida. Se añade prueba de concurrencia conteo/filas.
 3. Si el conteo supera el tope, lanzar `400 EXPORT_LIMIT_EXCEEDED` antes de escribir cabeceras.
 4. Serializar metadatos, encabezado y filas en un buffer; enviar una sola respuesta.
 5. Liberar el buffer al terminar; sin archivos temporales, sin colas, sin almacenamiento persistente, sin object storage.
@@ -458,13 +470,13 @@ Todos los resultados son **exigencias de contrato**, no pruebas ejecutadas. La e
 | CSV-R16 | RF-22 | Categorías `units/amount`, método omitido/CASH/STRIPE | Mismas categorías/orden/métricas que el endpoint; incluye inactivas con movimiento | CSV-01, CSV-03 |
 | CSV-R17 | RF-22 | Categorías con residuo 99.99, base cero, cero líneas | `sharePercent` backend exacto, sin normalizar; base cero `0.00`; cero filas solo si no hay líneas | CSV-01, CSV-02 |
 | CSV-R18 | RF-22 | Categorías >1 000 | `400 EXPORT_LIMIT_EXCEEDED`; sin archivo parcial | CSV-01 |
-| CSV-R19 | RF-23 | Sin sesión; ADMINISTRADOR; CLIENTE/CAJERO/PREPARACION/GERENTE | 401/200/403; denegados sin consultar agregados; sin CSRF nuevo para GET | CSV-01, CSV-02, CSV-03 |
-| CSV-R20 | RF-23 | Origin inválido, PIN obligatorio, token en URL | 403 con código existente; no se aceptan tokens de sesión en query | CSV-01, CSV-02 |
+| CSV-R19 | RF-23 | Sin sesión; ADMINISTRADOR; CLIENTE/CAJERO/PREPARACION/GERENTE | 401/200/403; denegados sin consultar agregados; sin CSRF nuevo para GET; en frontend, 401 con refresh único sin bucle | CSV-01, CSV-02, CSV-03 |
+| CSV-R20 | RF-23 | Rechazos de seguridad separados | Origin inválido → `403 ORIGIN_NOT_ALLOWED`; PIN obligatorio → `403 PIN_CHANGE_REQUIRED`; rol no autorizado → `403 FORBIDDEN`. Token de sesión o cualquier parámetro extra en URL (`token`, `access_token`, `jwt`, etc.) → `400 VALIDATION_ERROR`; no se aceptan tokens de sesión en query | CSV-01, CSV-02 |
 | CSV-R21 | RF-23 | Respuesta 200 | `text/csv; charset=utf-8`, `Content-Disposition` seguro, `no-store`, `no-referrer`, sin PII en el nombre | CSV-01, CSV-02 |
 | CSV-R22 | RF-23 | Acentos, comillas, comas y saltos de línea en nombres | UTF-8, comillas RFC 4180, CRLF, sin corrupción | CSV-01, CSV-03 |
-| CSV-R23 | RF-23 | Texto que empieza por `=`, `+`, `-`, `@`, tab o CR | Prefijo `'` solo en campos de texto; importes/unidades/IDs válidos sin alterar | CSV-01 |
-| CSV-R24 | RNF-02 | IDs/importes/conteos > `Number.MAX_SAFE_INTEGER` | Strings exactos; sin `Number`, exponentes ni notación científica | CSV-01 |
-| CSV-R25 | RF-23 | Cero resultados en cualquier exportación | Metadatos + encabezado, sin filas; no 404/CSV vacío sin encabezado | CSV-01, CSV-02 |
+| CSV-R23 | RF-23 | Texto que empieza por `=`, `+`, `-`, `@`, tab, CR o LF; y espacios iniciales seguidos de carácter de fórmula | Prefijo `'` solo en campos de texto, incluidos LF y el caso espacio(s)+fórmula; importes/unidades/IDs válidos sin alterar | CSV-01 |
+| CSV-R24 | RNF-02 | Exactitud numérica: (a) IDs que pueden superar 2^53; (b) importes/conteos agregados acotados | IDs: strings decimales exactos, sin `Number`, exponentes ni notación científica. Importes/conteos por fila: acotados por `orders_check_1` (≤ 9 999 900 centavos) y los topes de filas. No son sembrables de extremo a extremo en la BD (los IDs grandes no se generan por inserción normal); se prueban con **vectores controlados de serialización/aritmética** en unitarias, igual que en los contratos aceptados de series/ranking, además de integración con valores máximos reales | CSV-01 |
+| CSV-R25 | RF-23 | Cero resultados según exportación | Ventas, ranking, sin movimiento y categorías: `200` con metadatos + encabezado y **cero filas de datos** (`rowCount=0`); nunca 404 ni archivo sin encabezado. Series con rango válido: **excepción B-01**, siempre al menos un bucket intersectado (`bucketCount>=1`, `rowCount>=1`) con métricas `0`, nunca solo metadatos/encabezado | CSV-01, CSV-02 |
 | CSV-R26 | RF-19 | 413 de parser, 429, 500 inesperado, 503 de dependencia | Problem Details saneados; sin CSV parcial; cabeceras privadas según middleware; sin bucle | CSV-01, CSV-03 |
 | CSV-R27 | RF-23 | Archivo generado con BOM/CRLF/coma | Abre en hoja de cálculo con acentos; no se promete tipado automático de IDs/fechas | CSV-03 |
 | CSV-R28 | RF-22 | Intento de exportar imagen/PNG/XLSX o de inferir CSV desde la UI | No existe esa ruta; metadatos `contentKind=data`, `containsImage=false`; UI descarga datos | CSV-02, CSV-03 |
@@ -475,6 +487,7 @@ Todos los resultados son **exigencias de contrato**, no pruebas ejecutadas. La e
 | CSV-R33 | RF-21/22 | Mismo dataset estable, exportación vs endpoint | Filas/agregados coinciden con el endpoint y el resumen; `generatedAt` no es token compartido | CSV-01, CSV-03 |
 | CSV-R34 | RF-23 | PII innecesaria | Ventas sin cliente/correo/teléfono/ticket/QR; analítica solo catálogo/IDs | CSV-01, CSV-03 |
 | CSV-R35 | RF-23 | Persistencia temporal | No se crean archivos versionados, temporales persistentes, colas ni object storage | CSV-01, CSV-03 |
+| CSV-R36 | RF-21 | Orden de filas de ventas, incluidas ventas con el mismo `soldAt` | `soldAtUtc ASC, saleId ASC`; `rowOrder` en metadatos; sin reordenar en frontend | CSV-01, CSV-02, CSV-03 |
 
 ## Decisiones que el responsable debe aceptar
 
@@ -503,11 +516,11 @@ La aceptación de `CSV-00` no debe interpretarse como aceptación de estas decis
 
 | ID | Decisión propuesta |
 | --- | --- |
-| D10 | Series exporta siempre las tres métricas, sin parámetro `metric`; mismos buckets/totales/límites que el endpoint. |
-| D11 | Ranking exporta exactamente el top N del endpoint; los metadatos llevan `matchedProductCount`/`matchedTotals`/`truncated` del conjunto completo previo al corte. |
+| D10 | Series exporta siempre las tres métricas, sin parámetro `metric`; mismos buckets/totales/límites que el endpoint. Un rango válido produce al menos un bucket intersectado, incluso vacío, con métricas `0`; nunca un archivo solo con metadatos/encabezado. |
+| D11 | Ranking exporta exactamente el top N del endpoint; los metadatos llevan `matchedProductCount`/`matchedTotals`/`truncated` del conjunto completo previo al corte. `top` es el corte efectivo y `rowLimit=20` el máximo contractual; no se confunden. |
 | D12 | Sin movimiento exporta el conjunto completo, sin cursor/limit/top; tope 2 000 productos. |
 | D13 | Categorías exporta todas las categorías con movimiento, incluidas inactivas; `metric` obligatoria; tope 1 000 categorías. |
-| D14 | Metadatos como filas `#meta` antes del encabezado; cero resultados produce metadatos + encabezado sin filas. |
+| D14 | Metadatos como filas `#meta` antes del encabezado. Cero resultados en ventas/ranking/sin movimiento/categorías produce metadatos + encabezado sin filas; **series es la excepción**: un rango válido produce siempre ≥1 bucket con métricas `0` (`bucketCount>=1`, `rowCount>=1`), nunca archivo solo con encabezado. `rowLimit` es el máximo contractual de filas y `top` (cuando aplica) el corte efectivo; no se confunden. |
 | D15 | Semántica de estado actual para `orderStatus`, universo de sin movimiento y categoría vigente; no se reconstruyen snapshots históricos no existentes. |
 | D16 | Ranking conserva nombre actual/snapshot del contrato aceptado; no se inventa fallback nuevo. |
 | D17 | Categorías borradas o líneas sin categoría resoluble → `500 INTERNAL_ERROR` saneado; no se inventa categoría ni se descarta la línea. |
@@ -518,14 +531,14 @@ La aceptación de `CSV-00` no debe interpretarse como aceptación de estas decis
 | ID | Decisión propuesta |
 | --- | --- |
 | D19 | UTF-8 **con BOM**; coma; CRLF; comillas RFC 4180; CRLF final. |
-| D20 | Antifórmulas: prefijo `'` solo en campos de texto que empiecen por `=`, `+`, `-`, `@`, tab o CR; importes/unidades/IDs no se alteran. La comilla es reversible. |
-| D21 | Fechas de fila UTC con seis decimales; límites de contrato con tres; locales con offset IANA. Importes en centavos MXN; porcentajes con punto y dos decimales. |
+| D20 | Antifórmulas: prefijo `'` solo en campos de texto que empiecen por `=`, `+`, `-`, `@`, tab, CR **o LF**, y en el caso de espacios iniciales seguidos de carácter de fórmula (R-09); importes/unidades/IDs no se alteran. La comilla es reversible. |
+| D21 | Fechas de fila UTC con seis decimales **serializadas desde PostgreSQL** (`to_char`/US o equivalente), nunca desde `Date`; límites de contrato con tres; locales con offset IANA. Importes en centavos MXN; porcentajes con punto y dos decimales. Se prueba seis decimales y `to − 1 µs`. |
 
 ### E. Seguridad, cabeceras y errores
 
 | ID | Decisión propuesta |
 | --- | --- |
-| D22 | Solo ADMINISTRADOR; GERENTE 403; GET sin CSRF nuevo; Origin/sesión existentes; sin token en URL. |
+| D22 | Solo ADMINISTRADOR; GERENTE 403; GET sin CSRF nuevo; Origin/sesión existentes; sin token en URL (token/extra → 400, R-01). `method=all` en metadatos equivale a `method` omitido/null del DTO, no a un tercer método. |
 | D23 | Cabeceras: `Content-Type: text/csv; charset=utf-8`, `Content-Disposition` con nombre ASCII seguro, `Cache-Control: no-store`, `Referrer-Policy: no-referrer`, `X-Content-Type-Options: nosniff`. |
 | D24 | Errores `application/problem+json`; 400/401/403/413/429/500/503 saneados; nunca CSV parcial con 200. |
 | D25 | `400 EXPORT_LIMIT_EXCEEDED` para topes de filas; no usar 413 para ese caso (413 queda para parser global). |
@@ -534,9 +547,22 @@ La aceptación de `CSV-00` no debe interpretarse como aceptación de estas decis
 
 | ID | Decisión propuesta |
 | --- | --- |
-| D26 | Generación acotada en memoria con pre-conteo en una lectura coherente; sin streaming, colas, archivos temporales ni almacenamiento persistente. |
-| D27 | OpenAPI aditivo con `x-contract-status: proposed-2026-11-25`; no se modifican esquemas existentes. |
-| D28 | `CSV-01`/`CSV-02` quedan bloqueadas hasta aceptación explícita de D01–D27; `CSV-03` sigue siendo el único cierre de E2. |
+| D26 | Generación acotada en memoria con pre-conteo en **una sola consulta** (conteo+filas/agregados) o aislamiento explícito probado; no se promete `REPEATABLE READ` con `withTransaction` actual. Incluye prueba de concurrencia conteo/filas; sin streaming, colas, archivos temporales ni almacenamiento persistente. |
+| D27 | OpenAPI aditivo con `x-contract-status: approved-2026-11-25`; no se modifican esquemas existentes; el markdown es la fuente normativa de columnas (R-10). |
+| D28 | `CSV-01`/`CSV-02` quedan bloqueadas hasta aceptación explícita de D01–D36; `CSV-03` sigue siendo el único cierre de E2. |
+
+### G. Correcciones de revisión documental (2026-11-25)
+
+| ID | Decisión propuesta |
+| --- | --- |
+| D29 | Ventas se ordena por `soldAtUtc ASC, saleId ASC` y publica `rowOrder` en metadatos; no se reordena en frontend (B-02). |
+| D30 | `rowLimit` es el máximo contractual de filas/buckets; `top` es el corte efectivo del ranking. No son intercambiables (R-03). |
+| D31 | Origin inválido/PIN/rol → `403` con su código; token o parámetro extra en URL (`token`, `access_token`, `jwt`, etc.) → `400 VALIDATION_ERROR` (R-01). |
+| D32 | IDs pueden superar 2^53 y se serializan exactos; importes/conteos agregados están acotados por `orders_check_1` (≤ 9 999 900) y topes; se prueban con vectores controlados de serialización/aritmética y máximos reales, no sembrando extremos de extremo a extremo (R-02). |
+| D33 | Nombre de archivo entregado por `Content-Disposition` desde el mismo origen/proxy, leído por una extensión acotada del cliente HTTP existente; prueba en `CSV-02` (R-04). |
+| D34 | Coherencia conteo/filas mediante una sola consulta SQL; no se promete `REPEATABLE READ` con `withTransaction` actual. Aislamiento explícito alternativo exigiría configuración y prueba. Se añade prueba de concurrencia conteo/filas (R-05). |
+| D35 | `soldAt`/`createdAt` se serializan como texto desde PostgreSQL (`to_char`/US o equivalente), nunca desde `Date`; se prueban seis decimales y `to − 1 µs` (R-06). |
+| D36 | `CSV-02`/`CSV-03` incluyen accesibilidad: botón accesible, teclado/foco, anuncio de estado, descarga única, cancelación y prueba en Electron (R-08). |
 
 ## Contradicciones y reservas detectadas
 
@@ -565,4 +591,4 @@ Prevista y ejecutada solo como validación documental, sin runtime, HTTP, BD, UI
 
 ## Puerta siguiente
 
-`CSV-00` queda **propuesta, no aceptada**. El responsable debe aceptar o modificar las decisiones D01–D28, en particular rutas, formato/BOM, columnas de ventas, topes y generación. Solo después podrán iniciarse `CSV-01` (backend) y `CSV-02` (descarga frontend); `CSV-03` sigue siendo la aceptación real y el cierre único de E2. Esta propuesta no autoriza commit, push, despliegue, migraciones, dependencias ni cambios de runtime.
+`CSV-00` queda **propuesta, no aceptada**. El responsable debe aceptar o modificar las decisiones D01–D36, en particular rutas, formato/BOM, columnas y orden de ventas, topes, generación, nombre de archivo y accesibilidad. Solo después podrán iniciarse `CSV-01` (backend) y `CSV-02` (descarga frontend); `CSV-03` sigue siendo la aceptación real y el cierre único de E2. Esta propuesta no autoriza commit, push, despliegue, migraciones, dependencias ni cambios de runtime. Las correcciones de revisión documental (B-01, B-02, R-01…R-12) no equivalen a aceptación del contrato.

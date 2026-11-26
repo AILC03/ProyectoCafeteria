@@ -1738,19 +1738,39 @@ El responsable respondió **«Acepto E2-15 y sigo a CSV-00»** tras revisar la p
 
 ## TASK-DA-E2-CSV-00 — Propuesta documental de exportación CSV
 
-Estado: **PROPUESTA DOCUMENTAL REDACTADA, NO ACEPTADA; sin runtime, UI, SQL ejecutable, CSV real ni commit**. Fecha 2026-11-25. Autor `dashboard-backend-implementer`; verificación y revisión independientes **pendientes**, no atribuidas. `CSV-01`/`CSV-02`/`CSV-03` no iniciadas. E2 no se cierra hasta `CSV-03`.
+Estado: **PROPUESTA DOCUMENTAL CORREGIDA TRAS REVISIÓN, NO ACEPTADA; sin runtime, UI, SQL ejecutable, CSV real ni commit**. Fecha 2026-11-25. Autor `dashboard-backend-implementer`; verificación y revisión independientes **pendientes**, no atribuidas. `CSV-01`/`CSV-02`/`CSV-03` no iniciadas. E2 no se cierra hasta `CSV-03`.
 
 ### Archivos de esta tarea
 
-- `frontend/docs/specs/dashboard-admin/contracts/E2-csv-contract.md`: contrato propuesto de cinco exportaciones (ventas + series + ranking + sin movimiento + categorías), formato, columnas, metadatos, límites, errores, generación, matriz CSV-R01…R35 y decisiones D01–D28 pendientes.
-- `backend/docs/api/openapi.yaml`: adiciones exclusivamente CSV con `x-contract-status: proposed-2026-11-25`; paths `sales-export.csv`, `sales-series-export.csv`, `product-ranking-export.csv`, `no-movement-products-export.csv` y `category-participation-export.csv`; respuestas Problem comunes y `DashboardCsvInputInstant`. No se modificaron esquemas existentes.
+- `frontend/docs/specs/dashboard-admin/contracts/E2-csv-contract.md`: contrato propuesto de cinco exportaciones (ventas + series + ranking + sin movimiento + categorías), formato, columnas, orden de ventas `soldAtUtc ASC, saleId ASC`, metadatos, límites, errores, generación, matriz CSV-R01…R36 y decisiones D01–D36 pendientes (incluidas D29–D36 de corrección de revisión).
+- `backend/docs/api/openapi.yaml`: adiciones exclusivamente CSV con `x-contract-status: proposed-2026-11-25`; paths `sales-export.csv`, `sales-series-export.csv`, `product-ranking-export.csv`, `no-movement-products-export.csv` y `category-participation-export.csv`; respuestas Problem comunes y `DashboardCsvInputInstant`; nota de orden `rowOrder` y de buckets de series. No se modificaron esquemas existentes.
 - `frontend/docs/specs/dashboard-admin/tasks.md`: solo estado propio CSV-00.
 - Este registro: estado, comandos y límites de la propuesta. No se registra aceptación ficticia.
 
 ### Decisiones que requieren aceptación explícita
 
-- Rutas/alcance D01–D04; ventas D05–D09; analítica D10–D18; formato D19–D21; seguridad/cabeceras/errores D22–D25; generación y puertas D26–D28. Detalle completo en el contrato.
-- Puntos sensibles: cinco archivos frente a «cuatro exportaciones»; prefijo `/api/v1/admin/dashboard/...-export.csv` frente a las candidatas `/admin/sales/export.csv` y `/api/v1/admin/sales/export.csv`; una fila por venta con `orderStatus` actual; ventas con `from`/`to` obligatorios y 0–3 decimales; ranking con top N y metadatos del conjunto completo; sin movimiento completo sin cursor; BOM UTF-8; prefijo antifórmulas `'` solo en texto; topes 20 000/745/368/20/2 000/1 000; generación acotada en memoria.
+- Rutas/alcance D01–D04; ventas D05–D09; analítica D10–D18; formato D19–D21; seguridad/cabeceras/errores D22–D25; generación y puertas D26–D28; correcciones de revisión D29–D36. Detalle completo en el contrato.
+- Puntos sensibles: cinco archivos frente a «cuatro exportaciones»; prefijo `/api/v1/admin/dashboard/...-export.csv` frente a las candidatas `/admin/sales/export.csv` y `/api/v1/admin/sales/export.csv`; una fila por venta con `orderStatus` actual y orden `soldAtUtc ASC, saleId ASC`; ventas con `from`/`to` obligatorios y 0–3 decimales; ranking con top N, `rowLimit` máximo vs `top` efectivo y metadatos del conjunto completo; sin movimiento completo sin cursor; BOM UTF-8; prefijo antifórmulas `'` solo en texto (incluido LF/espacios iniciales); topes 20 000/745/368/20/2 000/1 000; generación acotada en memoria con consulta única o aislamiento probado; nombre de archivo por `Content-Disposition`; accesibilidad y Electron en CSV-02/03.
+
+### Correcciones de revisión documental aplicadas (2026-11-25)
+
+Estado tras corrección: **sigue PROPUESTA, NO ACEPTADA**; sin runtime, UI, SQL ejecutable, CSV real ni commit. No se autoaprueba el DTO ni la revisión.
+
+- **B-01:** separada la regla de cero resultados. Ventas/ranking/sin movimiento/categorías → metadatos + encabezado sin filas; series con rango válido → siempre ≥1 bucket intersectado (`bucketCount>=1`, `rowCount>=1`) con métricas `0`, nunca archivo solo con encabezado. Excepción reflejada en CSV-R25, D10 y D14.
+- **B-02:** orden determinista de ventas `soldAtUtc ASC, saleId ASC`, publicado como `rowOrder` en metadatos, ejemplo y CSV-R36; sin reordenar en frontend.
+- **R-01/D31:** CSV-R20 separa Origin inválido/PIN/rol → `403` con su código, frente a token o parámetro extra en URL (`token`, `access_token`, `jwt`…) → `400 VALIDATION_ERROR`.
+- **R-02/D32:** CSV-R24 separa IDs (pueden superar 2^53) de importes/conteos acotados por `orders_check_1` (≤ 9 999 900) y topes; documenta que no son sembrables de extremo a extremo y se prueban con vectores controlados de serialización/aritmética, como en series/ranking.
+- **R-03/D30:** `rowLimit` es el máximo contractual y `top` el corte efectivo; aclarado en metadatos, D11 y D14.
+- **R-04/D33:** nombre de archivo por `Content-Disposition` desde el mismo origen/proxy, leído por extensión acotada del cliente HTTP existente; prueba prevista en CSV-02.
+- **R-05/D34:** no se promete `REPEATABLE READ` (withTransaction no lo configura); se exige una sola consulta que cuente y devuelva filas/agregados, o aislamiento explícito probado, más prueba de concurrencia conteo/filas.
+- **R-06/D35:** `soldAt`/`createdAt` se serializan desde PostgreSQL (`to_char`/US o equivalente), nunca desde `Date`; prueba de seis decimales y `to − 1 µs`.
+- **R-08/D36:** CSV-02/CSV-03 incorporan botón accesible, teclado/foco, anuncio de estado, descarga única, cancelación y prueba en Electron.
+- **R-09:** antifórmulas amplía a LF y a espacios iniciales seguidos de carácter de fórmula; añadido a CSV-R23 y D20.
+- **R-10:** el markdown es fuente normativa de columnas; OpenAPI se mantiene informativo y aditivo.
+- **R-11:** `method=all` en CSV equivale a `method` omitido/null del DTO, no a un tercer método.
+- **R-12:** CSV-02 exige 401 con refresh único sin bucle y Problem Details que no se guarda como CSV.
+- **R-07:** fila resumen de `tasks.md` actualizada a E2-15 «CERRADA Y ACEPTADA» según el registro ya existente, sin reescribir historia.
+- Se añadieron D29–D36; la aceptación sigue requiriendo decisión explícita del responsable.
 
 ### Comandos ejecutados y resultados reales
 
@@ -1761,6 +1781,8 @@ Estado: **PROPUESTA DOCUMENTAL REDACTADA, NO ACEPTADA; sin runtime, UI, SQL ejec
 | `backend/`: `node scripts/check-doc-links.mjs` | **286 enlaces locales revisados, 0 inexistentes**; fragmentos no comprobados. |
 | raíz: `git diff --check` | Correcto; solo avisos LF→CRLF preexistentes, sin errores de whitespace. |
 | raíz: `git status --short` | Cambios previos de E2-13/14/15 conservados; esta tarea añade `contracts/E2-csv-contract.md` y modifica OpenAPI/tasks/validation. Sin secretos, CSV real, capturas ni artefactos temporales. |
+
+Corrección de proceso registrada: la primera invocación de `api:validate` falló porque `description` no es una propiedad admitida en el Media Type Object de esta versión; se retiraron esas descripciones opcionales y se conservó la nota normativa en el markdown. La primera invocación de `check-doc-links.mjs` desde la raíz falló porque el script resuelve `./docs`; se ejecutó desde `backend/`, su directorio correcto. No se eludió ninguna denegación.
 
 ### No ejecutado y límites
 
@@ -1778,4 +1800,15 @@ Estado: **PROPUESTA DOCUMENTAL REDACTADA, NO ACEPTADA; sin runtime, UI, SQL ejec
 
 ### Puerta siguiente
 
-Solicitar verificación y revisión independientes y someter al responsable la aceptación agrupada D01–D28. Hasta entonces CSV-00 es **propuesta no aceptada**; CSV-01/02 no pueden iniciarse y CSV-03 sigue siendo el cierre único de E2.
+Solicitar verificación y revisión independientes y someter al responsable la aceptación agrupada D01–D36. Hasta entonces CSV-00 es **propuesta no aceptada**; CSV-01/02 no pueden iniciarse y CSV-03 sigue siendo el cierre único de E2. Las correcciones B-01/B-02/R-01…R-12 son documentales y no constituyen aceptación.
+
+### Aceptación del contrato y cierre de CSV-00 — 2026-11-25
+
+El responsable respondió **«Acepto el contrato y sigo con CSV-01»** a la solicitud agrupada. Registro:
+
+- **Contrato aceptado:** D01–D36 de [E2-csv-contract.md](./contracts/E2-csv-contract.md), incluidas las decisiones derivadas de la revisión (D29 orden de filas `soldAtUtc ASC, saleId ASC`; D30 series siempre con al menos un bucket; D31 token/extra en URL → 400; D32 viabilidad de >2^53; D33 entrega del nombre de archivo; D34 consistencia conteo/filas; D35 microsegundos desde PostgreSQL; D36 accesibilidad/Electron de CSV-02).
+- **Alcance habilitado:** exclusivamente `CSV-01` (backend) y `CSV-02` (descarga frontend) bajo este contrato. No autoriza imágenes, PNG, XLSX, PDF, histórico global, cambios de negocio ni commit/push/despliegue.
+- **OpenAPI:** las cinco entradas CSV pasan a `x-contract-status: approved-2026-11-25`; se conservan los 75 ejemplos válidos.
+- **Puertas vigentes:** `CSV-03` sigue siendo el único cierre de E2 y requiere su propia aceptación real con descarga contra entorno autorizado. La verificación independiente nominal de esta propuesta quedó documentada por la revisión `dashboard-reviewer` (sin bloqueantes tras B-01/B-02); la ejecución de comandos la realizó el autor.
+
+**Estado: TASK-DA-E2-CSV-00 CERRADA Y CONTRATO ACEPTADO el 2026-11-25; sin commit autorizado en este registro.** Siguiente tarea autorizada: **CSV-01**.

@@ -8281,7 +8281,7 @@ paths:
                 $ref: '#/components/schemas/Problem'
   /api/v1/admin/dashboard/sales-export.csv:
     get:
-      x-contract-status: proposed-2026-11-25
+      x-contract-status: approved-2026-11-25
       tags:
         - DashboardAdmin
       summary: exportAdministrativeSalesCsv
@@ -8296,8 +8296,10 @@ paths:
         obligatorios, 0–3 decimales, mínimo 2000-01-01T08:00:00.000Z y máximo 366 días absolutos.
         Rechaza cursor, limit, order, page, top, metric, direction, category, timeZone, extras,
         repetidos, arrays, valores vacíos y body no vacío. Tope propuesto 20 000 ventas; si el
-        conjunto completo lo supera, responde 400 EXPORT_LIMIT_EXCEEDED sin CSV parcial. Formato
-        propuesto: UTF-8 con BOM, coma, RFC 4180, CRLF, prefila de metadatos #meta y escape
+        conjunto completo lo supera, responde 400 EXPORT_LIMIT_EXCEEDED sin CSV parcial. Orden de
+        filas propuesto `soldAtUtc ASC, saleId ASC`, publicado como metadato `rowOrder`; el
+        markdown del contrato CSV es la fuente normativa de columnas (OpenAPI es informativo).
+        Formato propuesto: UTF-8 con BOM, coma, RFC 4180, CRLF, prefila de metadatos #meta y escape
         antifórmulas solo en campos de texto. Cabeceras privadas no-store/no-referrer dentro del
         middleware privado temprano /api/v1/admin/dashboard; sin CSRF nuevo para GET. Contrato
         pendiente de aceptación explícita antes de CSV-01/02.
@@ -8362,6 +8364,7 @@ paths:
                 #meta,period.from,2026-11-24T08:00:00.000Z
                 #meta,period.to,2026-11-25T08:00:00.000Z
                 #meta,method,CASH
+                #meta,rowOrder,"soldAtUtc ASC, saleId ASC"
                 #meta,rowCount,2
                 #meta,rowLimit,20000
                 #meta,truncated,false
@@ -8390,7 +8393,7 @@ paths:
           $ref: '#/components/responses/DashboardCsvUnavailable'
   /api/v1/admin/dashboard/sales-series-export.csv:
     get:
-      x-contract-status: proposed-2026-11-25
+      x-contract-status: approved-2026-11-25
       tags:
         - DashboardAdmin
       summary: exportAdministrativeSalesSeriesCsv
@@ -8400,7 +8403,9 @@ paths:
         serie horaria/diaria que /api/v1/admin/dashboard/sales-series, con los mismos filtros,
         granularidad, método opcional, buckets, totales y límites. Exporta siempre las tres
         métricas (totalCents, ticketCount, unitsSold), sin parámetro metric; incluye buckets
-        vacíos y parciales. from/to UTC [from,to), 0–3 decimales, mínimo 2000-01-01T08:00:00.000Z.
+        vacíos y parciales y, con rango válido, produce siempre al menos un bucket intersectado
+        (nunca solo metadatos/encabezado). from/to UTC [from,to), 0–3 decimales, mínimo
+        2000-01-01T08:00:00.000Z.
         hour: máximo 744 h y 745 buckets; day: máximo 366×24 h y 368 buckets; exceso 400 sin
         truncar. Rechaza cursor, limit, top, metric, category, timeZone, extras, repetidos,
         arrays, valores vacíos y body. Formato UTF-8 con BOM, coma, RFC 4180, CRLF y metadatos
@@ -8504,7 +8509,7 @@ paths:
           $ref: '#/components/responses/DashboardCsvUnavailable'
   /api/v1/admin/dashboard/product-ranking-export.csv:
     get:
-      x-contract-status: proposed-2026-11-25
+      x-contract-status: approved-2026-11-25
       tags:
         - DashboardAdmin
       summary: exportAdministrativeProductRankingCsv
@@ -8640,7 +8645,7 @@ paths:
           $ref: '#/components/responses/DashboardCsvUnavailable'
   /api/v1/admin/dashboard/no-movement-products-export.csv:
     get:
-      x-contract-status: proposed-2026-11-25
+      x-contract-status: approved-2026-11-25
       tags:
         - DashboardAdmin
       summary: exportAdministrativeNoMovementProductsCsv
@@ -8747,7 +8752,7 @@ paths:
           $ref: '#/components/responses/DashboardCsvUnavailable'
   /api/v1/admin/dashboard/category-participation-export.csv:
     get:
-      x-contract-status: proposed-2026-11-25
+      x-contract-status: approved-2026-11-25
       tags:
         - DashboardAdmin
       summary: exportAdministrativeCategoryParticipationCsv
@@ -8906,7 +8911,8 @@ components:
       description: >-
         VALIDATION_ERROR o EXPORT_LIMIT_EXCEEDED. Entrada estricta inválida, rango/precisión
         fuera de contrato, extras/repetidos/arrays/body no vacío o filas por encima del tope.
-        Nunca se devuelve CSV parcial.
+        Incluye token de sesión u otro parámetro no contratado en la URL (token, access_token,
+        jwt…). Nunca se devuelve CSV parcial.
       content:
         application/problem+json:
           schema:
@@ -8920,7 +8926,8 @@ components:
     DashboardCsvForbidden:
       description: >-
         FORBIDDEN para CLIENTE/CAJERO/PREPARACION/GERENTE; PIN_CHANGE_REQUIRED u
-        ORIGIN_NOT_ALLOWED según middleware existente. Sin consulta de agregados.
+        ORIGIN_NOT_ALLOWED según middleware existente. Sin consulta de agregados. Un token o
+        parámetro extra en URL no es 403: corresponde a 400 VALIDATION_ERROR.
       content:
         application/problem+json:
           schema:
