@@ -1,0 +1,142 @@
+/* HYB-24: cross-area landing, status screens and actor-change dialog.
+   Presentation only: guards, destinations and session behaviour stay in app/shared. */
+
+.landing-page {
+  min-height: 100vh;
+  margin: 0;
+  padding: clamp(1.5rem, 4vw, 3rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fcf9f6;
+  color: #0f0301;
+  font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
+}
+
+.landing-shell { width: 100%; max-width: 56rem; display: grid; gap: 1rem; }
+.landing-eyebrow {
+  margin: 0;
+  color: #974818;
+  font-size: .78rem;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.landing-shell h1 { margin: 0; font-size: clamp(1.8rem, 4vw, 2.6rem); line-height: 1.15; }
+.landing-subtitle { margin: 0; color: #5e493e; line-height: 1.5; }
+
+.landing-areas {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  margin-top: .5rem;
+}
+.landing-area {
+  display: grid;
+  align-content: start;
+  gap: .6rem;
+  padding: 1.5rem;
+  background: #fff;
+  border: 1px solid #e8dcd2;
+  border-radius: 1.25rem;
+  box-shadow: 0 4px 18px rgb(45 26 18 / 8%);
+}
+.landing-area h2 { margin: 0; font-size: 1.25rem; color: #0f0301; }
+.landing-area p { margin: 0; color: #5e493e; line-height: 1.5; }
+
+.landing-action,
+.status-action {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin-top: .4rem;
+  padding: .7rem 1.25rem;
+  border: 1px solid #0f0301;
+  border-radius: 999px;
+  background: #0f0301;
+  color: #fff;
+  font: inherit;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+}
+.landing-area-terminal .landing-action { background: #0f172a; border-color: #0f172a; }
+.landing-action:hover,
+.status-action:hover { background: #2d1a12; border-color: #2d1a12; }
+.landing-action:focus-visible,
+.status-action:focus-visible { outline: 3px solid #974818; outline-offset: 3px; }
+
+.status-page {
+  min-height: 100vh;
+  padding: clamp(1.25rem, 4vw, 2.5rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fcf9f6;
+  color: #0f0301;
+}
+.status-page-inline { min-height: 0; padding: 0; background: transparent; }
+.status-card {
+  width: min(100%, 34rem);
+  display: grid;
+  gap: .75rem;
+  padding: clamp(1.25rem, 3vw, 2rem);
+  background: #fff;
+  border: 1px solid #e8dcd2;
+  border-radius: 1.25rem;
+  box-shadow: 0 8px 28px rgb(45 26 18 / 10%);
+}
+.status-card h1 { margin: 0; font-size: clamp(1.4rem, 3vw, 1.8rem); }
+.status-card p { margin: 0; color: #5e493e; line-height: 1.5; }
+.status-eyebrow {
+  margin: 0;
+  color: #974818;
+  font-size: .78rem;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.terminal-layout .status-card { border-color: var(--term-border-light); box-shadow: var(--term-shadow-sm); }
+.terminal-layout .status-eyebrow { color: #475569; }
+.terminal-layout .status-card p { color: #475569; }
+.terminal-layout .status-action { background: #0f172a; border-color: #0f172a; }
+.terminal-layout .status-action:hover { background: #1e293b; border-color: #1e293b; }
+.terminal-layout .status-action:focus-visible { outline-color: #3b82f6; }
+
+.actor-change-dialog-client { border-color: #e8dcd2; border-radius: 1.25rem; }
+.actor-change-dialog [role='alert'] {
+  margin: 0;
+  padding: .7rem .85rem;
+  border: 1px solid #d7a598;
+  border-radius: .65rem;
+  background: #fce8e4;
+  color: #8b2a17;
+  font-weight: 600;
+}
+.actor-change-dialog-client .status-eyebrow { color: #974818; }
+.actor-change-dialog-client .auth-dialog-actions button:not(.secondary-button) {
+  background: #0f0301;
+  border-color: #0f0301;
+  border-radius: 999px;
+}
+.actor-change-dialog-client .auth-dialog-actions .secondary-button {
+  color: #713419;
+  border-color: #713419;
+  border-radius: 999px;
+}
+
+.actor-change-dialog-terminal { border-color: #e2e8f0; border-radius: 1.25rem; }
+.actor-change-dialog-terminal .status-eyebrow { color: #475569; }
+.actor-change-dialog-terminal .auth-dialog-actions button:not(.secondary-button) {
+  background: #0f172a;
+  border-color: #0f172a;
+  border-radius: 999px;
+}
+.actor-change-dialog-terminal .auth-dialog-actions .secondary-button {
+  color: #334155;
+  border-color: #cbd5e1;
+  border-radius: 999px;
+}

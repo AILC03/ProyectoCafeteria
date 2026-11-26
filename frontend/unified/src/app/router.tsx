@@ -32,24 +32,35 @@ import { useState } from 'react';
 function LandingPage() {
   const guest = useGuestSession();
   return (
-    <main id="main-content" tabIndex={-1}>
-      <h1>Aplicación unificada de cafetería</h1>
-      <nav aria-label="Elegir área">
-        <ul>
-          <li><ActorAreaLink destination="client" to="/cliente/menu">Área de cliente</ActorAreaLink></li>
-          <li>
+    <main id="main-content" tabIndex={-1} className="landing-page">
+      <section className="landing-shell" aria-labelledby="landing-title">
+        <p className="landing-eyebrow">Coffee´s POS</p>
+        <h1 id="landing-title">Aplicación unificada de cafetería</h1>
+        <p className="landing-subtitle">Pedidos de clientes y operación de terminal en un solo lugar.</p>
+        <div className="landing-areas">
+          <article className="landing-area landing-area-client" aria-labelledby="landing-client-title">
+            <h2 id="landing-client-title">Área de cliente</h2>
+            <p>Consulta el menú, personaliza tu pedido y revisa tu cuenta.</p>
+            <ActorAreaLink className="landing-action" destination="client" to="/cliente/menu">
+              Entrar como cliente
+            </ActorAreaLink>
+          </article>
+          <article className="landing-area landing-area-terminal" aria-labelledby="landing-terminal-title">
+            <h2 id="landing-terminal-title">Terminal</h2>
+            <p>Toma de órdenes, caja, cocina y administración para personal autorizado.</p>
             <ActorAreaLink
+              className="landing-action"
               destination="terminal"
               to="/terminal"
               onClick={() => {
                 if (guest.isGuest) exitGuestMode();
               }}
             >
-              Terminal
+              Entrar a la terminal
             </ActorAreaLink>
-          </li>
-        </ul>
-      </nav>
+          </article>
+        </div>
+      </section>
     </main>
   );
 }
@@ -61,13 +72,16 @@ function PinChangeRequiredPage() {
   async function logout(): Promise<void> {
     if (!await manager.logout()) setError('No fue posible cerrar la sesión. Inténtalo de nuevo.');
   }
-  if (session.status !== 'pin-change-required') return <main id="main-content" tabIndex={-1}><h1>Ruta no disponible</h1></main>;
-  return <main id="main-content" tabIndex={-1}><section aria-labelledby="pin-change-title">
-    <h1 id="pin-change-title">Cambio de NIP obligatorio</h1>
-    <p role="status">Tu sesión está restringida hasta cambiar el NIP o cerrar sesión.</p>
-    {error !== null && <p role="alert">{error}</p>}
-    <button type="button" onClick={() => { void logout(); }}>Cerrar sesión</button>
-  </section></main>;
+  if (session.status !== 'pin-change-required') return <main id="main-content" tabIndex={-1} className="status-page"><h1>Ruta no disponible</h1></main>;
+  return <main id="main-content" tabIndex={-1} className="status-page">
+    <section className="status-card" aria-labelledby="pin-change-title">
+      <p className="status-eyebrow">Sesión restringida</p>
+      <h1 id="pin-change-title">Cambio de NIP obligatorio</h1>
+      <p role="status">Tu sesión está restringida hasta cambiar el NIP o cerrar sesión.</p>
+      {error !== null && <p role="alert">{error}</p>}
+      <button type="button" className="status-action" onClick={() => { void logout(); }}>Cerrar sesión</button>
+    </section>
+  </main>;
 }
 
 function PinChangeGate() {
@@ -79,12 +93,21 @@ function PinChangeGate() {
   return <Outlet />;
 }
 
-function NotFoundContent() {
-  return <><h1 id="page-title">Página no encontrada</h1><p>La ruta solicitada no está disponible.</p><Link to="/">Volver al inicio</Link></>;
+function NotFoundContent({ area }: { area?: 'client' | 'terminal' } = {}) {
+  const home = area === 'client' ? '/cliente/menu' : area === 'terminal' ? '/terminal' : '/';
+  const label = area === 'client' ? 'Volver al menú' : area === 'terminal' ? 'Volver a la terminal' : 'Volver al inicio';
+  return (
+    <>
+      <p className="status-eyebrow">{area === 'client' ? 'Área de cliente' : area === 'terminal' ? 'Terminal' : 'Coffee´s POS'}</p>
+      <h1 id="page-title">Página no encontrada</h1>
+      <p>La ruta solicitada no está disponible.</p>
+      <Link className="status-action" to={home}>{label}</Link>
+    </>
+  );
 }
 
 function NotFoundPage() {
-  return <main id="main-content" tabIndex={-1}><NotFoundContent /></main>;
+  return <main id="main-content" tabIndex={-1} className="status-page"><section className="status-card"><NotFoundContent /></section></main>;
 }
 
 function ClientAreaRoute() {
@@ -104,7 +127,7 @@ export const appRoutes: RouteObject[] = [
        { path: 'registro-ticket', element: <TicketRegistrationPage /> },
       { element: <ClientPublicGuard />, children: [{ path: 'menu', element: <ClientCatalogPage /> }] },
        { element: <ClientAccessGuard />, children: [{ path: 'cuenta', element: <ClientAccountPage /> }] },
-      { path: '*', element: <section aria-labelledby="page-title"><NotFoundContent /></section> },
+      { path: '*', element: <section className="status-page status-page-inline" aria-labelledby="page-title"><div className="status-card"><NotFoundContent area="client" /></div></section> },
       ],
     },
     {
@@ -127,7 +150,7 @@ export const appRoutes: RouteObject[] = [
       { element: <TerminalAccessGuard allowedRoles={['ADMINISTRADOR']} />, children: [
         { path: 'administracion/*', element: <AdminPage /> },
       ] },
-      { path: '*', element: <section aria-labelledby="page-title"><NotFoundContent /></section> },
+      { path: '*', element: <section className="status-page status-page-inline" aria-labelledby="page-title"><div className="status-card"><NotFoundContent area="terminal" /></div></section> },
       ],
     },
     { path: '*', element: <NotFoundPage /> },

@@ -220,7 +220,7 @@ Fuente: `frontend/clientes/src/components/ProfileModal.tsx` y `frontend/clientes
 | D-31 | HYB-11…17, 21, 22 | Evidencia de identidad/estados/contratos aceptada donde no existe captura original aprobada; sin declarar equivalencia píxel a píxel. HYB-16 derivada. |
 | D-32 | HYB-06…10 | Composición terminal aceptada: H1 accesible y panel de catálogo en POS, dos columnas a 1024 px, metadatos sin SKU, panel de cliente por búsqueda, caja alineada arriba con fechas localizadas y login sin emoji. Guardas, permisos e idempotencia intactos. |
 
-## Propuesta de adaptación — `ADAPT-CROSS-SURFACES` (HYB-24, NO aprobada)
+## Propuesta de adaptación — `ADAPT-CROSS-SURFACES` (HYB-24, aprobada como entrada, 2026-11-26)
 
 Fuente: patrones de `WelcomeScreen.jsx`, `AuthPage.tsx`, `AdminDashboardWorkspace.jsx` (denegación) y diálogos ya migrados; **no existe pantalla original directa** de estas superficies. Destino: `src/app/router.tsx` (solo markup), `src/app/guards.tsx`, `src/shared/auth/ActorChangeDialog.tsx` y estilos de estado por área. Requiere aprobación explícita antes de escribir código.
 
@@ -233,4 +233,4 @@ Fuente: patrones de `WelcomeScreen.jsx`, `AuthPage.tsx`, `AdminDashboardWorkspac
 - **Límites:** sin roles nuevos, sin cambio de contraseña/NIP, sin acceso cliente en Electron, sin datos ficticios, sin tocar cookies/CSRF/refresh ni destinos de guarda.
 - **Evidencia prevista:** cliente 390×844 y 1280×800; terminal 1024×768 y 1280×800 más Electron; estados visitante/autenticado denegado/restringido, diálogo abierto/cancelado/error; axe, teclado y foco devuelto. Adaptación derivada de REF-T/REF-C, sin inventar captura original.
 
-**Estado:** Pendiente de aprobación del responsable. No implementar hasta aceptación explícita.
+**Estado:** Aprobada explícitamente por el responsable (2026-11-26) como entrada para HYB-24; decisión D-33. No aprueba el resultado hasta su cierre.

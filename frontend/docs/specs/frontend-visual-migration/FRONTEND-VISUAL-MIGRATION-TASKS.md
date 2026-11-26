@@ -1,6 +1,6 @@
 # TASKS-FE-VIS-001 — Entregas híbridas de migración visual
 
-- **Estado:** listado revisado a petición del responsable; HYB-01…HYB-23 terminadas; HYB-24 pendiente de aprobación de su adaptación y HYB-25 pendiente de auditoría integral.
+- **Estado:** listado revisado a petición del responsable; HYB-01…HYB-23 terminadas; HYB-24 terminada; HYB-25 pendiente de auditoría integral.
 - **Fuente:** [plan híbrido](./FRONTEND-VISUAL-MIGRATION-PLAN.md) y [spec vigente](./FRONTEND-VISUAL-MIGRATION-SPEC.md).
 - **Sustituye:** listado anterior de 69 tasks R/U, todavía no ejecutadas. Los IDs pasan a `HYB-XX` para no confundir las dos descomposiciones.
 - **Reglas armonizadas:** el responsable autorizó ajustar spec/plan y proceso al enfoque híbrido. Esa edición documental no inicia ninguna task ni aprueba lote, tema, adaptación o resultado visual.
@@ -174,9 +174,9 @@ Cada task cerrada incluye fila STATUS con evidencia real, decisiones, revisores,
 
 ## 5. Transversal y aceptación
 
-- [ ] **HYB-24 — Portar estados públicos, denegaciones y cambio de actor** (U, sensible).
+- [x] **HYB-24 — Portar estados públicos, denegaciones y cambio de actor** (U, sensible).
   - Requisitos adicionales: CA-03, CA-06. Dependencia: HYB-23.
-  - Archivos: `SRC/app/router.tsx` sólo markup de entrada/404/sesión restringida; `SRC/app/guards.tsx` sólo presentación de denegaciones; `SRC/shared/auth/ActorChangeDialog.tsx`.
+  - Archivos: `SRC/app/router.tsx` sólo markup de entrada/404/sesión restringida; `SRC/app/guards.tsx` sólo presentación de denegaciones; `SRC/shared/auth/ActorChangeDialog.tsx` y captura de foco de retorno en `SRC/shared/auth/SessionProvider.tsx`; `SRC/styles/status-pages.css`; `e2e/visual/hyb24-status-surfaces.visual.spec.ts`.
   - Pausa previa: adaptaciones sin original directo y diálogo por área; separar por superficie si es necesario para revisión segura.
   - Hecho cuando adicional: error/denegación legibles y fieles a patrones acordados, mismos roles/guardas/destinos/confirmación/logout y foco; no añadir cambio de NIP funcional ni acceso cliente en Electron.
 
@@ -204,4 +204,4 @@ No implementar una task genérica de «mejorar todo». Tras la reproducción, ca
 | CA-08 | Revisiones/aceptación al final de cada bloque y HYB-25 |
 | CA-09 | Todos los contratos, revisión final de diff/originales |
 
-**Próxima task a autorizar:** HYB-02 (harness aislado), una vez cerrado HYB-01. Hay 25 tasks en total; completar el inventario no aprueba herramientas, capturas, temas ni los bloques siguientes. El ajuste documental del enfoque no es una task de implementación ni una aprobación de capturas.
+**Próxima task:** HYB-25 (auditoría integral), una vez cerrada HYB-24. Hay 25 tasks en total; completar el inventario no aprueba herramientas, capturas, temas ni los bloques siguientes. El ajuste documental del enfoque no es una task de implementación ni una aprobación de capturas.
