@@ -1018,3 +1018,40 @@ Estado actual: **implementado, verificado y revisado sin bloqueantes de código;
 - R-2: cobertura de IDs >2^53 en integración y de cantidad 0 no ejercitada (constraint 1–99); decimales 4–6 en `to`, cursor tras el final con total no cero y eventos/intentos no materializados. Se registran como límites, no como aprobados.
 - R-3: denegación sin agregado no instrumentada con contador; el orden de middleware la garantiza estructuralmente.
 - Sin frontend/UI/CSV; E2-10/11 y CSV-03 siguen pendientes. Commit pendiente de autorización.
+
+## TASK-DA-E2-10 — Frontend de sin movimiento
+
+Estado actual: **implementado, verificado y revisado sin bloqueantes técnicos; V-VIS humana pendiente; commit pendiente de autorización. NO cierra E2/CSV.** Autor: `frontend-implementer`; verificación: `dashboard-verifier`; revisión: `dashboard-reviewer` (GPT-6.1 Sol).
+
+### Archivos
+
+- `frontend/unified/src/features/terminal/admin/analytics/{noMovementApi.ts,noMovementApi.unit.test.ts,NoMovementProducts.tsx,NoMovementProducts.component.test.tsx}`.
+- `frontend/unified/src/test/noMovementFixture.ts`.
+- `frontend/unified/src/features/terminal/admin/dashboard/DashboardSummary.tsx` (montaje con periodo/método).
+- `frontend/unified/src/styles/base.css` (solo `.dashboard-no-movement-*`).
+- `frontend/unified/e2e/dashboard-no-movement.spec.ts` y mocks de suites existentes.
+- Sin backend, contrato, OpenAPI, sesión, dependencias ni Electron.
+
+### Comandos
+
+| Comando | Resultado real |
+| --- | --- |
+| `typecheck`, `lint`, `build` | Correctos. |
+| `npm.cmd run test` | **622/622** en 42 archivos. |
+| Dirigidas no-movement | **110/110**. |
+| `npm.cmd run test:e2e -- e2e/dashboard-no-movement.spec.ts` | **6/6**. |
+| `npm.cmd run test:e2e` | **78/78**. |
+
+### Cobertura
+
+- Parser estricto, cursor opaco, DTO cerrado, eco de periodo/método/límite, strings/BigInt, total antes de paginar.
+- Etiqueta «Sin movimiento en el rango y método seleccionados», definición del universo/corte, `isAvailable` como dato, tabla accesible, ID/categoría/disponibilidad/alta.
+- Cargar más con `nextCursor`, sin duplicar, reinicio al cambiar filtros, fin de lista, estados/errores/429/fallo parcial, aborto/descarte, sin polling, un solo `main`.
+- No calcula ausencias localmente ni reordena; no usa top N.
+
+### V-VIS y pendientes
+
+- Capturas 1280/768/390 en `frontend/unified/test-results/dashboard-no-movement-*` (ignorado); en 390/768 scroll horizontal interno.
+- **Aceptación visual humana pendiente**; se intentará cubrir en E2-11. No se hereda de E1/ranking.
+- Residuales: deduplicación con catálogo mutable conserva primer dato; cambio de filtros durante Cargar más no tiene prueba dedicada; guarda no assertea explícitamente cero GET de no-movement en roles negativos.
+- Sin integración real; corresponde a E2-11. Commit pendiente de autorización.

@@ -177,6 +177,32 @@ button.secondary-button { background: #fff; color: #1e3a8a; border-color: #1e3a8
 .dashboard-ranking-name { display: block; }
 .dashboard-ranking-id { color: #475569; display: block; font-size: .8rem; font-weight: 400; overflow-wrap: anywhere; }
 .dashboard-ranking-number { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.dashboard-no-movement { border: 1px solid #cbd5e1; border-radius: .5rem; display: grid; gap: .85rem; min-width: 0; padding: 1rem; }
+.dashboard-no-movement-heading { align-items: start; display: flex; flex-wrap: wrap; gap: 1rem; justify-content: space-between; }
+.dashboard-no-movement-heading h3 { font-size: 1rem; margin: 0 0 .35rem; }
+.dashboard-no-movement-heading p { margin: 0; }
+.dashboard-no-movement-label { background: #eff6ff; border: 1px solid #93c5fd; border-radius: .375rem; margin: 0; padding: .6rem .75rem; }
+.dashboard-no-movement-filters { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); margin: 0; }
+.dashboard-no-movement-filters label { display: grid; font-weight: 700; gap: .25rem; }
+.dashboard-no-movement-filters select { background: #fff; border: 1px solid #64748b; border-radius: .375rem; color: #111827; font: inherit; min-height: 2.5rem; padding: .55rem .65rem; }
+.dashboard-no-movement-content { display: grid; gap: .75rem; min-width: 0; }
+.dashboard-no-movement-universe { border: 1px solid #e2e8f0; border-radius: .375rem; display: grid; gap: .35rem; padding: .6rem; }
+.dashboard-no-movement-universe p { margin: 0; }
+.dashboard-no-movement-definition { color: #334155; font-size: .8rem; overflow-wrap: anywhere; }
+.dashboard-no-movement-note { color: #475569; font-size: .85rem; margin: 0; }
+.dashboard-no-movement-meta { margin: 0; }
+.dashboard-no-movement-table-wrap { max-width: 100%; overflow-x: auto; }
+.dashboard-no-movement-table { border-collapse: collapse; min-width: 42rem; width: 100%; }
+.dashboard-no-movement-table caption { font-weight: 700; padding-bottom: .35rem; text-align: left; }
+.dashboard-no-movement-table th, .dashboard-no-movement-table td { border-bottom: 1px solid #cbd5e1; padding: .35rem; text-align: left; vertical-align: top; }
+.dashboard-no-movement-table thead th { color: #475569; font-size: .8rem; }
+.dashboard-no-movement-table tbody th { font-size: .85rem; overflow-wrap: anywhere; }
+.dashboard-no-movement-name { display: block; }
+.dashboard-no-movement-category { display: block; }
+.dashboard-no-movement-id { color: #475569; display: block; font-size: .8rem; font-weight: 400; overflow-wrap: anywhere; }
+.dashboard-no-movement-available { color: #166534; font-weight: 700; }
+.dashboard-no-movement-unavailable { color: #9a3412; font-weight: 700; }
+.dashboard-no-movement-pagination { display: flex; justify-content: flex-start; }
 .dashboard-error { background: #fef2f2; border: 1px solid #b91c1c; border-radius: .375rem; color: #991b1b; display: grid; gap: .5rem; padding: .75rem; }
 .dashboard-error p { margin: 0; }
 .dashboard-operational { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); }
