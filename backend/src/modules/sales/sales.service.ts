@@ -2,9 +2,14 @@ import { decodeCursor, paginate } from '../../shared/http/pagination.js';
 import { invalidInput } from '../../shared/http/problem.js';
 import type { Principal } from '../auth/auth.types.js';
 import {
+  decodeNoMovementCursor,
+  encodeNoMovementCursor,
+  NO_MOVEMENT_UNIVERSE_DEFINITION,
   parseSalesSeriesInstant,
   type DashboardSummaryQuery,
+  type NoMovementCursorFilters,
   type SalesFilters,
+  type SalesNoMovementQuery,
   type SalesOrder,
   type SalesRankingQuery,
   type SalesSeriesQuery,
@@ -323,6 +328,86 @@ export class SalesService {
           totalCents: aggregate.matchedTotalCents,
         },
         truncated: BigInt(aggregate.matchedProductCount) > BigInt(items.length),
+        items,
+      },
+    };
+  }
+  /**
+   * Lista E2-09: valida el cursor propio contra los valores efectivos, pide la
+   * página keyset y el total en una sola lectura, y compone el DTO cerrado. El
+   * total es el del conjunto completo antes de paginar; la página no reordena.
+   */
+  async noMovementProducts(actor: Principal, input: SalesNoMovementQuery) {
+    const from = new Date(parseSalesSeriesInstant(input.from)),
+      to = new Date(parseSalesSeriesInstant(input.to)),
+      limit = input.limit;
+    const filters: NoMovementCursorFilters = {
+      from: from.toISOString(),
+      to: to.toISOString(),
+      method: input.method ?? null,
+      limit,
+    };
+    const aggregate = await this.repository.noMovementProducts(actor, {
+      from,
+      to,
+      ...(input.method ? { method: input.method } : {}),
+      limit: Number(limit),
+      after: decodeNoMovementCursor(input.cursor, filters),
+    });
+    if (
+      !aggregate ||
+      typeof aggregate.totalNoMovementProducts !== 'string' ||
+      !/^(0|[1-9][0-9]*)$/.test(aggregate.totalNoMovementProducts) ||
+      !Array.isArray(aggregate.items)
+    )
+      throw new Error('Agregado de productos sin movimiento incompleto');
+    const pageLimit = Number(limit),
+      page = aggregate.items.slice(0, pageLimit),
+      last = page.at(-1);
+    const items = page.map((item) => {
+      if (
+        typeof item.productId !== 'string' ||
+        typeof item.name !== 'string' ||
+        typeof item.categoryId !== 'string' ||
+        typeof item.categoryName !== 'string' ||
+        typeof item.isAvailable !== 'boolean' ||
+        typeof item.createdAt !== 'string'
+      )
+        throw new Error('Producto sin movimiento incompleto');
+      return {
+        productId: item.productId,
+        name: item.name,
+        category: { id: item.categoryId, name: item.categoryName },
+        isAvailable: item.isAvailable,
+        createdAt: item.createdAt,
+      };
+    });
+    return {
+      data: {
+        generatedAt: this.now().toISOString(),
+        currency: 'MXN',
+        period: {
+          from: filters.from,
+          to: filters.to,
+          timeZone: TIJUANA_TIME_ZONE,
+        },
+        method: filters.method,
+        universe: {
+          asOf: filters.to,
+          definition: NO_MOVEMENT_UNIVERSE_DEFINITION,
+          includesUnavailable: true,
+        },
+        totalNoMovementProducts: aggregate.totalNoMovementProducts,
+        page: {
+          limit,
+          nextCursor:
+            aggregate.items.length > pageLimit && last
+              ? encodeNoMovementCursor(filters, {
+                  name: last.name,
+                  productId: last.productId,
+                })
+              : null,
+        },
         items,
       },
     };

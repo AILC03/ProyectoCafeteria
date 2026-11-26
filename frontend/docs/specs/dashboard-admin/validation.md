@@ -973,3 +973,48 @@ Estado actual: **contrato documental aceptado por delegación del responsable el
 - `format:check` correcto, `api:validate` 69 ejemplos, `prettier --check` correcto, 286 enlaces 0 inexistentes, `git diff --check` correcto.
 - Verificación independiente sin bloqueantes; ajustes aplicados: `totalNoMovementProducts`, `asOf` como cohorte, `nextCursor` con patrón/longitud, `page.limit` propio, decodificador propio, categoría desactivada en limitaciones.
 - Sin runtime/HTTP/BD/UI/CSV; la implementación y coste corresponden a E2-09/E2-11. Commit pendiente de autorización.
+
+## TASK-DA-E2-09 — Backend de activos sin movimiento
+
+Estado actual: **implementado, verificado y revisado sin bloqueantes de código; commit pendiente de autorización. NO cierra E2/CSV.** Autor: `dashboard-backend-implementer`; verificación: `dashboard-verifier`; revisión: `dashboard-reviewer` (GPT-6.1 Sol).
+
+### Archivos
+
+- `backend/src/modules/sales/{sales.validation.ts,sales.read.repository.ts,sales.service.ts,sales.routes.ts}`.
+- `backend/tests/dashboard-no-movement.test.ts` (18 unitarias).
+- `backend/tests/integration/dashboard-no-movement.integration.test.ts` (9 integraciones).
+- `backend/scripts/benchmark-dashboard-no-movement.ts`.
+- `backend/docs/api/openapi.yaml` (solo descripción del path de sin movimiento).
+- Sin cambios de frontend, CSV, esquema, migraciones, `app.ts` ni ranking/series.
+
+### Comandos
+
+| Comando | Resultado real |
+| --- | --- |
+| `format:check`, `typecheck`, `lint`, `build` | Correctos. |
+| `npm.cmd test` | **169** unitarias; 179 integraciones omitidas por diseño. |
+| `npm.cmd run test:integration` | **179/179** en 10 archivos; no-movement 9/9. |
+| `npm.cmd run api:validate` | 69 ejemplos conformes. |
+| `npm.cmd run db:validate` | Esquema válido. |
+| `npm.cmd run db:verify:docker` con salida temporal | PostgreSQL 17.11, **22 comprobaciones**, mutantes C01–C04 detectados. |
+| `git diff --check` | Correcto. |
+
+### Cobertura
+
+- Universo activo: `Product.deletedAt IS NULL`, categoría activa/no borrada, `createdAt < to`; `isAvailable` no filtra y se devuelve.
+- Ausencia por antijoin de ventas pagadas en `[from,to)`/método; ventas fuera/otro método, reembolsos y órdenes sin `Sale` correctos.
+- Cursor propio con scope/definición/periodo/método/límite/clave; keyset `name COLLATE "C"`, productId; total antes de paginar; `totalNoMovementProducts`.
+- DTO cerrado con strings exactos y `createdAt` con 6 decimales; roles 401/403 incluido GERENTE; cabeceras; body/extras; OpenAPI 200 conforme.
+- R-1 corregido: cursor con NUL/controles → 400, nunca 500; 18 unitarias y 179/179 integración tras el cambio.
+
+### Coste
+
+- Benchmark aislado 15 000 ventas/22 500 líneas/2 000 productos (1 200 con ventas, 1 918 universo, 770 sin movimiento).
+- Autor: medianas page-1/2/3 **17.73/17.56/17.39 ms**, CASH limit 50 **21.88 ms**, plan **Hash Anti Join**, sin índices nuevos.
+- Coordinador: primera corrida page-1 **1.28 s** (outlier de caché en frío), segunda corrida medianas **18.84/17.47/18.31 ms** y CASH **21.81 ms**; `cleanup:true`, sin bases temporales. No es SLA; 100k no medido.
+
+### Residuales
+
+- R-2: cobertura de IDs >2^53 en integración y de cantidad 0 no ejercitada (constraint 1–99); decimales 4–6 en `to`, cursor tras el final con total no cero y eventos/intentos no materializados. Se registran como límites, no como aprobados.
+- R-3: denegación sin agregado no instrumentada con contador; el orden de middleware la garantiza estructuralmente.
+- Sin frontend/UI/CSV; E2-10/11 y CSV-03 siguen pendientes. Commit pendiente de autorización.

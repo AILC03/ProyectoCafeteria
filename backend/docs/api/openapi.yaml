@@ -6827,11 +6827,11 @@ paths:
       summary: readAdministrativeNoMovementProducts
       operationId: readAdministrativeNoMovementProducts
       description: >-
-        CONTRATO TASK-DA-E2-08 aceptado por delegación del responsable el 2026-11-25;
-        no implementa runtime y su backend/UI/CSV pertenecen a E2-09/10/11 y al cierre E2.
-        Solo ADMINISTRADOR con sesión vigente. Lista separada de productos
-        del universo activo sin movimiento en el periodo UTC semiabierto [from,to) y
-        método opcional. No es el ranking de menos vendidos ni una lista de ceros.
+        CONTRATO TASK-DA-E2-08 aceptado por delegación del responsable el 2026-11-25.
+        Implementación backend runtime TASK-DA-E2-09 (2026-11-25); UI y CSV pertenecen
+        a E2-10/11 y al cierre E2. Solo ADMINISTRADOR con sesión vigente. Lista separada
+        de productos del universo activo sin movimiento en el periodo UTC semiabierto
+        [from,to) y método opcional. No es el ranking de menos vendidos ni una lista de ceros.
         Universo: Product.deletedAt IS NULL; categoría existente con Category.isActive=true
         y Category.deletedAt IS NULL; Product.createdAt < to (cohorte). Product.isAvailable
         NO filtra: un producto agotado sigue existiendo y se devuelve con isAvailable=false.
@@ -6884,8 +6884,9 @@ paths:
         sin precios, ventas, unidades, tickets, PII ni datos de pago. Cero resultados es
         200 con items vacío, total "0" y nextCursor null, no 404.
         Cache-Control no-store y Referrer-Policy no-referrer dentro del middleware privado;
-        los rechazos globales previos (Origin/parsing/413/429) pueden carecer de esas
-        cabeceras con el orden actual y E2-09 debe verificarlo. Errores
+        los rechazos globales previos (Origin/413/429) conservan esas cabeceras con el
+        orden actual, verificado en E2-09; el parser global queda cubierto por el mismo
+        middleware. Errores
         application/problem+json saneados: 400 VALIDATION_ERROR, 401 UNAUTHENTICATED, 403
         FORBIDDEN para cualquier rol distinto de ADMINISTRADOR (incluido GERENTE)/
         PIN_CHANGE_REQUIRED/ORIGIN_NOT_ALLOWED, 413 PAYLOAD_TOO_LARGE, 429 RATE_LIMITED,
@@ -7006,13 +7007,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
         '413':
-          description: PAYLOAD_TOO_LARGE del parser global antes del rechazo de body en ruta; la cobertura de cabeceras privadas no está garantizada con el orden actual y E2-09 debe verificarla.
+          description: PAYLOAD_TOO_LARGE del parser global antes del rechazo de body en ruta; con el orden actual de middleware conserva las cabeceras privadas, verificado en E2-09.
           content:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
         '429':
-          description: RATE_LIMITED del limitador existente; puede ocurrir antes de cabeceras privadas de ruta y su cobertura no está garantizada con el orden actual; E2-09 debe verificarla. Sin bucle de reintentos.
+          description: RATE_LIMITED del limitador existente; con el orden actual de middleware conserva las cabeceras privadas, verificado en E2-09. Sin bucle de reintentos.
           content:
             application/problem+json:
               schema:

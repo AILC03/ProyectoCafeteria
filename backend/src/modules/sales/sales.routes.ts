@@ -8,6 +8,7 @@ import { invalidInput } from '../../shared/http/problem.js';
 import {
   dashboardSummaryQuery,
   salesFilters,
+  salesNoMovementQuery,
   salesQuery,
   salesRankingQuery,
   salesSeriesQuery,
@@ -70,6 +71,21 @@ export function salesRoutes(auth: AuthService, service: SalesService) {
         throw invalidInput();
       res.json(
         jsonValue(await service.productRanking(principal(res), salesRankingQuery.parse(req.query))),
+      );
+    },
+  );
+  router.get(
+    '/admin/dashboard/no-movement-products',
+    privateCashResponse,
+    authenticate(auth),
+    authorize('ADMINISTRADOR'),
+    async (req, res) => {
+      if (req.headers['transfer-encoding'] || Number(req.headers['content-length'] ?? 0))
+        throw invalidInput();
+      res.json(
+        jsonValue(
+          await service.noMovementProducts(principal(res), salesNoMovementQuery.parse(req.query)),
+        ),
       );
     },
   );

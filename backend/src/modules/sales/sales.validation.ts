@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { pageQuerySchema } from '../../shared/http/pagination.js';
+import { invalidInput } from '../../shared/http/problem.js';
 export const salesFilters = z
   .object({
     from: z.string().datetime().optional(),
@@ -145,3 +146,155 @@ export const dashboardSummaryQuery = z
     return duration > 0 && duration <= MAX_DASHBOARD_RANGE_MS;
   });
 export type DashboardSummaryQuery = z.infer<typeof dashboardSummaryQuery>;
+
+/** E2-09: token cerrado de la definición actual del universo sin movimiento. */
+export const NO_MOVEMENT_UNIVERSE_DEFINITION =
+  'product-not-deleted+category-active+category-not-deleted+created-before-asOf+availability-ignored+current-catalog-state';
+export const NO_MOVEMENT_SCOPE = 'dashboard-no-movement';
+export const NO_MOVEMENT_PAGE_LIMITS = ['10', '20', '50'] as const;
+export type NoMovementPageLimit = (typeof NO_MOVEMENT_PAGE_LIMITS)[number];
+export const NO_MOVEMENT_MAX_CURSOR_LENGTH = 2048;
+const NO_MOVEMENT_CURSOR_PATTERN = /^[A-Za-z0-9_-]+$/;
+/**
+ * R-1: el nombre viaja como parámetro `text` a PostgreSQL. NUL (0x00) no es
+ * representable en `text` y los controles C0/DEL no son una clave de catálogo
+ * legítima; rechazarlos en la entrada evita un 500 por un cursor manipulado.
+ * No restringe UTF-8: acentos, emoji y espacios siguen admitidos.
+ */
+function hasIncompatibleNoMovementControl(value: string): boolean {
+  for (const character of value) {
+    const codePoint = character.codePointAt(0)!;
+    if (codePoint <= 0x1f || codePoint === 0x7f) return true;
+  }
+  return false;
+}
+
+/**
+ * Entrada E2-09: mismo dominio y precisión que las series E2, más `limit` con
+ * forma léxica exacta 10/20/50 y cursor propio. No reutiliza `pageQuerySchema`
+ * (limit entero 1–100) ni el `decodeCursor` genérico.
+ */
+export const salesNoMovementQuery = z
+  .object({
+    from: salesSeriesInstant,
+    to: salesSeriesInstant,
+    method: z.enum(['CASH', 'STRIPE']).optional(),
+    limit: z.enum(NO_MOVEMENT_PAGE_LIMITS).optional().default('20'),
+    cursor: z
+      .string()
+      .min(1)
+      .max(NO_MOVEMENT_MAX_CURSOR_LENGTH)
+      .regex(NO_MOVEMENT_CURSOR_PATTERN)
+      .optional(),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    const from = parseSalesSeriesInstant(value.from),
+      to = parseSalesSeriesInstant(value.to);
+    if (!Number.isFinite(from) || !Number.isFinite(to)) return;
+    if (from < SALES_SERIES_MIN_INSTANT_MS)
+      context.addIssue({
+        code: 'custom',
+        message: 'El inicio no puede ser anterior al dominio aceptado',
+        path: ['from'],
+      });
+    if (!(from < to))
+      context.addIssue({
+        code: 'custom',
+        message: 'El rango debe ser positivo y exclusivo al final',
+        path: ['to'],
+      });
+    if (to - from > SALES_SERIES_MAX_DAY_RANGE_MS)
+      context.addIssue({
+        code: 'custom',
+        message: 'El rango supera el límite aceptado',
+        path: ['to'],
+      });
+  });
+export type SalesNoMovementQuery = z.infer<typeof salesNoMovementQuery>;
+
+const noMovementCursorInstant = z.string().refine((value) => {
+  const instant = parseSalesSeriesInstant(value);
+  return Number.isFinite(instant) && new Date(instant).toISOString() === value;
+});
+const noMovementCursorProductId = z
+  .string()
+  .regex(/^[1-9][0-9]*$/)
+  .refine((value) => BigInt(value) <= 9223372036854775807n);
+const noMovementCursorSchema = z
+  .object({
+    v: z.literal(1),
+    scope: z.literal(NO_MOVEMENT_SCOPE),
+    definition: z.literal(NO_MOVEMENT_UNIVERSE_DEFINITION),
+    from: noMovementCursorInstant,
+    to: noMovementCursorInstant,
+    method: z.enum(['CASH', 'STRIPE']).nullable(),
+    limit: z.enum(NO_MOVEMENT_PAGE_LIMITS),
+    name: z
+      .string()
+      .min(1)
+      .max(160)
+      .refine((value) => !hasIncompatibleNoMovementControl(value)),
+    productId: noMovementCursorProductId,
+  })
+  .strict();
+
+export type NoMovementCursorFilters = {
+  from: string;
+  to: string;
+  method: 'CASH' | 'STRIPE' | null;
+  limit: NoMovementPageLimit;
+};
+export type NoMovementCursorKey = { name: string; productId: string };
+
+/**
+ * Codificador propio del cursor de esta capacidad. El sobre vincula alcance,
+ * versión, definición, periodo normalizado, método, límite y última clave.
+ */
+export function encodeNoMovementCursor(
+  filters: NoMovementCursorFilters,
+  key: NoMovementCursorKey,
+): string {
+  return Buffer.from(
+    JSON.stringify({
+      v: 1,
+      scope: NO_MOVEMENT_SCOPE,
+      definition: NO_MOVEMENT_UNIVERSE_DEFINITION,
+      from: filters.from,
+      to: filters.to,
+      method: filters.method,
+      limit: filters.limit,
+      name: key.name,
+      productId: key.productId,
+    }),
+  ).toString('base64url');
+}
+
+/**
+ * Decodificador propio: valida forma base64url canónica, JSON estricto, versión,
+ * alcance, definición, periodo normalizado, método, límite y última clave. Un
+ * cursor de otro endpoint, manipulado o incompatible devuelve 400.
+ */
+export function decodeNoMovementCursor(
+  token: string | undefined,
+  filters: NoMovementCursorFilters,
+): NoMovementCursorKey | undefined {
+  if (!token) return undefined;
+  try {
+    if (token.length > NO_MOVEMENT_MAX_CURSOR_LENGTH || !NO_MOVEMENT_CURSOR_PATTERN.test(token))
+      throw invalidInput();
+    const bytes = Buffer.from(token, 'base64url');
+    if (bytes.toString('base64url') !== token) throw invalidInput();
+    const cursor = noMovementCursorSchema.parse(JSON.parse(bytes.toString('utf8')));
+    if (
+      cursor.from !== filters.from ||
+      cursor.to !== filters.to ||
+      cursor.method !== filters.method ||
+      cursor.limit !== filters.limit
+    )
+      throw invalidInput();
+    return { name: cursor.name, productId: cursor.productId };
+  } catch {
+    throw invalidInput();
+  }
+}

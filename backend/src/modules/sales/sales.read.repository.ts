@@ -47,6 +47,28 @@ export type SalesRankingInput = {
   limit: number;
 };
 
+export type SalesNoMovementItem = {
+  productId: string;
+  name: string;
+  categoryId: string;
+  categoryName: string;
+  isAvailable: boolean;
+  createdAt: string;
+};
+
+export type SalesNoMovementAggregate = {
+  totalNoMovementProducts: string;
+  items: SalesNoMovementItem[];
+};
+
+export type SalesNoMovementInput = {
+  from: Date;
+  to: Date;
+  method?: 'CASH' | 'STRIPE';
+  limit: number;
+  after?: { name: string; productId: string };
+};
+
 export class SalesRepository {
   constructor(private db: PrismaClient) {}
   read<T>(actor: Principal, fn: (tx: Prisma.TransactionClient) => Promise<T>) {
@@ -246,6 +268,83 @@ export class SalesRepository {
       // El agregado de metadatos siempre produce una fila; su ausencia es un
       // fallo interno y nunca se sustituye por ceros inventados.
       if (!row) throw new Error('Agregado de ranking incompleto');
+      return row;
+    });
+  }
+  /**
+   * Lista E2-09 en una sola lectura agregada: el universo vigente se filtra por
+   * cohorte `created_at < to`, un antijoin equivalente con `DISTINCT product_id`
+   * descarta productos con línea de venta pagada en `[from,to)` y método
+   * opcional, y el total se cuenta antes del keyset. `payments` solo se une para
+   * el método; no se unen opciones, reembolsos, eventos ni reintentos. La clave
+   * `(name COLLATE "C", id)` ordena y pagina sin OFFSET; se piden `limit + 1`
+   * filas para decidir `nextCursor`.
+   */
+  noMovementProducts(actor: Principal, input: SalesNoMovementInput) {
+    const methodJoin = input.method
+      ? Prisma.sql`JOIN payments pm ON pm.id = s.payment_id`
+      : Prisma.empty;
+    const methodFilter = input.method
+      ? Prisma.sql`AND pm.method::text = ${input.method}`
+      : Prisma.empty;
+    const afterFilter = input.after
+      ? Prisma.sql`AND (w.name COLLATE "C", w.id) > (${input.after.name}::text COLLATE "C", ${BigInt(input.after.productId)}::bigint)`
+      : Prisma.empty;
+    return this.read(actor, async (tx) => {
+      const rows = await tx.$queryRaw<SalesNoMovementAggregate[]>(Prisma.sql`
+        WITH universe AS (
+          SELECT p.id,p.name,p.created_at,p.is_available,
+                 c.id AS category_id,c.name AS category_name
+          FROM products p JOIN categories c ON c.id = p.category_id
+          WHERE p.deleted_at IS NULL
+            AND p.created_at < ${input.to}::timestamptz
+            AND c.is_active = TRUE
+            AND c.deleted_at IS NULL
+        ),
+        moved AS (
+          SELECT DISTINCT oi.product_id
+          FROM order_items oi
+          JOIN sales s ON s.order_id = oi.order_id
+          ${methodJoin}
+          WHERE s.sold_at >= ${input.from}::timestamptz
+            AND s.sold_at < ${input.to}::timestamptz
+            ${methodFilter}
+        ),
+        without_movement AS (
+          SELECT u.*
+          FROM universe u LEFT JOIN moved m ON m.product_id = u.id
+          WHERE m.product_id IS NULL
+        ),
+        total AS (
+          SELECT count(*)::text AS total FROM without_movement
+        ),
+        page AS (
+          SELECT w.* FROM without_movement w
+          WHERE TRUE ${afterFilter}
+          ORDER BY w.name COLLATE "C" ASC,w.id ASC
+          LIMIT ${input.limit + 1}
+        )
+        SELECT t.total AS "totalNoMovementProducts",
+               coalesce(
+                 jsonb_agg(
+                   jsonb_build_object(
+                     'productId',pg.id::text,
+                     'name',pg.name,
+                     'categoryId',pg.category_id::text,
+                     'categoryName',pg.category_name,
+                     'isAvailable',pg.is_available,
+                     'createdAt',to_char(pg.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')
+                   )
+                   ORDER BY pg.name COLLATE "C" ASC,pg.id ASC
+                 ) FILTER (WHERE pg.id IS NOT NULL),
+                 '[]'::jsonb
+               ) AS items
+        FROM total t LEFT JOIN page pg ON TRUE
+        GROUP BY t.total`);
+      const [row] = rows;
+      // El total siempre produce una fila; su ausencia es un fallo interno y no
+      // se sustituye por ceros ni por una página vacía ficticia.
+      if (!row) throw new Error('Agregado de productos sin movimiento incompleto');
       return row;
     });
   }
