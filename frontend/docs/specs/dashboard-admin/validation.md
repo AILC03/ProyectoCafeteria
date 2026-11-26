@@ -2019,3 +2019,154 @@ El **coordinador** reejecutó la batería tras las correcciones: lint y typechec
 Re-revisión `dashboard-reviewer` (solo lectura): **B-01 y B-03 cerrados técnicamente; R-01…R-07 cerrados**; B-02 (Electron/V-VIS/teclado manual) cubierto como **diferimiento explícito a CSV-03** y B-04 (401 sin refresh+reintento) como **limitación aceptada por el responsable**, con nota cruzada añadida al contrato. Dos residuales menores —foco tras cancelar y revocación en `finally`— quedaron corregidos y probados después. Sin bloqueantes nuevos.
 
 **Estado: TASK-DA-E2-CSV-02 CERRADA TÉCNICAMENTE el 2026-11-25 con las limitaciones registradas; sin commit autorizado en este registro.** La evidencia de ejecución es del coordinador porque el verificador independiente nominal siguió con shell denegado. Siguiente y única tarea de cierre: **CSV-03**, con su propia aceptación real (descarga contra entorno autorizado, CSV completo, hoja de cálculo, Electron y V-VIS).
+
+## TASK-DA-E2-CSV-03 — Aceptación real de exportación y preparación del cierre E2
+
+Estado actual: **suite live y evidencia real ejecutadas por el subagente autor; pendiente de revisión independiente y de aceptación funcional del responsable; sin commit.** Fecha 2026-11-25. No se declara E2 cerrada ni CSV-03 aceptada en este registro. No se modificó producto/runtime, contrato, OpenAPI, esquema, migraciones, dependencias ni datos; no hubo commit.
+
+### Entorno y autorización
+
+- Docker local `cafeteria-local-postgres-1` (PostgreSQL 17.11) sobre la base dedicada `cafeteria_da_e2_07`, backend `http://localhost:3000` y Vite `http://localhost:5173`, conforme al entorno ya autorizado para E2.
+- Dataset QA de E2-15 conservado: **59 productos, 11 categorías y 26 ventas**. No hubo reset, reseed, `removed-*`, borrado de guardas ni desactivación de constraints.
+- El backend en ejecución estaba desfasado y no tenía las rutas CSV (`404`); se reinició el mismo lanzador QA (`--env-file=.docker` + base `cafeteria_da_e2_07`) sin cambios de código ni datos. Para no agotar los limitadores de la corrida se usaron los overrides de entorno ya aceptados en E1: `CATALOG_RATE_LIMIT=10000` y `AUTH_IP_LIMIT=100` (máximos admitidos); no son cambios de producto ni acreditan límites de producción. Una segunda corrida parcial chocó con `AUTH_RATE_LIMITED` por logins acumulados; no se presenta como aprobada.
+- Manifiesto y oráculo externos: `C:\Users\angel\AppData\Local\Temp\opencode\da-csv-03\csv-03-manifest.json` y `csv-03-oracle.mjs`. Credenciales QA copiadas opacamente desde E2-15; no se imprimieron, versionaron ni incluyeron en este registro.
+
+### Oráculo SQL independiente (sin backend ni respuestas HTTP)
+
+`csv-03-oracle.mjs` lee PostgreSQL en `REPEATABLE READ READ ONLY`, no importa código backend y no usa el endpoint como oráculo. Reconstruye las cinco expectativas del corte principal `[2026-11-24T08:00:00.000Z, 2026-11-25T08:00:00.000Z)`:
+
+| Exportación | Filas | Conciliación independiente |
+| --- | --- | --- |
+| Ventas | 7 | 143 600 centavos, 29 unidades, 7 líneas; CASH 49 000/2 ventas y STRIPE 94 600/5 ventas; incluye la venta 10 con reembolso de 100 centavos y la conserva bruta |
+| Series `hour` | 24 buckets | 143 600/7/29; 17 buckets vacíos; offset `-08:00` |
+| Ranking `units/top` | 5 de 6 | `matchedProductCount=6`, `matchedTotals` 29/143 600, `truncated=true` |
+| Sin movimiento | 47 | Universo activo actual; más de una página (20); CASH 48 y STRIPE 47 |
+| Categorías `units` | 3 | 18/6/5 unidades; `sharePercent` 62.07/20.69/17.24; denominador 29/143 600 |
+
+Escenarios adicionales del oráculo: ventas CASH/STRIPE y cero; series CASH/STRIPE, `day` y cero; ranking `units` top 10, `amount`, `bottom`, CASH/STRIPE y cero; sin movimiento CASH/STRIPE/cero; categorías `amount`, CASH/STRIPE, inactiva, tercios (33.33 × 3 = 99.99) y base cero. Todos se descargaron por HTTP real y se compararon fila a fila.
+
+### Archivos de la tarea
+
+- `frontend/unified/e2e-live/dashboard-csv-acceptance.spec.ts` (nuevo): 8 pruebas, 7 ejecutadas y 1 omitida explícita; sin mocks ni `page.route`/`context.route`.
+- `frontend/unified/e2e-live/README.md`: suite CSV-03, manifiesto, comando, cobertura y límites.
+- `frontend/docs/specs/dashboard-admin/validation.md` y `tasks.md`: este acta y estado.
+- Copias sanitizadas de los cinco archivos, fuera del repositorio:
+  `C:\Users\angel\AppData\Local\Temp\opencode\da-csv-03\exports\`.
+- Capturas sanitizadas, fuera del repositorio:
+  `C:\Users\angel\AppData\Local\Temp\opencode\da-csv-03\captures\`
+  (`csv-03-downloads-1280/768/390.png`, `csv-03-electron-1280.png`).
+
+### Archivos exportados reales (corte principal)
+
+| Exportación | Nombre seguro (`Content-Disposition`) | Bytes | SHA-256 |
+| --- | --- | --- | --- |
+| Ventas | `dashboard-sales-20261124T080000Z-20261125T080000Z-all.csv` | 1 442 | `6b251086f0ced10047a4e12a0176c43d7bdf594259a2866fcc4fed92ff0d3a32` |
+| Series | `dashboard-sales-series-20261124T080000Z-20261125T080000Z-hour-all.csv` | 4 044 | `69798234bb5bcc00875bcf336aa2c4112270096bd8fe70a5e1e660d9aca9a3c8` |
+| Ranking | `dashboard-product-ranking-20261124T080000Z-20261125T080000Z-units-top5-all.csv` | 773 | `59fbbb54f033f46986349fb0645de33fb716939cdf9a192f4aae960a9687a32c` |
+| Sin movimiento | `dashboard-no-movement-20261124T080000Z-20261125T080000Z-all.csv` | 5 579 | `546ae90b8264fc708fe7c6b6a0764f3a211876b374726437cd2a1053e21428d6` |
+| Categorías | `dashboard-category-participation-20261124T080000Z-20261125T080000Z-units-all.csv` | 670 | `fc0da7337580efb773c6dac65869e802559cc5bc7bce9a61cc04c631f7d48717` |
+
+Todas las respuestas reales devolvieron `text/csv; charset=utf-8`, `Content-Disposition` con el nombre anterior, `Cache-Control: no-store`, `Referrer-Policy: no-referrer` y `X-Content-Type-Options: nosniff`. Los cinco archivos empiezan por BOM `EF BB BF`, usan coma, comillas RFC 4180 y terminan cada registro, incluido el último, en CRLF. Las filas `#meta` publican filtros, método, métrica/top/granularidad, `rowOrder`, `rowLimit`, `rowCount`, totales y `contentKind=data`; `containsImage=false`.
+
+### Resultados live y conciliación
+
+| Comprobación | Resultado real |
+| --- | --- |
+| Suite CSV-03 dirigida | **7 correctas / 1 omitida** en dos corridas limpias (autor; 16,8 s y 16,5 s). Una corrida intermedia falló solo el Electron por `AUTH_RATE_LIMITED`, ya explicado; no se cuenta como aprobada |
+| Suite CSV-03 dirigida — coordinador | **7 correctas / 1 omitida, 16,0 s**, sin mocks ni intercepción, con el manifiesto QA consumido opacamente y el backend/Vite locales ya en ejecución. Ejecutor: **coordinador**; no es verificación independiente nominal. Registra cinco descargas reales conciliadas, variantes/cero, integridad con parser propio, negativos 400/401/403 y Origin, teclado/descarga única, axe 1280/768/390 y Electron con descarga real |
+| Ventas fuera de página | 7 filas > 5 visibles; orden `soldAtUtc ASC, saleId ASC`; `/api/v1/sales` paginado con `limit=2` devolvió 7 filas en varias páginas y coincidió por `id`, `saleNumber`, método, importe y fecha (µs normalizados a ms) |
+| Conciliación de ventas | `/admin/dashboard/summary`: 143 600/7/29 y mezcla 49 000/94 600; `/sales/summary`: count 7 y mismos importes; reembolso real no resta |
+| Series | Suma de 24 buckets = totales = 143 600/7/29; 17 buckets vacíos; `bucketCount=24`; `day` con un bucket y el mismo total |
+| Ranking | CSV = endpoint para top 5; `matchedProductCount=6`; top 10 devuelve 6 sin truncar; `bottom`/`amount` y métodos se compararon con el oráculo |
+| Sin movimiento | 47 filas contra el endpoint con `limit=50`; `totalNoMovementProducts=47`; CASH 48 y STRIPE 47; sin cursor/top; orden C |
+| Categorías | `sharePercent` servido por backend (62.07/20.69/17.24); inactiva incluida con `isActive=false`; tercios 99.99 sin normalizar; base cero `0.00`; cero real sin filas |
+| Cero resultados | Ventas, ranking, sin movimiento y categorías: 200 con metadatos + encabezado y 0 filas. Series: 24 buckets (o 1 día) con métricas 0, nunca archivo vacío |
+| Negativos reales | 400 `VALIDATION_ERROR` por `token`/`access_token`/`jwt`, `limit`, `cursor`, repetido, array, `from>=to`, mínimo 1999, cuatro decimales y cuerpo; 401 anónimo; 403 CAJERO/PREPARACION/GERENTE/CLIENTE y `PIN_CHANGE_REQUIRED`; Origin inválido 403; precedencia D31 verificada |
+| Parser independiente | Recuento de filas/columnas, BOM/CRLF/RFC 4180, fechas UTC con 6 decimales, locales con offset, IDs/importes canónicos, sin prefijos `'` en importes/IDs y sin PII textual |
+| Teclado/foco | `Enter` en el botón produjo una sola descarga real, anunció «Descarga iniciada: …» y conservó el foco |
+| V-VIS/axe | axe WCAG 2.1 A/AA sin violaciones a 1280/768/390; sin overflow de página; capturas del botón/estado revisadas |
+| Electron | `terminalOnly`, `nodeIntegration=false`, `contextIsolation/sandbox/webSecurity=true`; descarga real del CSV de ventas y captura; no acredita HTTPS ni distribución |
+
+### Matriz CSV-R → evidencia real
+
+| CSV-R | Evidencia |
+| --- | --- |
+| R01 | 7 ventas > 5 visibles; `/api/v1/sales` paginado |
+| R02 | Variantes CASH/STRIPE y conciliación por método |
+| R03 | Venta reembolsada conservada bruta; `unitsSold`/`lineCount` por venta (el dataset no tiene ventas multilínea; cobertura de integración) |
+| R04 | Resumen administrativo y `/sales/summary` |
+| R05 | Cero ventas con encabezado y 0 filas |
+| R06 | 400 por rango, precisión, mínimo, repetidos, arrays, extras, token y body |
+| R07 | No reproducible sin sembrar >20 000 ventas; omitido explícito |
+| R08 | 24 buckets, 17 vacíos, suma exacta; sin DST en el corte principal (E2-03 lo cubre) |
+| R09 | `day` y `hour` reales; exceso 745/368 no reproducible por rango (integración) |
+| R10 | top 5/10, `amount`, `bottom` y métodos contra oráculo |
+| R11 | 5 de 6 con `matchedProductCount=6` y `truncated=true`; top 10 devuelve 6 |
+| R12 | Nombres acentuados (`Café`, `Á`) y comillas RFC en metadatos; sin fórmulas en el dataset live (integración) |
+| R13 | 47 filas completas frente a página de 20 |
+| R14 | Universo actual de E2-15 y método CASH/STRIPE |
+| R15 | No reproducible sin sembrar >2 000 productos; omitido explícito |
+| R16 | Categorías `units`/`amount`, CASH/STRIPE |
+| R17 | 62.07/20.69/17.24; tercios 99.99; base cero; cero filas |
+| R18 | No reproducible sin sembrar >1 000 categorías; omitido explícito |
+| R19 | 401/403 de todos los roles incluido GERENTE/PIN; ADMINISTRADOR 200 |
+| R20 | `token`/extra con 401/403/400 según D31; Origin 403 |
+| R21 | Cabeceras privadas y nombre seguro en las cinco respuestas |
+| R22 | BOM/CRLF/comillas RFC; acentos; sin comas/comillas/saltos en nombres live (integración) |
+| R23 | Sin celdas peligrosas en el dataset; parser exige prefijo `'` si aparecieran; importes/IDs intactos |
+| R24 | IDs/importes canónicos; >2^53 cubierto por unitarias/integración |
+| R25 | Cero según contrato, con la excepción de series |
+| R26 | 400/401/403 reales; 413/429/503 solo integración/simulación |
+| R27 | Los cinco archivos abren como datos (BOM/CRLF); apertura en hoja de cálculo pendiente de confirmación humana |
+| R28 | Metadatos `contentKind=data` y `containsImage=false`; sin rutas de imagen |
+| R29 | E2E simulada de CSV-02; no se repite cancelación live |
+| R30 | E2E/unitarias de CSV-02; no se descarga Problem Details |
+| R31 | Generación acotada; coste no medido en esta tarea (CSV-01) |
+| R32 | Nombre ASCII seguro, sin CR/LF; celdas escapadas |
+| R33 | CSV frente a endpoint/resumen con dataset estable |
+| R34 | Parser y cabeceras sin PII; sin cliente/correo/teléfono/ticket/QR |
+| R35 | Copias solo en el directorio externo autorizado; nada versionado |
+| R36 | Orden y `rowOrder` verificados; venta con mismo instante cubierta por unitarias/integración |
+
+### Comandos ejecutados y resultados
+
+| Comando | Resultado real |
+| --- | --- |
+| `npm.cmd run test:e2e:live -- dashboard-csv-acceptance.spec.ts` (frontend) | **7 correctas / 1 omitida** en dos corridas limpias; una intermedia con fallo de login por limitador |
+| `npm.cmd run lint` (frontend) | Correcto. |
+| `npm.cmd run typecheck` (frontend) | Correcto. |
+| `npm.cmd run test` (frontend) | **750/750** en 47 archivos. |
+| `npm.cmd run test:e2e` (frontend) | **92/92**. |
+| `npm.cmd run build` (frontend) | Correcto; aviso preexistente de chunk >500 kB. |
+| `npm.cmd run format:check`, `typecheck`, `lint`, `test`, `build`, `api:validate`, `db:validate` (backend) | Correctos; **204/204** unitarias (205 integraciones omitidas), OpenAPI válido con **75 ejemplos**, esquema Prisma válido. |
+| `npm.cmd run test:integration` (backend) | **205/205** en 12 suites. |
+| `git diff --check` (raíz) | Correcto, sin errores de whitespace. |
+
+### Omitidos y límites explícitos
+
+- Topes reales de 20 000 ventas, 2 000 productos y 1 000 categorías: **no reproducibles** con el dataset autorizado (26/59/11) sin sembrar volumen no autorizado; quedan cubiertos por unitarias/integración de CSV-01. El test live correspondiente se marca omitido.
+- El dataset live no materializa nombres con coma, comillas, saltos de línea ni prefijos `= + - @` / espacios iniciales; el escape y la neutralización se acreditan en unitarias/integración. El parser comprueba que no haya celdas peligrosas sin neutralizar.
+- 413/429/503 reales, DTO inválido live, expiración/refresh, multipestaña y cancelación live de la descarga: **no inducidos**; siguen cubiertos por simulación/integración/componentes. No hay autorización de caos ni revocación de sesión.
+- La descarga live se ejecutó en Chromium y Electron; no se acredita HTTPS de distribución, instalador ni paridad de producción.
+- La apertura en hoja de cálculo y la aceptación humana son puertas pendientes; no se declaran cumplidas por este registro.
+
+### Defectos y bloqueos
+
+- No se encontró defecto de producto. El backend desfasado (404 en rutas CSV) y el `AUTH_RATE_LIMITED` de una corrida intermedia fueron condiciones del entorno de ejecución, corregidas reiniciando el lanzador QA y elevando los límites de prueba a sus máximos admitidos; no se modificó código ni datos.
+- Verificación independiente nominal de esta tarea: **pendiente**. La revisión/aceptación corresponde a una persona distinta del autor; este acta no la sustituye.
+
+### Puerta de aceptación para cerrar E2
+
+El responsable debe: (1) aceptar TASK-DA-E2-CSV-03 y el cierre de E2 con las limitaciones anteriores; (2) abrir al menos uno de los CSV controlados de `da-csv-03\exports\` en una hoja de cálculo y confirmar que se ve como datos (BOM/CRLF/acentos), sin confundirlo con una gráfica; (3) aceptar expresamente los omitidos (topes no reproducibles, fórmulas/comillas/saltos no materializados en live, caos/429/503 y cancelación live diferidos a simulación/integración). Hasta entonces CSV-03 queda **no aceptada**, E2 no se declara cerrada y no hay commit autorizado.
+
+### Cierre de E2 — aceptación del responsable, 2026-11-25
+
+El responsable respondió **«Acepto CSV-03 y el cierre de E2»** a la solicitud con la lista de limitaciones y la ruta de los archivos controlados. Registro:
+
+- **CSV-03 aceptada** con la evidencia real: cinco descargas conciliadas (ventas 7 filas/143 600 ¢/29 unidades y mezcla 49 000/94 600; series 24 buckets con 17 vacíos; ranking 5 de 6 con `truncated=true`; sin movimiento 47 filas frente a página de 20; categorías 62.07/20.69/17.24 con inactivas y 99.99 sin normalizar), `text/csv; charset=utf-8`, `Content-Disposition` seguro, `no-store`/`no-referrer`/`nosniff`, BOM/CRLF/RFC 4180, metadatos `#meta`, roles 401/403 incluido GERENTE/PIN, teclado/descarga única, axe 1280/768/390 y Electron con descarga real y aislamiento.
+- **Procedencia de la evidencia:** tres corridas limpias de 7/7 + 1 omitida (dos del autor y una del **coordinador**, 16,0 s, sin mocks). Se registra como ejecución del autor y del coordinador, **no** como verificación independiente nominal; la revisión independiente de solo lectura no encontró bloqueantes de producto.
+- **Omitidos aceptados como NO probados:** topes de 20 000 ventas, 2 000 productos y 1 000 categorías no reproducidos en vivo; fórmulas/comillas/saltos/espacios iniciales no materializados en el dataset; 413/429/503/500 reales, DTO inválido live, expiración/refresh, multipestaña y cancelación live de la descarga, cubiertos por simulación/integración/componentes. Sin caos ni revocación de sesión autorizados.
+- **Hoja de cálculo:** la aceptación incluyó la confirmación de abrir un CSV controlado de `C:\Users\angel\AppData\Local\Temp\opencode\da-csv-03\exports\` en hoja de cálculo y verlo como datos, no como gráfica. No se registra el nombre concreto del archivo comprobado ni se afirma una verificación automatizada de esa apertura.
+- **Alcance del cierre:** no aprueba imágenes/PNG/XLSX/PDF, histórico global, nuevas capacidades, cambios de negocio ni despliegue. HTTPS de distribución, instalador y paridad de producción siguen no acreditados.
+
+**Estado: TASK-DA-E2-CSV-03 CERRADA Y ACEPTADA; E2 CERRADA Y ACEPTADA por el responsable el 2026-11-25 con las limitaciones registradas.** E3, E4 y las capacidades opcionales no se inician por este cierre. Sin commit autorizado en este registro hasta la autorización expresa de commit.

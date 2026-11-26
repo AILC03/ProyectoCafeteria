@@ -1,4 +1,4 @@
-# Suite E2E live — TASK-DA-E1-09, E2-03, E2-07, E2-11 y E2-15
+# Suite E2E live — TASK-DA-E1-09, E2-03, E2-07, E2-11, E2-15 y CSV-03
 
 Suite de aceptación **contra backend real**, separada de la suite simulada de
 `frontend/unified/e2e`. No usa `page.route` ni `context.route`: el navegador
@@ -8,8 +8,14 @@ habla con Vite (`http://localhost:5173`), que reenvía `/api` al backend real.
   (TASK-DA-E1-09).
 - `dashboard-series-acceptance.spec.ts`: aceptación real de series horarias y
   diarias (TASK-DA-E2-03).
+- `dashboard-ranking-acceptance.spec.ts`: aceptación real de ranking
+  (TASK-DA-E2-07).
+- `dashboard-no-movement-acceptance.spec.ts`: aceptación real de activos sin
+  movimiento (TASK-DA-E2-11).
 - `dashboard-categories-acceptance.spec.ts`: aceptación real de participación
   por categorías (TASK-DA-E2-15).
+- `dashboard-csv-acceptance.spec.ts`: aceptación real de las cinco
+  exportaciones CSV y cierre E2 (TASK-DA-E2-CSV-03).
 
 ## Requisitos previos
 
@@ -350,3 +356,64 @@ incluye fechas locales para los cortes que se aplican por UI.
   `category_id` sobre un producto sintético. No resetea ni reescribe históricos.
 - Las capturas no son aprobación humana ni reemplazan la revisión independiente;
   V-VIS/V-REAL y la aceptación funcional se registran en `validation.md`.
+
+## CSV-03 — exportaciones CSV y cierre E2 (EN CURSO / NO ACEPTADA por el responsable)
+
+Archivo dirigido: `dashboard-csv-acceptance.spec.ts`. **No ejecutar el directorio
+entero con este manifiesto.** No usa mocks ni interceptación, no escribe catálogo,
+ventas ni sesiones y no modifica cookies. Login/logout QA son los únicos cambios
+de sesión. No ejecuta scripts de siembra ni `removed-*`.
+
+```powershell
+$env:E2E_LIVE = '1'
+$env:E2E_LIVE_MANIFEST = 'C:\Users\angel\AppData\Local\Temp\opencode\da-csv-03\csv-03-manifest.json'
+npm.cmd run test:e2e:live -- dashboard-csv-acceptance.spec.ts
+```
+
+### Oráculo independiente y manifiesto privado
+
+`csv-03-oracle.mjs` (externo, en `da-csv-03`) lee PostgreSQL
+`cafeteria_da_e2_07` en `REPEATABLE READ READ ONLY` y regenera por SQL las cinco
+expectativas: ventas (7 filas en el corte principal), series (24 buckets
+horarios), ranking (top 5 de 6 productos con movimiento), sin movimiento
+(47 filas, más de una página) y categorías (participación, inactivas, tercios
+99.99, base cero). El manifiesto copia opacamente los usuarios QA ya existentes
+de E2-15 y no se versiona ni se imprime.
+
+### Cobertura ejecutable
+
+- Cinco descargas reales por botón con la sesión del navegador, cabeceras
+  `text/csv; charset=utf-8`, `Content-Disposition` con nombre seguro, `no-store`,
+  `no-referrer` y `nosniff`; BOM UTF-8, CRLF, comillas RFC 4180 y filas `#meta`.
+- Ventas completas (7 > 5 visibles) y orden `soldAtUtc, saleId`, conciliadas con
+  `/api/v1/sales` paginado, `/admin/dashboard/summary` y `/sales/summary`;
+  reembolso real conservado en bruto. Series con 17 buckets vacíos y suma exacta;
+  ranking top 5/10 con `matchedProductCount`; sin movimiento completo contra el
+  endpoint; categorías con `sharePercent` del backend, inactivas y residuo 99.99.
+- Cero resultados (ventas/ranking/sin movimiento/categorías con encabezado sin
+  filas; series con al menos un bucket cero), variantes CASH/STRIPE/hora/día/
+  métrica/dirección/top y negativos 400/401/403 reales (CAJERO, PREPARACION,
+  GERENTE, CLIENTE y PIN), `token`/extra, rango/precisión, repetidos, arrays y
+  cuerpo; precedencia D31 y Origin.
+- Parser CSV propio, sin dependencias: recuento de filas/columnas, fechas UTC con
+  seis decimales, locales con offset, IDs/importes canónicos, antifórmulas y
+  ausencia de PII textual.
+- Teclado (Enter descarga una vez, foco conservado), estado anunciado, axe
+  WCAG 2.1 A/AA a 1280/768/390 y Electron real con `terminalOnly`,
+  `nodeIntegration=false`, `contextIsolation/sandbox/webSecurity=true` y descarga
+  efectiva.
+
+### Límites explícitos
+
+- Los topes de 20 000 ventas/2 000 productos/1 000 categorías **no se
+  reproducen** con el dataset autorizado (26/59/11); sembrar volumen no está
+  autorizado. Su cobertura es de unitarias/integración de CSV-01.
+- El dataset live no contiene nombres con coma, comillas ni saltos de línea ni
+  fórmulas; el escape de esos casos se acredita en unitarias/integración. Las
+  cinco copias se guardan fuera del repositorio en
+  `C:\Users\angel\AppData\Local\Temp\opencode\da-csv-03\exports\`.
+- 413/429/503, DTO inválido live, expiración/refresh y multipestaña siguen como
+  omitidos explícitos; no hay autorización de caos ni revocación.
+- La suite aporta evidencia ejecutable. La aceptación humana, la apertura de un
+  CSV en hoja de cálculo, la revisión independiente y el cierre E2 se registran
+  en `frontend/docs/specs/dashboard-admin/validation.md`.
