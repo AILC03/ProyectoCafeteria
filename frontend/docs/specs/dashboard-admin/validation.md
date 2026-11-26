@@ -1055,3 +1055,35 @@ Estado actual: **implementado, verificado y revisado sin bloqueantes técnicos; 
 - **Aceptación visual humana pendiente**; se intentará cubrir en E2-11. No se hereda de E1/ranking.
 - Residuales: deduplicación con catálogo mutable conserva primer dato; cambio de filtros durante Cargar más no tiene prueba dedicada; guarda no assertea explícitamente cero GET de no-movement en roles negativos.
 - Sin integración real; corresponde a E2-11. Commit pendiente de autorización.
+
+## TASK-DA-E2-11 — Aceptación real de sin movimiento
+
+Estado actual: **BLOQUEADA / NO EJECUTADA por ausencia del responsable; sin commit.** Se preparó el entorno local (Docker, backend E2-09, base dedicada `cafeteria_da_e2_07` con 25 productos activos sin venta, uno agotado, uno de alta futura y uno en categoría inactiva) y se reinició el backend con el código E2-09, pero **no se escribió/ejecutó la suite live ni la aceptación humana** antes de la ausencia. Se continúa a E2-12 por instrucción expresa; no se declara E2-11 aceptada ni se acredita V-VIS/V-REAL de esta capacidad.
+
+- **Faltaron:** suite `e2e-live` de sin movimiento, conciliación navegador→API/BD, capturas 1280/768/390/Electron, teclado manual, prueba guiada y aceptación humana, y revisión independiente. No se inventan resultados.
+- Entorno/dataset preparados fuera del repositorio; sin cambios de producto ni commit. E2-11 sigue abierta para cuando el responsable regrese.
+
+## TASK-DA-E2-12 — Contrato de participación por categorías
+
+Estado actual: **contrato documental aceptado por delegación del responsable el 2026-11-25; verificación documental ejecutada; sin runtime ni commit.** Autor: `dashboard-backend-implementer`.
+
+### Archivos
+
+- `frontend/docs/specs/dashboard-admin/contracts/E2-categories-contract.md`: ruta, entrada, DTO, semántica, conciliación, advertencia de reclasificación, matriz R01–R18 y D01–D10.
+- `backend/docs/api/openapi.yaml`: `GET /api/v1/admin/dashboard/category-participation` y esquemas, `approved-2026-11-25`.
+- Sin runtime, UI, CSV, esquema, migraciones ni dependencias.
+
+### Decisiones aceptadas por delegación
+
+- Ruta `/admin/dashboard/category-participation`; `from/to` UTC 0–3 decimales, mínimo 2000, máximo 366 días; `metric=units|amount` obligatoria; `method` opcional; extras/body → 400.
+- Categoría **vigente** vía `Product.categoryId`; no hay snapshot histórico; la UI debe advertir reclasificación.
+- Ventas pagadas brutas; agrupación por categoría actual; sin opciones/refunds/intentos; reembolsos no restan.
+- DTO: `generatedAt`, `currency`, `period`, `method`, `metric`, `denominator{unitsSold,totalCents}`, `totalCategories`, `items[]{categoryId,name,isActive,unitsSold,totalCents,sharePercent}`; strings exactos; porcentaje half-up 2 decimales; base cero con ítems `"0.00"`, sin líneas `[]`.
+- Conciliación exacta de unidades/importe con resumen; residuo de porcentajes no forzado a 100; orden métrica DESC, nombre `COLLATE "C"`, categoryId; todas las categorías con movimiento; inactivas incluidas con `isActive`; categoría no resoluble → fallo saneado.
+- Solo ADMINISTRADOR; 401/403 incluido GERENTE; cabeceras/errores como contratos previos.
+
+### Verificación
+
+- `api:validate` OpenAPI válido, **70 ejemplos**; `prettier --check`, `check-doc-links` 286/0, `git diff --check` correctos; enlaces manuales 15/15.
+- `format:check` falló solo por el temporal ajeno `tmp-e2-11-add.mjs`, ya movido fuera del repo; los archivos de E2-12 cumplen Prettier.
+- Sin runtime/HTTP/BD/UI/CSV; implementación/coste corresponden a E2-13/14/15. Commit pendiente de autorización.

@@ -339,6 +339,7 @@ Las épicas sustituidas se conservan como trazabilidad, no como tareas ejecutabl
 - Verificación: V-DOC + V-BE + V-FE + V-VIS + V-REAL; comandos live dirigidos y resultados/omitidos registrados, sin entorno autorizado no cerrar.
 - Revisor: backend/frontend independientes con datos/catálogo, aceptación del responsable, por confirmar antes de ejecución.
 - Commit esperado (no autorizado): `test(dashboard-admin): validate E2 no-movement integration`.
+- Estado propio E2-11: **BLOQUEADA / NO EJECUTADA por ausencia del responsable; sin commit**. Entorno y dataset preparados (25 activos sin venta, agotado, alta futura, categoría inactiva) y backend E2-09 activo, pero faltan suite live, conciliación real, capturas, teclado, prueba guiada, aceptación humana y revisión. Se continúa a E2-12 por instrucción; no se declara aceptada.
 
 ### TASK-DA-E2-12 — Contrato documental de participación por categorías
 
@@ -350,6 +351,7 @@ Las épicas sustituidas se conservan como trazabilidad, no como tareas ejecutabl
 - Verificación: V-DOC + V-CONTRACT; matriz de conciliación y porcentajes, revisión datos/backend/frontend; registrar aceptación explícita posterior.
 - Revisor: backend independiente con datos/catálogo/frontend, por confirmar antes de ejecución.
 - Commit esperado (no autorizado): `docs(dashboard-admin): define E2 category analytics contract`.
+- Estado propio E2-12: **contrato documental aceptado por delegación del responsable el 2026-11-25; verificación documental ejecutada; sin runtime ni commit**. Evidencia en [validation.md](./validation.md): ruta `/admin/dashboard/category-participation`, categoría vigente/reclasificación, denominadores/porcentajes half-up, conciliación, R01–R18/D01–D10, OpenAPI 70 ejemplos. No inicia E2-13/14/15 ni cierra E2/CSV.
 
 ### TASK-DA-E2-13 — Backend de participación por categorías
 
@@ -498,7 +500,7 @@ E1 queda cerrada y aceptada por el responsable el 2026-11-24. La validación nav
 | TASK-DA-E2-03 | Suite live aceptada por el responsable el 2026-11-25; re-revisión final registrada; sin commit; no cierra E2/CSV | 7/7 live sin mocks (autor y verificador), conciliación por método, DST, parciales, precisión µs, máximo 745, mínimo 2000, roles/cabeceras, teclado, axe y cancelación real. Capturas 1280/768/390/Electron aprobadas. B-1 corregido; B-2 aceptado como limitación (429/503/fallo parcial real en simulación/integración; caos real diferido). Detalle en validation.md |
 | TASK-DA-E2-04 / 05 / 06 / 07 | E2-04 contrato, E2-05 backend, E2-06 frontend y E2-07 aceptación real cerrados/aceptados; commit de E2-07 pendiente | Turno tras ranking; E2-07 aceptada con prueba guiada de 4 s y limitaciones declaradas. No cierra E2/CSV ni autoriza tareas CSV por extensión |
 | TASK-DA-E2-08 / 09 / 10 / 11 | E2-08 contrato, E2-09 backend y E2-10 frontend implementados/verificados; E2-11 no iniciada | Turno tras ranking; E2-10 V-VIS pendiente. E2-11 requiere entorno/dataset y aceptación real |
-| TASK-DA-E2-12 / 13 / 14 / 15 | Aceptadas en secuencia; no iniciadas | Turno tras sin movimiento, asignaciones y contrato categorías; denominadores/redondeo/reclasificación pendientes |
+| TASK-DA-E2-12 / 13 / 14 / 15 | E2-12 contrato aceptado; E2-13/14/15 no iniciadas | Turno tras sin movimiento; E2-12 define categoría vigente/denominadores/redondeo. E2-13 requiere implementación y coste |
 | TASK-DA-E2-CSV-00…03 | Aceptadas en secuencia; no iniciadas | Contratos CSV pendientes y dependencias E2 aceptadas arriba; CSV-03 cierra E2 tras todas las aceptaciones |
 
 Este registro acredita backlog redactado, investigación y revisión sin bloqueantes reportadas y aceptación del bloque/secuencia por el responsable. `git diff --check` fue reportado correcto por el implementador; el verificador tuvo una denegación de permiso y no se eludió ni se presenta como verificación ejecutada. Commit del backlog autorizado al coordinador: `mismo commit`, aún no creado en este encargo. No acredita contratos aceptados, tareas implementadas ni pruebas runtime. Pendientes comunes: detalle de rutas/DTO/límites/coste/precisión temporal por capacidad, referencia/composición visual E2 y autorizaciones de entorno/dataset para cada aceptación real. E1 y su evidencia histórica permanecen cerradas sin modificaciones.
