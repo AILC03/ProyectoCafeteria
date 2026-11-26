@@ -1021,7 +1021,7 @@ Estado actual: **implementado, verificado y revisado sin bloqueantes de código;
 
 ## TASK-DA-E2-10 — Frontend de sin movimiento
 
-Estado actual: **implementado, verificado y revisado sin bloqueantes técnicos; V-VIS humana pendiente; commit pendiente de autorización. NO cierra E2/CSV.** Autor: `frontend-implementer`; verificación: `dashboard-verifier`; revisión: `dashboard-reviewer` (GPT-6.1 Sol).
+Estado actual: **implementado, verificado, revisado y aceptado visualmente por el responsable el 2026-11-25; commit pendiente de autorización. NO cierra E2/CSV.** Autor: `frontend-implementer`; verificación: `dashboard-verifier`; revisión: `dashboard-reviewer` (GPT-6.1 Sol). Los hallazgos live posteriores de E2-11 quedan registrados aparte, sin borrar esta aceptación histórica.
 
 ### Archivos
 
@@ -1053,15 +1053,299 @@ Estado actual: **implementado, verificado y revisado sin bloqueantes técnicos; 
 
 - Capturas 1280/768/390 en `frontend/unified/test-results/dashboard-no-movement-*` (ignorado); en 390/768 scroll horizontal interno.
 - El responsable revisó el panel el 2026-11-25: **comportamiento correcto** (lista, Cargar más, disponibilidad, teclado) y pidió **quitar el código técnico de «Definición del universo»** para hacerlo más intuitivo. Se sustituyó por texto legible («productos que existen, no dados de baja, categoría activa, creados antes del corte; agotados incluidos») y se eliminó la etiqueta/código crudo; pruebas dirigidas 16/16, E2E 6/6, `typecheck`/`lint` correctos. La nueva presentación queda pendiente de una confirmación visual final del responsable.
+- Confirmación posterior definitiva del responsable: **«1. apruebo como quedo 2. aprobado»** (2026-11-25). Acepta el texto intuitivo de E2-10 y autoriza entorno Docker/dataset QA preparado y participación humana de E2-11. No es aceptación final anticipada de E2-11 ni de CSV. La frase anterior conserva la secuencia histórica; su pendiente visual queda resuelta por esta confirmación.
 - Residuales: deduplicación con catálogo mutable conserva primer dato; cambio de filtros durante Cargar más no tiene prueba dedicada; guarda no assertea explícitamente cero GET de no-movement en roles negativos.
 - Sin integración real; corresponde a E2-11. Commit pendiente de autorización.
 
 ## TASK-DA-E2-11 — Aceptación real de sin movimiento
 
-Estado actual: **BLOQUEADA / NO EJECUTADA por ausencia del responsable; sin commit.** Se preparó el entorno local (Docker, backend E2-09, base dedicada `cafeteria_da_e2_07` con 25 productos activos sin venta, uno agotado, uno de alta futura y uno en categoría inactiva) y se reinició el backend con el código E2-09, pero **no se escribió/ejecutó la suite live ni la aceptación humana** antes de la ausencia. Se continúa a E2-12 por instrucción expresa; no se declara E2-11 aceptada ni se acredita V-VIS/V-REAL de esta capacidad.
+Estado actual: **EN CURSO / NO ACEPTADA, 2026-11-25; sin commit.** Se retoma exclusivamente E2-11 tras la confirmación «1. apruebo como quedo 2. aprobado»: desaparece la causa histórica de ausencia del responsable, no las puertas de aceptación. Autor: `frontend-implementer`; verificador previsto: `dashboard-verifier`; revisor independiente previsto: `dashboard-reviewer`, ambos **pendientes de ejecución posterior por coordinación**. No se delegó ni inició E2-12/13/CSV en este encargo.
 
-- **Faltaron:** suite `e2e-live` de sin movimiento, conciliación navegador→API/BD, capturas 1280/768/390/Electron, teclado manual, prueba guiada y aceptación humana, y revisión independiente. No se inventan resultados.
-- Entorno/dataset preparados fuera del repositorio; sin cambios de producto ni commit. E2-11 sigue abierta para cuando el responsable regrese.
+**Actualización vigente:** correctiva B01/B02 cerrada técnicamente por verificador/revisor según remisión del coordinador; continuación autorizada de fixtures QA aislados por el autor, **12 live correctas / 2 omitidas**, incluida corrida final31.0s. La evidencia final y sus límites se registran en «Continuación secuencial: fixtures QA y escenarios faltantes». E2-11 sigue NO ACEPTADA; ni la revisión de la correctiva ni la autorización «si autorizo» sustituyen aceptación humana. Las actas anteriores conservan su procedencia histórica.
+
+### Alcance, entorno y oráculo real
+
+- Únicos cambios: nueva `frontend/unified/e2e-live/dashboard-no-movement-acceptance.spec.ts`, README live, estados propios E2-10/11 en este archivo y `tasks.md`. Sin runtime, contratos, dependencias, backend, esquema, siembra, reset ni commits.
+- Git limpio antes de editar. Node **22.14.0**; Docker `cafeteria-local-postgres-1` saludable, PostgreSQL **17.11**, BD QA autorizada `cafeteria_da_e2_07`; health backend localhost:3000 y Vite localhost:5173 → **200**. Solo lecturas sobre catálogo/ventas QA; login/logout normales de usuarios QA existentes.
+- Inspección sintética segura: **33 productos, 7 ventas, 0 reembolsos**, 4 categorías (una inactiva). Los 25 «Sin venta» fueron creados `2026-11-01T12:00:00Z`, varios agotados, una alta futura `2026-12-15T12:00:00Z`. Producto borrado y categoría inactiva excluidos. No hay categoría borrada, nombres duplicados/acentos discriminatorios ni altas/ventas con fracción real de microsegundos. No se amplió el dataset para inventar evidencia.
+- Hallazgo importante: los productos vendidos fueron creados el **25/26 de noviembre**, después de las ventas del 24; el antiguo rango de ranking 24→25 no discrimina método en el universo de sin movimiento. Por eso el rango UI de E2-11 es **24–25 noviembre inclusivos locales** = `[2026-11-24T08:00:00.000Z,2026-11-26T08:00:00.000Z)`. No se corrigieron históricos.
+- Oráculo SQL independiente fuera del repo: `%LOCALAPPDATA%\Temp\opencode\da-e2-07\e2-11-oracle.mjs`; resultado privado `e2-11-manifest.json`. Usa `EXCEPT` entre IDs elegibles y IDs de líneas de ventas del rango/método, join de categoría actual, lectura `REPEATABLE READ READ ONLY`, orden `COLLATE "C"` + ID numérico, fechas SQL de seis decimales. No importa repositorio ni obtiene esperados del endpoint. Credenciales se copian opacamente, nunca se imprimen ni adjuntan.
+- **21 cortes**: siete rangos × método omitido/CASH/STRIPE, cada uno recorrido completo con **10/20/50** y total conciliado antes de cursor. Main: **26/28/27**; día sin ventas 25→26: **30/30/30**; `to` exactamente en alta de los 25: **0/0/0**; `to` 1 ms después: **25/25/25**; mínimo 2000: **0/0/0**; máximo 366 días: **26/28/26**; `from` 1 ms tras venta CASH inicial: **26/29/27**. La diferencia de máximo STRIPE acredita venta anterior al rango main. UI verifica **20+6** completos y reinicio de cursor por método/límite.
+
+### Matriz RF → escenarios → evidencia / pendiente
+
+Los identificadores de prueba citados son los títulos abreviados de la suite live. Una aserción correcta dentro de una prueba fallida no se contabiliza como prueba aprobada. Omitidos no equivalen a excepciones aceptadas.
+
+| Contrato / RF | Prueba real / resultado | Pendiente o límite discriminatorio |
+| --- | --- | --- |
+| R01 / RF-13 | `universo SQL`, todas las filas exactas y metadatos; UI 20+6 | — |
+| R02 / RF-13 | SQL y lista completa excluyen baja de producto presente | No prueba contador de consultas en denegación |
+| R03 / RF-13 | Categoría inactiva presente, excluida en SQL/API | Categoría borrada no materializada |
+| R04 / RF-13 | Disponibles y agotados presentes, booleano/UI exactos, includesUnavailable | — |
+| R05 / RF-13 | Cohorte antes/dentro/exactamente `to`/futura; to=12:00:00 vs +1 ms | `to−1 µs` no materializado |
+| R06 / RF-03/13 | Método omitido excluye ventas en rango, SQL completo | — |
+| R07 / RF-03/13 | CASH vs STRIPE, conjuntos 28/27, IDs exactos | — |
+| R08 / RF-03/13 | STRIPE vs CASH/omitido, SQL completo | — |
+| R09 / RF-13 | Rango sin ventas conserva vendidos fuera; máximo STRIPE incluye venta del 23 | Venta exactamente en `to` discriminatoria no materializada |
+| R10 / RF-13 | Oráculo usa solo Sale | No QA discriminatoria de órdenes impagadas/eventos/intentos: integración existente, NO acreditada live |
+| R11 / RF-13 | **Omitida explícita** | 0 reembolsos QA; no crear sin autorización |
+| R12 / RF-13 | Identidad por producto y existencia de línea, sin joins de opciones en oráculo | Cantidad/precio 0 y opciones discriminatorias NO acreditadas live; cantidad 0 contradice constraint 1–99 |
+| R13 / RF-13 | `universo SQL` + `paginación UI`: 3 páginas con 10, 2 con 20, sin omisión/duplicación, fin null | Catálogo estable; no promesa snapshot |
+| R14 / RF-13 | Total string igual a cardinalidad SQL antes de cursor en cada página | >2^53 no materializado live (33 productos); exactitud de parser tiene evidencia E2-10, no se hereda como live |
+| R15 / RF-13/RNF-02 | Orden completo comparado a SQL `COLLATE "C"`, sin reordenar UI | **Omitida explícita** nombres iguales/mayúsculas/acentos discriminatorios |
+| R16 / RF-19 | `entrada estricta`: cursor inválido, scope/definición/ID/NUL/extra, otros filtros/límite; normalización y terminal total26 | Decodificar cursor solo en prueba negativa/terminal; UI no lo interpreta |
+| R17 / RF-03/19 | `entrada estricta` + SQL: mínimo, 366 días/+1ms, from=to/invertido, 0–3 aceptado/4–6 rechazado en ambos límites, seis decimales de salida; from inclusivo discriminado | **Omitida explícita** venta/alta to−1µs y venta exactamente to; las fechas actuales solo contienen milisegundos/ceros |
+| R18 / RF-13 | Cero por API/UI; método sin ventas conserva 30 elegibles; cursor terminal items[] mantiene total26 | Contradicción documental descrita abajo, no test falso de total0 |
+| R19 / RF-01/19 | Admin200, anónimo401, CAJERO/PREPARACION403, guardas cero GET administrativos; Problem Details, cabeceras400/401/403; Origin403 directo backend; body/extras/repetidos/arrays | **Omitida explícita** CLIENTE/GERENTE/PIN sin QA validada; ausencia de agregado se infiere estructuralmente, no instrumentada |
+| R20 / RF-19/RNF-06 | DTO cerrado y coherente, latencia HTTP observada; regresión backend existente completa | **Omitida explícita** 413/429/500/503/fallo parcial/DTO inválido live: caos no autorizado, excepción E2-03 NO heredada; no N+1/plan nuevo a escala medido aquí |
+| C-UI / RF-03/11/19 | Cero e inválido sin GET, carrera con Cargar más, última selección STRIPE/10, **5 requests/4 requestfailed**, recarga Space, logout oculta panel, GET posterior401, localStorage0 | Prueba falla por foco (B-01); expiración/refresh/multipestaña **omitidos explícitos**, no provocados |
+| C-VIS/REAL / RNF-04/05/07 | Navegador/tabla, capturas 1280/768/390 y Electron, flags endurecidos reales; sin overflow general | Axe **falla390** (B-02); revisión visual humana, teclado manual/prueba guiada y aceptación final NO realizadas |
+
+### Defectos reales y decisiones documentales pendientes
+
+- **B-01 / RNF-04:** actualizar con Space dispara GET200 y pierde foco al deshabilitarse temporalmente «Actualizar lista». Aserción `toBeFocused` falló reproduciblemente en corridas sucesivas; se conserva fallida. `expect.soft` permite continuar logout/401 sin ocultar el fallo. Requiere tarea correctiva autorizada: no se cambia runtime en E2-11.
+- **B-02 / RNF-04:** axe `scrollable-region-focusable`, impacto **serious**, a viewport **390×900**, targets `.dashboard-no-movement-table-wrap` y `.dashboard-ranking-table-wrap`. Ambos contenedores desplazan tabla sin foco de teclado. Axe1280/768 sin violaciones; scroll global no aparece a los tres anchos. No se excluyeron reglas/targets para volver verde; ranking es hallazgo vecino, no autorización de refactor.
+- **D-01 / R18:** la fila agrupa cero elegibles, método sin ventas y página terminal con resultado `total:"0"`. Contradice definición total antes de cursor y ausencia por método de las secciones normativas/D04/D07/OpenAPI. Se acreditó semántica normativa: método sin ventas devuelve elegibles y terminal mantiene total26. **Se solicita aclaración agrupada al responsable; contrato intacto.**
+- **D-02 / cabeceras:** contrato §§seguridad/D09 conserva reserva para rechazos globales; OpenAPI del path dice verificado E2-09 con cabeceras globales. Live Origin directo al backend sí devuelve403/no-store/no-referrer; Vite reescribe Origin y habría dado200, por lo que no acredita ese rechazo. 413/429 globales NO inducidos aquí: diferencia documental registrada, no reescrita por conveniencia.
+- **D-03 / escenarios sin datos/caos:** responsable debe resolver conjuntamente fixture adicional/autorización propia o aceptación explícita de límites. La autorización actual no habilita sembrar más, forzar reembolsos, revocar sesiones, detener backend/BD, saturar rate limiter ni sustituir pruebas live por mocks. No se solicita confirmación rutinaria por archivo/comando.
+
+### Comandos y resultados realmente ejecutados por el autor
+
+| Comando / directorio | Resultado |
+| --- | --- |
+| raíz: `git status --short`, health HTTP y `docker ps` | Git limpio inicial; servicios autorizados disponibles |
+| `node ...\e2-11-inspect.mjs` / `node ...\e2-11-oracle.mjs` externos | Lectura sintética, 21 esperados SQL completos; sin escrituras QA |
+| FE: `npm.cmd run lint`, `npm.cmd run typecheck` | Correctos (typecheck normal no incluye e2e-live) |
+| FE: `node node_modules/typescript/bin/tsc --ignoreConfig --noEmit --strict --skipLibCheck --target ES2023 --module ESNext --moduleResolution bundler --types node,vite/client e2e-live/dashboard-no-movement-acceptance.spec.ts src/app/desktop.ts` | Correcto; comprueba explícitamente el archivo live con TypeScript estricto |
+| FE: `npm.cmd run test` | **622/622**, 42 archivos |
+| FE: `npm.cmd run test:e2e` | **78/78**, suite simulada separada, NO evidencia live |
+| FE: `npm.cmd run build` | Correcto; advertencia existente de chunk >500 kB |
+| FE live dirigido con `E2E_LIVE=1`, `E2E_LIVE_MANIFEST=...\e2-11-manifest.json` | Última corrida: **6 correctas, 2 fallidas (B-01/B-02), 6 omitidas, 28.9 s**; no suite verde |
+| BE: `format:check`, `typecheck`, `lint`, `build` | Correctos, sin cambios de backend |
+| BE: `npm.cmd test` | **170 correctas**, 179 integración omitidas por diseño; no sustituyen siguiente fila |
+| BE: `npm.cmd run api:validate`, `npm.cmd run db:validate` | **70 ejemplos**, esquema válido |
+| BE: `npm.cmd run test:integration` | **179/179** en 10 archivos, no-movement9/9; runner existente, bases propias aisladas, no QA |
+| BE: `npm.cmd run db:verify:docker` | **22 comprobaciones**, PostgreSQL17.11, mutantes C01–C04 detectados; runner existente aislado, no reset QA |
+| raíz: `git diff --check` y lectura de archivo nuevo/diff | Correctos; solo cuatro rutas autorizadas en entrega |
+| externo: `node ...\e2-11-stability.mjs` | Relectura SQL después de todas las corridas: 21 conjuntos esperados idénticos; SHA256 de escenarios `c013d692900edb5140a3fb7ed84665b8c42ff67cf3d84a66ef21190cbee6eb79`, sin credenciales en hash/salida |
+
+Errores de arnés iniciales corregidos solo en la suite: import runtime de parser carga `import.meta.env` no disponible en Node (se usan solo sus tipos); Electron sin baseURL necesita URL absoluta; Origin debe comprobarse directo a3000. Primer comando tsc explícito necesitó `--ignoreConfig` (TypeScript6); correcciones de tipos de env Electron/introspección sin `any`. No son defectos del producto. Los dos fallos reales posteriores siguen abiertos.
+
+### Capturas, coste y puertas restantes
+
+- Evidencia fuera del repo en `%LOCALAPPDATA%\Temp\opencode\da-e2-07\e2-11-captures\`: `no-movement-1280.png`, `no-movement-768.png`, `no-movement-390.png`, `no-movement-electron-1280.png`. Capturas **del panel**, no de toda la página: excluyen usuario, credenciales, cookies, tickets/QR y ventas; solo nombres/IDs de catálogo QA sintético. Viewports navegador **1280×900 / 768×900 / 390×900**; Electron ventana1280×900 con área cliente propia. Estado20 filas/main/sin método/límite20, reloj real del servidor, generado cada respuesta, foco retirado antes de captura (no altera las aserciones de accesibilidad). Referencia E2-10 aceptada, pero estas capturas E2-11 **no están aprobadas humanamente**.
+- Tamaños PNG del recorte de panel: **896×1688 / 736×1787 / 358×2025**, Electron **896×1688**. No se presentan como capturas de página completa. Resultado db:verify conservado fuera del repo como `...\da-e2-07\e2-11-dbverify-results.json`; el runner reescribió únicamente `checkedAt` del artefacto backend versionado, que se dejó con su contenido inicial tras copiar la evidencia, sin entregar cambios backend.
+- Electron real: `terminalOnly=true`, `nodeIntegration=false`, `contextIsolation=true`, `sandbox=true`, `webSecurity=true`, tabla conciliada; perfil externo eliminado al terminar. No acredita HTTPS ni distribución.
+- Coste observado del recorrido de tres páginas con límite10/rango366 días: **140 ms** primera corrida, **633 ms** simultánea con build/pruebas, **129 ms** y **132 ms** las dos últimas; **33 productos/7 ventas**, no benchmark representativo ni SLA. Plan/volumen representativo siguen como evidencia E2-09 (15k ventas/2k productos), no medición nueva E2-11. 100k no medido.
+- **No aceptar/cerrar:** B-01/B-02, matriz parcial/omitidos/D01–D03, verificación y revisión independientes pendientes; teclado manual/prueba guiada y aceptación funcional/visual humana propias pendientes. Autorización de participar no es resultado ni aceptación. E2-12/13 y CSV no iniciados por este encargo, sin commit.
+
+### Correctiva autorizada B01/B02 — RNF-04 / C-UI
+
+- Encargo explícito del responsable **«si autorizo»** después de solicitar corregir ambos defectos y ampliar solo QA aislada. Esta unidad ejecuta **únicamente B01/B02**: ampliación del dataset diferida a encargo posterior tras verificación/revisión, sin tareas paralelas. Autor `frontend-implementer`; próximos responsables `dashboard-verifier` y luego `dashboard-reviewer`, secuenciales e independientes; no se atribuyen sus resultados al autor.
+- Se respetó la denegación previa del comando compuesto `git status --short; Get-Location` al verificador: **no repetido**, ni se consultó estado por herramienta/agente alternativo. La inspección Git de estado actual queda no revalidada; se conservaron los cambios heredados y se leyeron patrones/diff de los archivos autorizados. `git diff --check` es una operación distinta, ejecutada y correcta. No hubo nuevas denegaciones en las pruebas de esta unidad.
+- **B01:** `NoMovementProducts.tsx`: «Actualizar lista» usa `aria-disabled` sin retirar el elemento del foco. `refreshList` verifica carga y un latch `useRef` síncrono, impidiendo duplicados incluso antes de que React confirme el render. El latch se libera al terminar la petición vigente (éxito/error), respetando descarte/aborto y cambios de filtros; Reintentar reutiliza la misma guarda. Estilos existentes de `button[aria-disabled]` conservados. No se cambió cliente HTTP, endpoint, métricas ni semántica de datos.
+- **B02:** contenedores de ambas tablas (`NoMovementProducts.tsx`, `ProductRanking.tsx`) con `role="region"`, nombre accesible propio y `tabIndex=0`; outline visible solo en las dos clases autorizadas mediante `:focus-visible`, mismo color/ancho existente. Sin rediseño ni refactor de ranking. Tabla/caption/orden/precisión permanecen intactos.
+- Pruebas componentes: regiones nombradas/focalizables; dos casos nuevos éxito/error con respuesta retenida, doble activación síncrona antes del commit, activación adicional durante carga, foco persistente y desbloqueo para una recarga posterior. Las demoras son **MSW**, no se presentan como live.
+- E2E simuladas nuevas: Space/Enter durante respuesta retenida → **un solo GET**, foco durante y después, outline3px; Tab desde el selector anterior llega a cada región y ArrowRight provoca **scrollLeft real >0** a390, axe de página completa sin exclusiones. Selector antiguo de etiqueta afinado con `exact:true` por coincidencia ambigua con el caption; no se eliminó su aserción.
+- Live: conserva aserción de foco (no `fixme`), axe general y seis omitidos; añade Tab/flechas con desplazamiento real y retorno a0 para ambas tablas a390, nombres/foco/outline3px. Sigue conciliando las mismas filas SQL del dataset existente, carrera con4 `requestfailed`, logout401, guardas y Electron endurecido. Sin interceptores live, siembra ni caos.
+
+#### Skip-link y recapturas
+
+- Se investigó sin modificar código ni CSS del skip-link: en los tres viewports, al enfocarlo se mantiene visible (`top >= 0`), y al enfocar «Productos por página» deja de estar enfocado y queda fuera del viewport (`bottom <= 0`, transform real **matrix(1,0,0,1,0,-74)**). La superposición antigua no se reproduce con estado de foco explícito; se trata como evidencia anterior no fiable de foco/recorte, **no se afirma haber corregido un defecto runtime del skip-link**.
+- No se ocultó el enlace mediante CSS, máscaras, exclusiones axe ni scripts de visibilidad. Capturas tomadas con foco real visible en el selector, no mediante blur inespecífico después de axe. Revisión visual del autor en PNG768/390: sin enlace superpuesto, texto del periodo legible y foco azul visible. No sustituye aceptación humana final.
+- Recapturas sobrescritas fuera del repo en `C:\Users\angel\AppData\Local\Temp\opencode\da-e2-07\e2-11-captures\`: `no-movement-1280.png`, `no-movement-768.png`, `no-movement-390.png`, `no-movement-electron-1280.png`. Viewports/recortes/20filas/dataset/precauciones de privacidad del acta inicial conservados, ahora con foco explícito en el selector; reloj real, `generatedAt` no congelado. Ninguna contraseña/cookie/QR en capturas.
+
+#### Archivos de esta correctiva
+
+1. `frontend/unified/src/features/terminal/admin/analytics/NoMovementProducts.tsx`.
+2. `frontend/unified/src/features/terminal/admin/analytics/ProductRanking.tsx`.
+3. Tests adyacentes `NoMovementProducts.component.test.tsx` y `ProductRanking.component.test.tsx`.
+4. `frontend/unified/src/styles/base.css` (solo dos selectores de foco).
+5. `frontend/unified/e2e/dashboard-no-movement.spec.ts`.
+6. `frontend/unified/e2e-live/dashboard-no-movement-acceptance.spec.ts`.
+7. Estados propios E2-11 en este archivo y `tasks.md`.
+
+El README live heredado de la unidad anterior no se modificó en esta correctiva; sus referencias a fallos iniciales se leen junto con esta actualización. Sin backend, contrato, dependencias, esquema/migraciones, dbverify, dataset ni commits.
+
+#### Verificación ejecutada por el autor (correctiva)
+
+| Comando (FE salvo indicación) | Resultado real |
+| --- | --- |
+| `npm.cmd run test -- src/features/terminal/admin/analytics/NoMovementProducts.component.test.tsx src/features/terminal/admin/analytics/ProductRanking.component.test.tsx` | **39/39**, dos archivos |
+| `npm.cmd run test:e2e -- e2e/dashboard-no-movement.spec.ts` primera corrida | Nuevas regresiones B01/B02 correctas; 7/8 por selector anterior ambiguo, corregido a coincidencia exacta; suite completa posterior lo revalida |
+| `npm.cmd run lint`, `npm.cmd run typecheck` | Correctos |
+| `npm.cmd run test` | **624/624**, 42 archivos |
+| `npm.cmd run test:e2e` | **80/80**, incluye ranking y Electron simulados |
+| `npm.cmd run build` | Correcto; advertencia existente chunk >500kB |
+| `node node_modules/typescript/bin/tsc --ignoreConfig --noEmit --strict --skipLibCheck --target ES2023 --module ESNext --moduleResolution bundler --types node,vite/client e2e-live/dashboard-no-movement-acceptance.spec.ts e2e/dashboard-no-movement.spec.ts src/app/desktop.ts` | Correcto, incluye ambos archivos E2E explícitamente |
+| `$env:E2E_LIVE='1'; $env:E2E_LIVE_MANIFEST='C:\Users\angel\AppData\Local\Temp\opencode\da-e2-07\e2-11-manifest.json'; npm.cmd run test:e2e:live -- dashboard-no-movement-acceptance.spec.ts` | Dos corridas **8 correctas / 6 omitidas**, 22.3s ambas; última con diagnóstico de foco del skip-link. Axe1280/768/390 **sin violaciones**; foco de recarga persistente; coste observado133ms/33productos/7ventas, no SLA |
+| raíz: `git diff --check`, lectura dirigida del diff runtime | Correctos; no se repitió `git status` denegado |
+
+**No ejecutado en esta unidad:** V-BE/dbverify (correctiva exclusivamente frontend, backend/contrato/persistencia intactos); ampliación QA; caos/refresh-expiración/multipestaña/fixtures pendientes; aceptación humana/teclado manual/prueba guiada; verificación/revisión independientes. B01/B02 pasan las comprobaciones del autor, **no se declaran cerrados por revisión ajena todavía**. E2-11 continúa **EN CURSO / NO ACEPTADA**, sin otras capacidades ni CSV ni commit.
+
+### Continuación secuencial: fixtures QA y escenarios faltantes — 2026-11-25
+
+**Estado: EN CURSO / NO ACEPTADA.** Encargo del coordinador limitado a E2-11,
+tras autorización humana «si autorizo» para corregir dos defectos y ampliar solo
+QA aislada. Autor de esta continuación: subagente ejecutor GPT-6.1 Sol;
+verificación siguiente `dashboard-verifier` y revisión siguiente
+`dashboard-reviewer`, **aún pendientes para estos cambios**. Sin E2-13, runtime,
+contratos/OpenAPI, dependencias, migraciones, reset, servicios detenidos ni commit.
+
+#### Procedencia del cierre técnico B01/B02 (no ejecución nueva del autor)
+
+- La remisión del coordinador confirma cierre técnico de la correctiva por
+  `dashboard-verifier` y `dashboard-reviewer`, independientes de
+  `frontend-implementer` (autor de la correctiva). Evidencia propia del verificador
+  comunicada en el encargo: **39 componentes, 8 E2E simuladas y 2 live dirigidas**;
+  revisión independiente cerró técnicamente ambos defectos. Esta continuación
+  registra esa procedencia, **no atribuye esas ejecuciones al nuevo autor** ni
+  inventa comandos, capturas o tiempos de aquellos agentes.
+- No se modificaron los arreglos runtime ni sus pruebas componentes/E2E simuladas.
+  Las nuevas corridas live conservan sus aserciones de foco, teclado, scroll y axe.
+  Las referencias históricas a revisión pendiente/fallos B01/B02 de las secciones
+  anteriores quedan superadas solo para esos dos defectos, no para la capacidad.
+
+#### Objetivo, criterios y guardas de datos
+
+| Criterio / fuente | Cambio autorizado | Evidencia propia |
+| --- | --- | --- |
+| R11 / RF-13, bruto | Venta Stripe sintética100c y reembolso total100c; sin proveedor | Excluida con STRIPE/omitido, incluida con CASH, recorrido completo contra SQL independiente |
+| R15 / RF-13 / RNF-02 | Seis productos A/B/Same/Same/a/Á | Orden C, empate por BigInt numérico, dos lecturas completas repetibles y todas las filas UI exactas sin reordenar |
+| R05/R09/R17 / RF-03/13 | Altas y ventas distintas en to−1µs y to exacto | Ventanas reales consecutivas1ms, tres métodos en oráculo y paginación completa10/20/50; salida de alta conserva .999999 |
+| R03 / RF-13 | Categoría nueva borrada pero is_active=true con producto nuevo | Defensa de deleted_at aislada de inactividad; excluida SQL/API. Inconsistencia QA controlada expresamente autorizada, no comportamiento de CRUD |
+| R19 / RF-01/19 | Cuentas nuevas CLIENTE, GERENTE y CLIENTE must_change_pin | Login real con CSRF/cookies opacos; GET403 FORBIDDEN/PIN_CHANGE_REQUIRED; /auth/me resuelto, guardas sin GET administrativos ni localStorage |
+
+- Preflight ejecutado **antes de mutar**: contenedor
+  `cafeteria-local-postgres-1`, `current_database() = cafeteria_da_e2_07` y tres
+  firmas sintéticas (producto7 «Sin venta 01» con alta exacta, categoría2 «Bebidas
+  (demo)», venta1 en fecha exacta). Baseline **33 productos/7 ventas/0 reembolsos**.
+  La transacción repite guardas y cardinalidades bajo locks breves; rehúsa bases
+  distintas o dataset modificado. No se inspeccionaron `.env`, contraseñas,
+  manifiesto completo, cookies o tokens ni se imprimieron hashes de credenciales.
+- `e2-11-fixtures.mjs --apply`, externo: **solo INSERT**, una transacción,
+  **+12 productos/+1 categoría/+3 ventas/+1 reembolso/+3 cuentas**. Resultado
+  **45 productos/10 ventas/1 reembolso/5 categorías**. Nuevas cuentas únicamente,
+  contraseñas/NIP aleatorios, Argon2id19MiB/2/1, manifiesto privado externo;
+  ninguna contraseña existente cambiada ni sesión revocada/prefabricada.
+  No Checkout/Stripe/Cloudinary/correo, ni jobs/outbox nuevos ni cobros operativos.
+- Huella de columnas no secretas de productos1–33, categorías1–4, ventas1–7 y sus
+  pagos/líneas idéntica antes/después:
+  `b7239bc13c24b0d8ad381466e6c48baee839cea8a98b05120468ba30f6fcd7f2`.
+  No se afirma que cubra sesiones ni columnas no seleccionadas; el script de
+  ampliación no contiene UPDATE/DELETE ni modifica filas existentes.
+- Scripts QA externos, no versionados, bajo
+  `C:\Users\angel\AppData\Local\Temp\opencode\da-e2-07\`:
+  `e2-11-fixtures.mjs`, `e2-11-originals.mjs`, `e2-11-oracle.mjs`,
+  `e2-11-stability.mjs`. No se ejecutó ningún `removed-*`, reseed/reset ni
+  remoción automática. La guarda `e2-11-extension-private.json` impide aplicar
+  otra vez; **no leer/imprimir/versionar ni borrar ese archivo para repetir**.
+  Fallo de preparación requiere inspección autorizada, no recuperación destructiva.
+
+#### Oráculo reproducible y estabilidad
+
+- Sigue siendo SQL independiente **EXCEPT**, read-only REPEATABLE READ, sin
+  importar endpoint/repositorio ni copiar sus resultados. Extrae también hechos
+  discriminatorios de las nuevas filas (altas/ventas/refund/categoría), sin PII
+  ni secretos. Manifiesto privado incorpora cuentas opacamente, no se versiona.
+- **30 cortes =10 rangos ×3 métodos**, cada uno íntegro con límites10/20/50:
+  main34/38/35; no-sales25/25/25; cohort0/0/0; after-cohort25/25/25;
+  zero0/0/0; maximum34/38/34; from-exclusive-control34/39/35;
+  micro-left39/39/39; micro-center39/40/39; micro-right40/41/40.
+  Orden de cifras: omitido/CASH/STRIPE; UI main **20+14**, no truncado.
+- Nuevos rangos micro: `[2026-11-26T07:59:59.998Z,.999Z)`,
+  `[07:59:59.999Z,08:00:00.000Z)`, `[08:00:00.000Z,.001Z)`.
+  Dos productos se crean en `.999999Z`/to exacto y dos productos **diferentes**
+  tienen ventas en esos instantes: se discrimina cohorte y movimiento por separado.
+- `no-sales` ahora es `[2026-11-23T08:00Z,09:00Z)` porque la nueva ventaµs
+  cae en el anterior intervalo sin ventas. Es expectativa propia regenerada por
+  SQL, no un cambio para imitar la API ni reescritura histórica.
+- Relectura SQL tras primeras verificaciones: conjuntos idénticos,
+  SHA256 escenarios (excluye credenciales):
+  `879c902e5d752fe70e25904ec0c44d70b9b9374d67f4593fea9c42f98e67ebe1`.
+
+#### Comandos/resultados del autor de esta continuación
+
+| Directorio / comando real | Resultado |
+| --- | --- |
+| Externos: `node .../e2-11-inspect.mjs`, `node .../e2-11-fixtures.mjs` | Baseline no secreto, BD/dataset confirmados antes de escribir |
+| Externos: `node .../e2-11-originals.mjs --record`; `node .../e2-11-fixtures.mjs --apply`; `node .../e2-11-originals.mjs` | Guarda correcta; ampliación única transaccional; originales seleccionados sin cambios |
+| Externo: `node .../e2-11-oracle.mjs`, `node .../e2-11-stability.mjs` | 30 conjuntos SQL completos; estabilidad correcta |
+| FE: `npm.cmd run lint`, `npm.cmd run typecheck` | Correctos, dos ejecuciones |
+| FE: `node node_modules/typescript/bin/tsc --ignoreConfig --noEmit --strict --skipLibCheck --target ES2023 --module ESNext --moduleResolution bundler --types node,vite/client e2e-live/dashboard-no-movement-acceptance.spec.ts src/app/desktop.ts` | Correcto, incluye explícitamente suite live |
+| FE: `npm.cmd run test`, `npm.cmd run test:e2e`, `npm.cmd run build` | **624/624**, **80/80**, build correcto con aviso existente chunk>500kB; simulación no sustituye live |
+| FE live dirigido, mismas variables/ruta del README | Primera corrida ampliada **12 correctas/2 omitidas,31.8s**. Segunda **11 correctas/1 fallida/2 omitidas,37.3s** por expectativa de arnés demasiado genérica tras resolver auth/me: PIN obligatorio redirige al heading «Cambio de NIP obligatorio», no «Acceso no disponible». Ajustada solo esa expectativa, sin cambiar producto; reejecución final se registra a continuación |
+| BE: `npm.cmd run format:check`, `typecheck`, `lint`, `build` | Correctos, sin cambios backend |
+| BE: `npm.cmd test` | **170 correctas/179 integración omitidas** por diseño; no se suman como aprobadas |
+| BE: `npm.cmd run api:validate`, `npm.cmd run db:validate` | **70 ejemplos**, esquema válido |
+| BE: `npm.cmd run test:integration` | **179/179**,10 archivos, no-movement9/9; runners existentes/bases propias aisladas, no QA |
+| BE: `$env:DB_REVIEW_OUTPUT_DIR='C:/Users/angel/AppData/Local/Temp/opencode/da-e2-07/e2-11-extension-dbverify'; npm.cmd run db:verify:docker` | **22 comprobaciones correctas**, PostgreSQL17.11, mutantes C01–C04 detectados; artefactos externos desde inicio, sin restaurar rastreados |
+| BE: `node scripts/check-doc-links.mjs` | **286 enlaces,0 inexistentes**; fragmentos no comprobados |
+| FE live dirigido final tras resolver /auth/me y heading específico de PIN | **12 correctas/2 omitidas,31.0s**; cero fallos, coste observado219ms, carrera5requests/4requestfailed; mismas30expectativas SQL, axe1280/768/390 correcto, Electron endurecido |
+| FE: tsc explícito anterior, `npm.cmd run lint`, `npm.cmd run typecheck` sobre suite final | Correctos |
+| Raíz: `git diff --check`; `node backend/node_modules/prettier/bin/prettier.cjs --check --single-quote --print-width 100 frontend/unified/e2e-live/dashboard-no-movement-acceptance.spec.ts` | Correctos; avisos LF→CRLF existentes, no denegaciones |
+| Externos: originals/stability después de corrida final | Misma huella de originales y mismo SHA256 de30escenarios; sin mutación durante las corridas |
+| Raíz: Node inline, resolución de enlaces Markdown de tasks/validation/README live | **23 enlaces locales,0 inexistentes**, fragmentos no comprobados |
+
+Revisión visual propia de PNG768/390 final: sin superposición del skip-link,
+selector con foco visible, total34/mostrando20, nombres sintéticos y scroll interno
+de tabla móvil. No constituye aceptación humana ni reemplaza revisión independiente.
+
+#### Omitidos, evidencia histórica y decisiones agrupadas pendientes
+
+- **Dos omitidos NO aprobados:** R20 fallos413/429/500/503/fallo parcial/DTO
+  inválido live y RF-19 expiración/refresh/multipestaña. No se detuvieron servicios,
+  saturaron límites, editaron cookies/revocaron sesiones ni añadieron mocks live.
+  La excepción E2-03 no se hereda. Resolver alcance de ensayo posterior o aceptación
+  explícita de limitación con responsable; no declararlos verificados.
+- R10/R12 pertenecen **solo E2-09** en la matriz aceptada: integración existente
+  reejecutada, no se obliga a duplicar live; cantidad0 no se fabricó contra constraint.
+  Reembolso parcial no añadido: R11 permite total **o** parcial, aquí total real QA.
+- **D-01 sigue pendiente:** R18 contradice tabla DTO/ausencia/paginación/D04/D07:
+  sin ventas del método se conserva universo elegible y página terminal conserva
+  el total antes del cursor. Ahora son25 elegibles sin ventas y terminal main34;
+  evidencia no autoriza cambiar contrato ni convertir total en0.
+- **D-02 sigue pendiente:** contrato filas S05/§seguridad/D09 reserva cabeceras
+  en rechazos globales; OpenAPI path descripción y respuestas413/429 dicen
+  verificadas E2-09. Prueba existente backend `sanea 413/429/500/503` reejecutada
+  en las9 integraciones: parser413 con300000 caracteres, limitador inyectado1
+  para429, servicio inyectado P1001→503/error→500; aserciones no-store/no-referrer.
+  Es **integración con fallos inyectados**, no caos contra localhost ni prueba de
+  proveedor. Live Origin directo3000 da403/cabeceras privadas, proxy Vite no
+  acredita rechazo de Origin. Contrato/OpenAPI permanecen intactos; conciliar
+  documentalmente por responsable en encargo autorizado, no autoaprobar.
+- B01/B02 ya no bloquean técnicamente según procedencia registrada; faltan
+  **verificación/revisión independientes de esta ampliación**, teclado manual,
+  prueba guiada y aceptación funcional/visual humana E2-11. Capturas del panel
+  en rutas anteriores se regeneran con20 filas del dataset ampliado, foco real
+  en selector, sin PII/cookies/QR; no son la captura anterior ni aprobación humana.
+  Axe1280/768/390 sin violaciones y flags Electron endurecidos acreditados en
+  corrida final; carrera5requests/4requestfailed; coste260/225/219ms sobre45
+  productos/10ventas, no benchmark representativo/SLA. Escala sigue evidencia E2-09.
+- No se reintentó `git status`/`Get-Location` ni equivalentes tras denegación previa.
+  La inspección de estado actual no se revalida por otra vía. Se conservan cambios
+  ajenos, incluida E2-12 documental ya presente; este encargo no la modifica ni
+  inicia E2-13/CSV ni cierre E2. Sin commit.
+
+### Verificación y revisión independientes de la ampliación — 2026-11-25
+
+Procedencia ajena al autor: `dashboard-verifier` y `dashboard-reviewer`, secuenciales, sin editar archivos ni ejecutar commits.
+
+- Verificador: live propio **12 correctas / 2 omitidas, 30.9 s** sin mocks ni intercepción, con el manifiesto privado consumido opacamente; coincidencia fila a fila con el oráculo SQL en **30 cortes × 10/20/50**, total previo al cursor y sin duplicados; R03/R05/R09/R17, R11 y R15 discriminatorios aprobados; R19 con 401 y 403 de CAJERO/PREPARACION/CLIENTE/GERENTE/PIN; entrada/errores, cursores y Origin directo correctos; **5 solicitudes / 4 `requestfailed`**, foco de recarga y logout/limpieza correctos; axe sin violaciones en 1280/768/390, teclado/scroll automatizados y Electron con aislamiento; coste observado **219 ms** sobre dataset pequeño, no SLA. Inspección estática de fixtures y oráculo: solo `INSERT` sobre base dedicada, guardas de destino y huella, oráculo `EXCEPT` `REPEATABLE READ READ ONLY` sin importar el endpoint.
+- Revisor (solo estática): **sin nuevos bloqueantes técnicos** en las fuentes inspeccionadas; B01/B02 permanecen cerrados técnicamente y no se reabren. Señaló como pendientes los dos omitidos, D-01/D-02 y la evidencia humana, y confirmó que R10/R12 corresponden solo a E2-09 en la matriz aceptada.
+- Restricción respetada: un intento de `node .../e2-11-originals.mjs` (y posteriores) fue **denegado por permisos** al verificador; no se rodeó por otra vía. Por eso la huella de originales y la estabilidad SQL siguen siendo evidencia del autor, no reejecución independiente.
+
+### Decisiones del responsable y cierre de E2-11 — 2026-11-25
+
+Respuesta del responsable a la solicitud agrupada: **«acepto 1 y 2 y las referencias visuales»**, seguida de la instrucción de continuar con E2-13.
+
+1. **Omitidos diferidos.** Se acepta diferir los dos bloques omitidos —R20 (413/429/500/503, fallo parcial y DTO inválido live) y RF-19 (expiración/refresh/multipestaña)— como **limitación registrada**: **no se declaran probados** y no heredan la excepción de E2-03. Sigue sin autorizarse caos contra servicios, saturación de límites ni revocación de sesiones.
+2. **Aclaraciones documentales aplicadas.** Se autorizó conciliar sin cambiar negocio, DTO ni permisos: R18 se divide en sus tres casos (sin movimiento vacío, método sin ventas → universo elegible, página terminal → total previo al cursor) y la reserva de cabeceras de D09/S05/§seguridad se actualiza citando la evidencia exacta de E2-09 (integración con fallos inyectados para 413/429/500/503 y Origin live directo), sin afirmar caos live.
+3. **Referencias visuales aceptadas.** El responsable aceptó las capturas sanitizadas de panel en 1280/768/390 y Electron (`...\da-e2-07\e2-11-captures\no-movement-{1280,768,390}.png` y `no-movement-electron-1280.png`) como referencia visual de la capacidad.
+
+**Limitación que se conserva en el registro, sin convertirla en prueba ejecutada:** no consta un recorrido manual de teclado ni una prueba guiada cronometrada realizados por una persona en esta tarea. La aceptación se apoya en la evidencia real automatizada (teclado/scroll/axe a tres anchos y Electron), en la revisión independiente y en la aceptación de las referencias visuales del responsable; no se atribuye un resultado humano de teclado o tiempo.
+
+**Estado: TASK-DA-E2-11 CERRADA Y ACEPTADA por el responsable el 2026-11-25 con las limitaciones anteriores; sin commit autorizado.** No cierra E2: la secuencia continúa con E2-13 y el cierre sigue siendo CSV-03.
 
 ## TASK-DA-E2-12 — Contrato de participación por categorías
 
@@ -1087,3 +1371,411 @@ Estado actual: **contrato documental aceptado por delegación del responsable el
 - `api:validate` OpenAPI válido, **70 ejemplos**; `prettier --check`, `check-doc-links` 286/0, `git diff --check` correctos; enlaces manuales 15/15.
 - `format:check` falló solo por el temporal ajeno `tmp-e2-11-add.mjs`, ya movido fuera del repo; los archivos de E2-12 cumplen Prettier.
 - Sin runtime/HTTP/BD/UI/CSV; implementación/coste corresponden a E2-13/14/15. Commit pendiente de autorización.
+
+### Revisión independiente documental — 2026-11-25
+
+`dashboard-reviewer`, solo lectura, sin ejecutar entorno ni modificar archivos: **sin bloqueantes documentales**; E2-13 puede iniciar. Comprobó ruta y `x-contract-status`, entrada estricta (`from`/`to` UTC 0–3 decimales, mínimo 2000, 366 días; `metric` obligatoria sin default; `method` opcional; extras/repetidos/arrays/body), DTO cerrado con patrones de strings y porcentaje, ejemplo canónico y vectores A–E, errores Problem Details, hechos de esquema (`Category`, `Product` sin `isActive`, `OrderItem`, `Sale`/`Payment`, `Refund`), inclusión de opciones en `lineTotalCents`, baja de categoría, ausencia de snapshot, inactivas/borradas/fallo saneado, base cero, orden `COLLATE "C"`, seguridad ADMINISTRADOR y no invasión de E2-13/14/15.
+
+Observaciones editoriales aplicadas en el contrato el 2026-11-25, sin cambiar DTO, permisos ni semántica: cota del residuo expresada como **≤ `0.005 × n`** (no estricta), reserva de cabeceras alineada con el montaje privado temprano de `/api/v1/admin/dashboard` y la verificación prevista en E2-13 por integración con fallos inyectados, R18 desdoblada en R18a/R18b/R18c, nota de que `sales-by-category` era candidata y la ruta aceptada es `category-participation`, y precisión de que la base cero con ítems solo aplica a `metric=amount`. La cifra de 70 ejemplos y los comandos del autor **no** fueron reejecutados por el revisor y no se presentan como revalidados por él.
+
+## TASK-DA-E2-13 — Backend de participación por categorías
+
+Estado actual: **implementado y verificado por el autor el 2026-11-25; corrección de hallazgos O1/O2 aplicada; verificación independiente V-BE bloqueada por denegación de shell del verificador y revisión independiente pendiente; sin aceptación; sin commit.** Autor: `dashboard-backend-implementer`. No cierra E2 ni CSV; E2-14/15 y CSV no iniciados.
+
+### Alcance implementado
+
+- `GET /api/v1/admin/dashboard/category-participation` solo `ADMINISTRADOR`, con `authenticate`, `authorize` y `privateCashResponse` existentes; GET sin CSRF nuevo y body no vacío rechazado.
+- Entrada estricta: `from` inclusivo/`to` exclusivo UTC `Z` con 0–3 decimales, mínimo `2000-01-01T08:00:00.000Z`, máximo 366 días absolutos; `metric=units|amount` obligatoria sin default; `method=CASH|STRIPE` opcional; extras, repetidos, arrays, vacíos y body → 400 sin truncar.
+- Agrupación por `Product.categoryId` **actual** vía `OrderItem.productId`; incluye categorías inactivas con `isActive:false` y productos con baja lógica/no disponibles; no hay filtro de categoría.
+- Unidades `SUM(quantity)` e importe `SUM(lineTotalCents)` históricos brutos; sin unir `OrderItemOption`, `Refund`, `PaymentEvent`, `PaymentIncident` ni reintentos; sin filtro defensivo de estado de pago (D11 de E2-04).
+- DTO cerrado `generatedAt/currency/period/method/metric/denominator{unitsSold,totalCents}/totalCategories/items[]{categoryId,name,isActive,unitsSold,totalCents,sharePercent}`; IDs, conteos, importes y porcentajes como strings exactos, sin `Number`.
+- Porcentaje calculado en backend con bigint: `centesimas = floor((valor*10000 + denominador/2) / denominador)`, formato de dos decimales, rango `0.00–100.00`; base cero con ítems `"0.00"` sin normalizar a 100; residuo no reasignado.
+- Una sola lectura/CTE: `filtered_sales → line_totals → integrity + category_totals + denominator`, con `LEFT JOIN products/categories` para detectar integridad y sin N+1. Sin consultas previas extra por categoría.
+- Categoría con `deletedAt` y movimiento, o línea sin producto/categoría resoluble (`inconsistentRows > 0`), produce error interno saneado; nunca categoría ficticia ni omisión silenciosa.
+- OpenAPI: solo se corrigieron notas obsoletas de «no implementa runtime» y de verificación pendiente de cabeceras 413/429; **no** se cambiaron esquemas, rutas, DTO, ejemplos ni semántica aceptada.
+
+### Archivos
+
+- `backend/src/modules/sales/sales.validation.ts`: `salesCategoryParticipationQuery`.
+- `backend/src/modules/sales/sales.read.repository.ts`: tipos y `categoryParticipation` (una CTE agregada).
+- `backend/src/modules/sales/sales.service.ts`: `formatSharePercent` con bigint y `categoryParticipation` con conciliación/validación de integridad.
+- `backend/src/modules/sales/sales.routes.ts`: ruta administrativa.
+- `backend/tests/dashboard-categories.test.ts` (nuevo): validación, half-up, DTO, errores y SQL.
+- `backend/tests/integration/dashboard-categories.integration.test.ts` (nuevo): 11 pruebas HTTP/PostgreSQL aislado (10 originales + baja lógica/no disponible por categoría actual, corrección O2).
+- `backend/scripts/benchmark-dashboard-categories.ts` (nuevo): coste aislado fuera de `test`/integración.
+- `backend/docs/api/openapi.yaml`: descripciones de implementación/cabeceras; sin cambios de esquema.
+- Sin cambios de `app.ts`, `schema.prisma`, migraciones, dependencias, `/sales`, resumen E1, UI, CSV ni snapshots.
+
+### Matriz RF/RNF → prueba (E2-13 aplicable)
+
+| Criterio | Evidencia ejecutada |
+| --- | --- |
+| R01 método omitido, DTO cerrado y todas las categorías con movimiento | Integración core; conformidad Ajv/OpenAPI 200; `method:null` |
+| R02 `metric` obligatoria/`units`/`amount`/inválida | Unitarias de esquema + integración estricta (400) y casos `units`/`amount` |
+| R03 límites UTC, 0–3 decimales, mínimo 2000, 366 días, `from`/`to−1 µs`/`to`, µs preservados | Unitarias de fechas/rango + integración precisión (`to−1 µs` con `sold_at` de 6 decimales) y rechazos |
+| R04 extras, repetidos, arrays, vacíos, body, cursor inexistente | Integración estricta (400) |
+| R05 reclasificación cambia grupo sin cambiar total | Integración: producto movido de categoría; solo categoría nueva, importe/unidades iguales; además, producto con `deletedAt`/`isAvailable=false` agregado por su `Product.categoryId` actual (corrección O2) |
+| R06 precio actual no altera histórico | Integración: `basePriceCents` actualizado tras la venta; línea conserva `lineTotalCents` 9000 |
+| R07 opciones sin multiplicar; varios pagos | Integración: línea con `OrderItemOption` cuenta 2 unidades/9000 una vez; pagos no se unen |
+| R08 reembolso bruto | Integración: `Refund` 1000 no reduce 2000 de la línea |
+| R09 método por subconjunto sin duplicar | Integración CASH/STRIPE: denominadores y ítems concilian con `/admin/dashboard/summary` y `/sales/summary` |
+| R10 conjunto completo, `totalCategories`=longitud, sin ceros de relleno | Integración core y referencia SQL independiente; categorías sin movimiento no aparecen |
+| R11 porcentajes half-up 1/6, 1/8, tercios, exactos | Unitarias (1/6, 1/8, 1/3, 2/3, tie 1/32, 100.00, 0.00) e integración 1/6 y 1/8 |
+| R12 residuo sin forzar 100 | Unitaria tercios 99.99; integración conserva valores del contrato |
+| R13 cero, base cero con ítems, inactiva incluida | Integración: rango sin ventas `[]`/`"0"`; base cero `amount` conserva ítems `0.00`; inactiva `isActive:false` |
+| R14 categoría borrada / línea no resoluble | Integración: categoría con `deletedAt` y movimiento → 500 saneado con cabeceras; línea sin producto no sembrable bajo FK `Restrict`, cubierta por unitaria de `inconsistentRows` |
+| R15 empates, nombres iguales, mayúsculas/acentos, ID numérico | Integración orden métrica DESC, `COLLATE "C"` (`A < Mismo < a < Á`) y mismo nombre por ID ascendente; repetible |
+| R16 IDs/importes exactos sin `Number` | Unitarias con valores >2^53; integración con IDs de categoría >2^53 exactos; suma/orden bigint |
+| R17 roles, cabeceras y body | Integración 401; 403 CLIENTE/CAJERO/PREPARACION/GERENTE/PIN; 200 ADMIN; `no-store`/`no-referrer` en 200/400/401/403; Origin |
+| R18a 413/429/500/503 | Integración con fallos inyectados y body sobredimensionado; cabeceras privadas y Problem Details saneados |
+| R18b lectura coherente, N+1, coste | Una consulta agregada medida + 5 revalidaciones de actor; benchmark aislado; sin índices ni migraciones |
+| R18c fallo parcial de UI | Fuera de alcance backend; corresponde a E2-14 |
+
+### Comandos ejecutados y resultados reales
+
+| Comando | Resultado |
+| --- | --- |
+| `npm.cmd exec -- vitest run tests/dashboard-categories.test.ts` | **18/18** unitarias correctas |
+| `npm.cmd test -- --run` | **188 correctas / 189 omitidas** (16 archivos pasan, 11 omiten integración); corrida final tras el último ajuste de la prueba de integración |
+| `npm.cmd run typecheck` | Correcto |
+| `npm.cmd run lint` | Correcto |
+| `npm.cmd run build` | Correcto |
+| `npm.cmd run format:check` | Correcto tras `prettier --write` solo en los dos archivos nuevos de prueba |
+| `npm.cmd run api:validate` | OpenAPI válido; **70 ejemplos** conformes |
+| `npm.cmd run db:validate` | Esquema Prisma válido |
+| `node scripts/check-doc-links.mjs` | 286 enlaces locales revisados; 0 inexistentes |
+| `node --env-file=.env.docker scripts/verify-database.mjs` | PostgreSQL 17.11; **22 comprobaciones correctas**; mutantes C01–C04 detectados |
+| `npm.cmd run test:integration` | Todos los archivos pasan; nueva suite **10/10** (19, 34, 13, 22, 20, 20, **10**, 9, 15, 9, 18 por archivo). Tras la corrección O2 la suite quedó en **11/11**; ver corrección de hallazgos |
+
+### Coste medido (benchmark aislado, no SLA)
+
+- `node --env-file=.env.docker --import tsx scripts/benchmark-dashboard-categories.ts`; base temporal creada, migrada, sembrada y eliminada (`cleanup:true`).
+- Volumen: **20 000 ventas** (6 666 CASH / 13 334 STRIPE), 30 días, **120 productos**, **8 categorías**, **30 000 líneas**, 1–2 líneas por venta.
+- Medianas: `units` **93.97 ms** (min 93.54, max 98.55), `amount` **93.80 ms** (min 91.09, max 94.45).
+- Por corrida: **1 agregación** (~83–85 ms) + 5 revalidaciones de actor + COMMIT; `EXPLAIN (ANALYZE, BUFFERS)` ~**99.2/99.9 ms**, 0 lecturas compartidas, joins por índice de productos y hash de categorías; sin índices nuevos.
+- **100 000 ventas y 366 días no medidos**; cualquier proyección es extrapolación no medida. No se fija SLA.
+
+### Omitidos, límites y residuales
+
+- No hay verificación independiente, revisión independiente ni aceptación; este registro es la declaración del autor y no las sustituye.
+- Las sumas de unidades/importes >2^53 no se sembraron de extremo a extremo porque `orders_check_1` limita `orders.total_cents` a 9 999 900 y `quantity` está acotada por constraint; se cubren con unitarias/servicio y con IDs de categoría >2^53 en integración. La proyección de importes grandes del contrato sigue siendo aritmética/documental.
+- La línea sin producto/categoría resoluble no es montable bajo FK `Restrict`; la defensa se prueba en la unitaria del servicio y el caso de categoría borrada en integración.
+- 413/429/500/503 se prueban con fallos inyectados, no caos live.
+- Cabeceras privadas comprobadas en 400/401/403/413/429/500/503 representativos, no en todos los 400 de validación.
+- No se probó UI, CSV, Electron ni entorno real; no se modificaron contratos existentes.
+- OpenAPI no vuelve a declarar aceptación del contrato: E2-12 sigue siendo la aceptación documental; E2-13 no se autoaprueba.
+
+### Comparación con el contrato aceptado
+
+Se implementaron R01–R18a/b en el alcance backend y se mantuvieron las decisiones D01–D10 sin cambios. R18c es frontend. La conciliación de unidades se hizo contra `/api/v1/admin/dashboard/summary` porque `/api/v1/sales/summary` solo admite CAJERO/GERENTE y no expone unidades; el importe se concilió además contra `/api/v1/sales/summary` con sesión CAJERO en el mismo dataset estable. No se amplió el alcance de `/sales` ni se añadió filtro de categoría.
+
+### Corrección de hallazgos de verificación V-BE (2026-11-25)
+
+La verificación independiente **V-BE quedó bloqueada**: el verificador no pudo ejecutar comandos porque su shell fue denegado. Las cifras de esta sección son **del autor** y no sustituyen la verificación ni la revisión independientes. Sin commit, push, E2-14/15 ni CSV.
+
+- **O1 (nota documental OpenAPI):** en la descripción de `/api/v1/admin/dashboard/category-participation` se alineó el residuo de `sharePercent` con la redacción aceptada del contrato (`E2-categories-contract.md:287,371`): cada porcentaje se desvía **hasta 0.005** puntos y la suma **hasta 0.005 × n** puntos porcentuales, con **cota inclusiva** (antes decía «menos de»/«menor que», estricta). No se cambiaron esquemas, patrones, ejemplos ni semántica.
+- **O2 (prueba de integración):** se añadió un caso ejecutado en `backend/tests/integration/dashboard-categories.integration.test.ts` que siembra dos productos, crea su venta y después aplica `deletedAt` no nulo, `isAvailable=false` y un cambio de `categoryId` sobre uno de ellos. La respuesta agrega las tres unidades y 5000 centavos bajo la **categoría actual**, no bajo la anterior, demostrando que `Product.deletedAt`/`isAvailable` no filtran el universo. La fixture usa el runner aislado existente, sin reset, bases reales ni migraciones; no se relajó ninguna aserción ni se alteró el resto de la suite. Criterio asociado: R05/R13 (categoría actual y elegibilidad).
+
+| Comando | Resultado (autor) |
+| --- | --- |
+| `npm.cmd exec -- vitest run tests/dashboard-categories.test.ts` | **18/18** unitarias correctas |
+| `npm.cmd run test:integration` | Todos los archivos pasan; `dashboard-categories` **11/11** (19, 34, 13, 22, 20, 20, **11**, 9, 15, 9, 18 por archivo) |
+| `npm.cmd run format:check` | Correcto |
+| `npm.cmd run api:validate` | OpenAPI válido; **70 ejemplos** conformes |
+| `npm.cmd run typecheck` | Correcto |
+
+Pendiente: V-BE independiente (bloqueada por denegación de shell), revisión independiente y aceptación. No se autoaprueba el contrato ni la tarea.
+
+### Ejecución V-BE por el coordinador tras el bloqueo del verificador — 2026-11-25
+
+El verificador independiente quedó bloqueado dos veces por `permission.rejected — Permission denied: shell`; no se rodeó la denegación. Para no cerrar sin evidencia ejecutada, el **coordinador** ejecutó la batería autorizada y la registra como evidencia propia, **no como verificación independiente**.
+
+| Comando (backend, Node 22.14.0) | Resultado real |
+| --- | --- |
+| `npm.cmd run format:check` | Correcto; todos los archivos cumplen Prettier |
+| `npm.cmd run typecheck` | Correcto |
+| `npm test` | **188 correctas / 190 omitidas** (16 archivos pasan, 11 omiten integración) |
+| `npm.cmd run lint` | Correcto |
+| `npm.cmd run build` | Correcto |
+| `npm.cmd run api:validate` | OpenAPI válido; **70 ejemplos** conformes |
+| `npm.cmd run db:validate` | Esquema Prisma válido |
+| `npm.cmd run test:integration` | **11 archivos, todos correctos**: 19, 34, 13, 22, 20, 20, **11 (dashboard-categories)**, 9, 15, 9 y 18; total **190** |
+| raíz: `git diff --check` | Correcto; solo avisos LF→CRLF de archivos ya modificados |
+| raíz: `git status --short` | Modificados los archivos propios de E2-13 más los de E2-10/11/12; nuevos: `benchmark-dashboard-categories.ts`, `dashboard-categories.test.ts`, `dashboard-categories.integration.test.ts`, `dashboard-no-movement-acceptance.spec.ts`. Sin cambios en `app.ts`, `schema.prisma`, migraciones, dependencias ni `package.json` |
+
+`db:verify` no se reejecutó en esta corrida (el autor lo registró con salida externa y 22 comprobaciones); no se presenta como evidencia nueva del coordinador. El benchmark de coste no se reejecutó: siguen vigentes las medianas del autor (20 000 ventas, 8 categorías, ~93.8–94.0 ms), no un SLA.
+
+Con esta ejecución, V-BE cuenta con evidencia real (del coordinador) y la verificación independiente nominal sigue **no acreditada**; la revisión independiente se registra a continuación.
+
+### Revisión independiente y cierre técnico de E2-13 — 2026-11-25
+
+`dashboard-reviewer`, solo lectura (su shell también quedó denegado y no lo rodeó): **sin bloqueantes técnicos de contrato ni de código**. Confirmó por lectura ruta/rol ADMINISTRADOR sin CSRF nuevo, entrada estricta, microsegundos, agrupación por categoría actual con inactivas y productos dados de baja/no disponibles, `SUM(quantity)`/`SUM(lineTotalCents)` sin multiplicadores ni reembolsos, método por subconjunto y conciliación, cero y base cero, orden `COLLATE "C"`, `totalCategories`, half-up bigint sin normalizar, 500 saneado por integridad, una sola lectura sin N+1, roles y cabeceras, y ausencia de UI/CSV/esquema/migraciones/dependencias.
+
+Residuales registrados, no bloqueantes: verificación independiente nominal no acreditada (evidencia del coordinador), diff completo no reejecutado por el revisor, coste solo a 20 000 ventas/8 categorías sin 100k ni 366 días, sumas >2^53 no sembradas de extremo a extremo por constraints, línea sin producto resoluble solo en unitaria, wiring con `adminService` no ejercitado en integración, `db:verify` no reejecutado en la corrida del coordinador, y casos 400 de JSON malformado / propiedad general del residuo / espía de agregado en 401-403 no dedicados.
+
+**Estado: TASK-DA-E2-13 CERRADA TÉCNICAMENTE el 2026-11-25, con la salvedad de que la verificación independiente nominal no se acreditó y la evidencia ejecutada es del coordinador; sin commit autorizado.** No cierra E2; el cierre sigue siendo CSV-03.
+
+## TASK-DA-E2-14 - Frontend de participación por categorías
+
+Estado actual: **implementado y verificado por el autor el 2026-11-25; corrección de hallazgos de revisión F1/P1/P2/R2/R3 aplicada el 2026-11-25; verificación independiente y revisión independientes pendientes; sin aceptación; sin commit.** Autor: `frontend-implementer` por encargo del coordinador. No inicia E2-15 ni CSV; E2 sigue abierto hasta CSV-03.
+
+### Alcance implementado
+
+- `categoriesApi.ts`: adaptador estricto de `GET /admin/dashboard/category-participation` con `from`/`to` UTC 0-3 decimales, mínimo 2000, 366 días, `metric` obligatoria `units|amount` y `method` opcional `CASH|STRIPE`; rechaza extras (`category`, `categoryId`, `top`, `direction`, `limit`, `cursor`, etc.), arrays y valores vacíos antes de HTTP.
+- Parser del DTO cerrado con envoltura `{data}`: `generatedAt`, `currency`, `period`, `method`, `metric`, `denominator`, `totalCategories` e `items`; strings exactos sin `Number` para IDs, unidades, importes y porcentajes; rechaza patrones inválidos, porcentaje fuera de rango, orden incompatible (métrica desc, nombre COLLATE "C", `categoryId` numérico), IDs duplicados, sumas de ítems distintas al denominador, `totalCategories` distinta de `items.length`, periodo/método/métrica distintos a los solicitados y base cero con `sharePercent` distinto de `0.00`.
+- `CategoryParticipation.tsx`: panel integrado en `DashboardSummary` con advertencia visible y accesible (`role="note"`) de categoría vigente/reclasificación histórica, selector de métrica obligatorio en API, eco de periodo/método/métrica, denominador y unidad inequívocos, distribución visual con el string de porcentaje recibido (sin recalcular), tabla accesible con caption/headers/rowheaders y región desplazable nombrada y focalizable, estados de carga/error/DTO inválido/cero/sin base por panel, fallo parcial aislado, cancelación y descarte de respuestas antiguas, sin polling.
+- Integración acotada en `admin/dashboard/DashboardSummary.tsx`; estilos en `src/styles/base.css` reutilizando tokens y estructura de los paneles E2; fixture de pruebas `src/test/categoryFixture.ts`; mocks de paneles existentes actualizados para mantener sus suites deterministas.
+- Sin dependencias, backend, contrato, OpenAPI, migraciones, CSV, filtro de categoría en rutas antiguas ni cliente HTTP/sesión nuevos.
+
+### Criterios y evidencia ejecutada
+
+| Criterio | Evidencia ejecutada |
+| --- | --- |
+| Advertencia visible y accesible de categoría vigente/reclasificación | Componente: `role="note"` con nombre accesible y texto completo. E2E: visible en 1280/768/390 y en la suite de accesibilidad del dashboard. |
+| Métrica obligatoria, método opcional y propagación de periodo/método | Unitarias de query; componente y E2E verifican `metric` siempre y `method` solo cuando aplica; sin `category`/`categoryId`. |
+| Denominador/unidad inequívocos y porcentajes backend sin recalcular ni normalizar | Componente y E2E comprueban 72.22/20.83/6.94, 66.67/25.00/8.33 y el residuo 33.33×3 = 99.99 tal cual; sin `100.00` forzado. |
+| Base cero con ítems y cero `[]` | Componente/E2E: «sin base» usando `denominator` y estado vacío explícito sin tabla. |
+| Parser estricto, bigint e inválidos | Unitarias: éxito, cero, base cero, >2^53 y >19 dígitos, redondeo, inactivas, orden, patrones, sumas, periodo/método/métrica y respuestas antiguas/abort. |
+| Fallo parcial, 401/403/429/503, sin reintentos ni polling | Componente: alerta aislada y `DashboardSummary` conserva series/ranking; E2E: panel caído mantiene resumen/series/ranking y no reintenta; sin peticiones antes de la guarda administrativa. |
+| Tabla accesible, teclado, foco y axe | Región nombrada y `tabIndex=0` con `:focus-visible`; E2E recorre con Tab, verifica foco/outline, scroll horizontal con ArrowRight y axe WCAG 2.1 A/AA sin violaciones en 1280/390 y, desde la corrección F1, también a 768 px dentro de la captura V-VIS. |
+
+### Archivos
+
+- `frontend/unified/src/features/terminal/admin/analytics/{categoriesApi.ts,categoriesApi.unit.test.ts,CategoryParticipation.tsx,CategoryParticipation.component.test.tsx}`.
+- `frontend/unified/src/test/categoryFixture.ts` (fixture contractual de pruebas).
+- `frontend/unified/src/features/terminal/admin/dashboard/DashboardSummary.tsx` y `DashboardSummary.component.test.tsx` (integración y fallo parcial).
+- `frontend/unified/src/features/terminal/admin/analytics/{SalesSeries,ProductRanking}.component.test.tsx` y `frontend/unified/e2e/{admin,accessibility,dashboard-series,dashboard-ranking,dashboard-no-movement}.spec.ts` (mocks del nuevo panel para conservar suites).
+- `frontend/unified/src/styles/base.css`.
+- `frontend/unified/e2e/dashboard-categories.spec.ts`.
+
+### Comandos ejecutados y resultados reales (frontend/unified)
+
+| Comando | Resultado |
+| --- | --- |
+| `npm.cmd run typecheck` | Correcto |
+| `npm.cmd run lint` | Correcto |
+| `npm.cmd test` | **44 archivos, 720 pruebas correctas** (tras la corrección de hallazgos) |
+| `npm.cmd exec -- vitest run <categoriesApi.unit|categoriesApi.component|DashboardSummary.component>` | **107/107 antes de la corrección**; `categoriesApi.unit` **80/80** tras la corrección |
+| `npm.cmd run build` | Correcto; aviso existente de chunk >500 kB, sin error |
+| `npm.cmd run test:e2e` | **89/89 correctas** (incluye 9 nuevas de categorías y accesibilidad del dashboard) |
+
+### Corrección de hallazgos de revisión (2026-11-25)
+
+Corrección aplicada dentro de E2-14: sin nueva capacidad, backend, CSV, dependencias ni commit. La verificación independiente nominal (`dashboard-verifier`) y la revisión independiente (`dashboard-reviewer`) siguen **no acreditadas**; este registro es evidencia del autor.
+
+- **F1 (media): axe a 768 px.** En `e2e/dashboard-categories.spec.ts`, el caso de capturas V-VIS fija `768x1024` y ejecuta `expectNoViolations(page)` con el helper existente (tags WCAG 2.1 A/AA, sin exclusiones de reglas ni targets). Así el panel queda cubierto por axe a 1280, 768 y 390 px.
+- **P1 (baja): 366 días exactos.** `categoriesApi.unit.test.ts` acepta y parsea el rango `2000-01-01T08:00:00.000Z`–`2001-01-01T08:00:00.000Z`; el rechazo de 366 días + 1 ms se conserva.
+- **P2 (baja): desempate final por `categoryId`.** La fixture `tieBreakCategoryItems` usa misma métrica (`unitsSold: "5"`) y mismo nombre (`Empate`) con IDs `10` y `9007199254740993` (> 2^53); el parser acepta el orden numérico ascendente y porcentajes `50.00`.
+- **R2 (baja): nombre en code points.** `boundedText` mide `[...value].length` para alinearse con `maxLength: 120` de OpenAPI/JSON Schema. Los nombres válidos existentes no se rechazan (el conteo en code points es menor o igual al de unidades UTF-16); una prueba acepta 120 caracteres astrales y rechaza 121.
+- **R3 (documental): ruta real de capturas.** Ver la sección V-VIS para la ruta producida por `test.info().outputPath` y la copia a `%TEMP%`.
+
+| Comando (frontend/unified) | Resultado real |
+| --- | --- |
+| `npm.cmd exec -- vitest run src/features/terminal/admin/analytics/categoriesApi.unit.test.ts` | **80/80 correctas** |
+| `npm.cmd run lint` | Correcto |
+| `npm.cmd run typecheck` | Correcto |
+| `npm.cmd test` | **44 archivos, 720 pruebas correctas** |
+| `npm.cmd run test:e2e -- e2e/dashboard-categories.spec.ts` | **9/9 correctas** |
+| `npm.cmd run test:e2e` | **89/89 correctas** |
+| raíz: `git diff --check` | Correcto (`exit 0`); solo avisos LF→CRLF de archivos ya modificados |
+
+### V-VIS y pendientes
+
+- Capturas generadas por la suite E2E con datos de fixture mediante `test.info().outputPath(...)` en `frontend/unified/test-results/dashboard-categories-TASK--17c43-8-px-for-the-category-panel-chromium/` (ruta relativa a la raíz del repositorio; la carpeta la deriva Playwright del título del caso y puede cambiar si cambia el título): `dashboard-categories-1280x900.png`, `dashboard-categories-768x1024.png` y `dashboard-categories-390x844.png`. No se versionan.
+- Copia real a `C:\Users\angel\AppData\Local\Temp\opencode\da-e2-14\captures\` (`%TEMP%\opencode\da-e2-14\captures\`) desde `frontend/unified`: `$src = '.\test-results\dashboard-categories-TASK--17c43-8-px-for-the-category-panel-chromium\*.png'; $dst = Join-Path $env:TEMP 'opencode\da-e2-14\captures'; Copy-Item -Path $src -Destination $dst -Force`. Los tres PNG copiados conservan los tamaños de la carpeta de salida (80973, 75974 y 44055 bytes). No se versionan.
+- **V-VIS humana queda pendiente de E2-15:** no se registra aceptación visual del responsable ni comparación con el baseline E1/paneles E2 aceptados.
+- **V-REAL queda pendiente de E2-15:** no se ejecutó API/BD real ni Electron; MSW/E2E simulado no acredita aceptación real.
+- Limitación de entorno: una instancia previa de Vite en `:5173` sirvió un módulo transformado obsoleto durante la primera corrida E2E; se detuvo ese proceso de desarrollo y la corrida limpia con el servidor reiniciado pasó 89/89. No fue un fallo de código ni se modificó configuración.
+- Sin verificación independiente (`dashboard-verifier`) ni revisión independiente (`dashboard-reviewer`) ejecutadas; ambas quedan pendientes. Sin commit autorizado.
+
+### Verificación del coordinador y re-revisión independiente — cierre técnico E2-14
+
+Procedencia: el verificador independiente `dashboard-verifier` quedó **bloqueado por `permission.rejected — Permission denied: shell`** en su primer comando, sin reintento ni rodeo. La ejecución real la realizó el **coordinador** y se registra como evidencia del coordinador, **no** como verificación independiente.
+
+| Comando (coordinador, `frontend/unified`; Node 22.14.0) | Resultado real |
+| --- | --- |
+| `npm.cmd run lint` | Correcto |
+| `npm.cmd run typecheck` | Correcto |
+| `npm.cmd test` | **44 archivos, 720 pruebas correctas** |
+| `npm.cmd run test:e2e -- e2e/dashboard-categories.spec.ts` | **9/9 correctas** |
+| `npm.cmd run test:e2e` (antes de la corrección) | **89/89 correctas** |
+| `npm.cmd run build` (antes de la corrección) | Correcto; el `code 1` de PowerShell provino solo del aviso de chunk >500 kB emitido por stderr, no de un fallo de compilación |
+| raíz: `git diff --check` | Correcto; solo avisos LF→CRLF |
+
+Re-revisión `dashboard-reviewer` (solo lectura, shell también denegado y no rodeado): **F1/P1/P2/R2/R3 cerrados, sin bloqueante nuevo de código**. Confirmó axe sin exclusiones a 768×1024 además de 1280 y 390, el rango válido de exactamente 366 días junto al rechazo de 366 días + 1 ms, el desempate por `categoryId` numérico con ID >2^53, la medición de `name` en code points (120 astrales aceptados, 121 rechazados) y la ruta real de capturas con su copia a `%TEMP%`. No observó regresión en fixtures existentes ni debilitamiento de aserciones previas.
+
+Riesgos residuales no bloqueantes: la pareja `'10'`/`'9007199254740993'` no discrimina por sí sola la comparación lexicográfica (el código usa `BigInt`, correcto); las alturas del axe a 1280/390 no coinciden exactamente con las de las capturas (1280×720 y 390×900 frente a 1280×900 y 390×844); las capturas no se comparan contra un baseline automático; y la verificación independiente de ejecución sigue sin acreditarse.
+
+**Estado: TASK-DA-E2-14 CERRADA TÉCNICAMENTE el 2026-11-25 con la salvedad de que la verificación independiente de ejecución no se acreditó (evidencia del coordinador) y con V-VIS/V-REAL humanas pendientes de E2-15; sin commit autorizado.** No cierra E2; el cierre sigue siendo CSV-03.
+
+## TASK-DA-E2-15 — Aceptación real de participación por categorías
+
+Estado actual: **EN CURSO / NO ACEPTADA, 2026-11-25; sin commit.** Autor de esta ejecución: subagente ejecutor. Verificación y revisión independientes, V-VIS humana y aceptación funcional del responsable **siguen pendientes**; este registro no las sustituye. No inicia CSV-00…03 ni cierra E2.
+
+### Alcance, entorno y límites respetados
+
+- Únicos cambios de producto: ninguno. Se añadieron `frontend/unified/e2e-live/dashboard-categories-acceptance.spec.ts`, la sección E2-15 de `frontend/unified/e2e-live/README.md`, y este estado en `validation.md`/`tasks.md`. Sin contratos, OpenAPI, esquema, migraciones, dependencias, CSV ni commit.
+- Entorno autorizado: Docker `cafeteria-local-postgres-1` (PostgreSQL **17.11**), base dedicada `cafeteria_da_e2_07`, backend `http://localhost:3000`, Vite `http://localhost:5173`. El backend en ejecución se había iniciado antes de la ruta E2-13 y devolvía 404; se reinició con un wrapper externo que conserva la base QA (`e2-15-run.mjs`), sin leer/imprimir `.env`, sin reset/reseed ni cambios de código.
+- No se leyeron ni imprimieron `.env`, contraseñas, cookies ni tokens. El manifiesto QA se consume programáticamente y no se imprime ni se versiona; contiene credenciales QA en claro, vive fuera del repositorio y **debe borrarse o rotarse tras la corrida** (este registro no afirma que ya se haya hecho). No se ejecutaron `removed-*`, resets, reseeds ni acciones destructivas.
+- Scripts QA externos (no versionados) en `C:\Users\angel\AppData\Local\Temp\opencode\da-e2-15\`: `e2-15-fixtures.mjs`, `e2-15-originals.mjs`, `e2-15-oracle.mjs`, `e2-15-stability.mjs`; guarda de aplicación única `e2-15-extension-private.json`.
+
+### Fixtures QA sintéticas (solo INSERT + una mutación controlada)
+
+- Preflight antes de escribir: `current_database() = cafeteria_da_e2_07`, producto 7, categoría 2, venta 1, categoría 4 inactiva, producto 33, categoría 5 borrada y producto 34; baseline **45 productos/10 ventas/1 reembolso/5 categorías** y 12 productos de la extensión E2-11. La transacción repitió las guardas y cardinalidades bajo locks breves; se rechazó cualquier base/dataset distinto.
+- `--apply` una sola vez: **+14 productos, +6 categorías, +16 ventas**, **1 UPDATE controlado** de `products.category_id` sobre el producto sintético reclasificado (de categoría 1 a 3) después de su venta. La secuencia «venta → reclasificación» la acredita el script externo `e2-15-fixtures.mjs` —INSERT de la venta y después `UPDATE` de `category_id`—, no el oráculo; `e2-15-oracle.mjs` solo lee el estado actual resultante. Sin cuentas nuevas, proveedores, sesiones prefabricadas ni cambios de filas QA existentes.
+- Dataset resultante: **59 productos/26 ventas/1 reembolso/11 categorías**. Huella de filas originales (productos ≤45, categorías ≤5, ventas ≤10, sus órdenes/pagos/líneas) idéntica antes/después: `b2706e5987383bd91d7fe309edae5666f62574f2159808918e27619cec26bdb9`.
+- Casos materializados: (a) reclasificación real post-venta con control en la categoría anterior; (b) categoría inactiva `is_active=false`/`deleted_at` nulo con movimiento; (c) base cero `metric=amount` con líneas de importe 0 (`unit_price_cents=0`, `line_total_cents=0`, quantity≥1, permitido por constraint); (d) categoría con `deleted_at` no nulo vinculada a una línea, aislada en un rango de 2010 para el 500 saneado; (e) rango sin ventas, empates y nombres `A/B/Empate/a/Á`, además de tercios para el residuo.
+- **No se usaron mocks ni intercepción** en la suite live.
+
+### Oráculo independiente y estabilidad
+
+- `e2-15-oracle.mjs` es SQL/Node externo, `REPEATABLE READ READ ONLY`; no importa backend/repositorio ni consulta el endpoint. Agrupa por `Product.categoryId` actual, ordena por métrica DESC, `name COLLATE "C"` y `categoryId` numérico, y calcula `sharePercent` half-up con `BigInt`. Compara además que `Σ order_items.line_total_cents = Σ sales.total_cents`.
+- **42 escenarios = 14 rangos × 3 métodos** (omitido/CASH/STRIPE), con `itemsUnits`, `itemsAmount` y `summary` completos. El manifiesto también incorpora hechos de fixtures (categoría actual/original, ventas, borrada/inactiva, importes) y las cuentas QA existentes de forma opaca.
+- Relectura posterior a todas las corridas: huella de originales sin cambios; SHA256 de escenarios+fixtures **`c8d43cac63391386466e938e0a598bf0169c67fbc6e3a08d071526ec72020314`**, estable.
+
+### Matriz RF → prueba real / resultado
+
+| RF / criterio | Escenario real | Resultado |
+| --- | --- | --- |
+| R01/R09/R10/R11 (RF-12/14) | 39 escenarios 200 × `metric=units|amount`; tres métodos; DTO cerrado | **13 live correctas**; DTO, denominadores, ítems y porcentajes idénticos al oráculo |
+| R09 conciliación | Todos los cortes 200 contra `/admin/dashboard/summary` y `/sales/summary` con CAJERO | Unidades, tickets, totales y mezcla CASH/STRIPE exactos |
+| R05/R06 (RF-14) | Producto sintético vendido en categoría 1 y reclasificado a 3 | Historial bajo categoría 3; categoría 1 solo conserva el control; total 10000 sin cambio; advertencia UI visible |
+| R13 inactiva/baja | Categoría 4 `isActive=false`, `deletedAt=null` con 1500 cts | Incluida con `isActive:false`; UI muestra «Inactiva» y 50.00 % |
+| R12/R13 base cero y residuo | Líneas con importe 0; tres tercios | `denominator.totalCents="0"` con ítems y `sharePercent="0.00"`; UI «sin base»; tercios `33.33×3=99.99`, sin normalizar |
+| R13 cero real | Rango 2000 sin ventas | `items:[]`, denominadores `"0"`, `totalCategories:"0"`, UI sin tabla |
+| R15 orden/empates/acentos | `QA E215 A/B/Empate/Empate/a/Á` | Orden SQL exacto; mismo nombre desempata por `categoryId` numérico; repetible |
+| R03 precisión y bordes (RF-03) | `micro-left/center/right`, mínimo 2000, máximo 366 días | `from` incluido, `to−1 µs` incluido, `to` excluido; +1 ms sobre 366 días y `from` anterior a 2000 → 400 |
+| R02/R04/R17 entrada | Extras, repetidos, arrays, `metric` ausente/inválida, `method` inválido/vacío, body, 4–6 decimales, `from>=to`, Origin; filtro `category`/`categoryId` contra rutas antiguas | Todos 400/403 con Problem Details y cabeceras privadas; 0–3 decimales normalizados aceptados; `GET /admin/dashboard/summary` (ADMINISTRADOR) y `GET /sales/summary` (CAJERO) rechazan `category`/`categoryId` con 400 `VALIDATION_ERROR` saneado |
+| R14 categoría borrada | Rango 2010 con línea de categoría 5 | API **500 INTERNAL_ERROR** saneado; UI muestra error aislado del panel y conserva resumen/mezcla |
+| R17 roles | Anónimo; CAJERO/PREPARACION; CLIENTE/GERENTE/PIN | 401 y 403 `FORBIDDEN`/`PIN_CHANGE_REQUIRED`; guardas sin GET administrativos; `localStorage` vacío |
+| C-UI (RF-03/19) | Cambio rápido de métrica/método, teclado, logout | **4 solicitudes / 3 `requestfailed` con texto real `net::ERR_ABORTED`**; la única respuesta completada es la final aplicada; foco de tabla y logout/401 correctos |
+| C-VIS/REAL (RNF-04/05/07) | Axe y capturas 1280/768/390; Electron | Axe WCAG 2.1 A/AA **sin violaciones**; tabla enfocable con scroll real a 390; Electron con `terminalOnly`, `nodeIntegration=false`, `contextIsolation/sandbox/webSecurity=true` |
+| R18b (RNF-06) | `maximum` 366 días | Coste HTTP observado **32 ms** (59 productos/26 ventas); no es SLA ni benchmark representativo |
+
+### Comandos ejecutados y resultados reales
+
+| Directorio / comando | Resultado |
+| --- | --- |
+| Externos: `node e2-15-originals.mjs --record`; `node e2-15-fixtures.mjs`; `--apply`; `e2-15-originals.mjs`; `e2-15-oracle.mjs`; `e2-15-stability.mjs` | Guardas correctas, ampliación única, 42 escenarios y estabilidad SHA256 correcta |
+| FE: `npm.cmd run lint`, `npm.cmd run typecheck` | Correctos |
+| FE: `node node_modules/typescript/bin/tsc --ignoreConfig --noEmit --strict --skipLibCheck --target ES2023 --module ESNext --moduleResolution bundler --types node,vite/client e2e-live/dashboard-categories-acceptance.spec.ts src/app/desktop.ts` | Correcto |
+| FE: `npm.cmd run test` | **44 archivos, 720/720** |
+| FE: `npm.cmd run test:e2e` | **89/89** (suite simulada; no sustituye live) |
+| FE: `npm.cmd run build` | Correcto; aviso existente de chunk >500 kB |
+| FE live dirigido (`E2E_LIVE=1`, manifiesto `...\da-e2-15\e2-15-manifest.json`) | **13 correctas / 1 omitida explícita, 23.2 s**, sin mocks ni intercepción |
+| BE: `npm.cmd run format:check`, `typecheck`, `lint`, `build` | Correctos |
+| BE: `npm.cmd test` | **188 correctas / 190 omitidas** por diseño |
+| BE: `npm.cmd run api:validate` | OpenAPI válido; **70 ejemplos** |
+| BE: `npm.cmd run db:validate` | Esquema Prisma válido |
+| BE: `npm.cmd run test:integration` | **190/190** en 11 archivos; incluye `dashboard-categories` 11/11 |
+| raíz: `git diff --check` | Correcto (solo avisos LF→CRLF) |
+| raíz: `node backend/scripts/check-doc-links.mjs` | **286 enlaces, 0 inexistentes** (fragmentos no comprobados) |
+
+Correcciones de arnés durante la ejecución, sin cambios de producto: la columna de participación es la cuarta `td` (no la quinta) y el rango UI de categoría borrada usa el offset real de junio (PDT, `07:00Z`), no un `08:00Z` fijo. El 404 inicial fue un backend de desarrollo obsoleto, resuelto al reiniciarlo sobre la misma base QA.
+
+### Capturas y evidencia visual
+
+- Ruta externa: `C:\Users\angel\AppData\Local\Temp\opencode\da-e2-15\captures\`.
+- `categories-1280.png` (76326 B, viewport 1280×900), `categories-768.png` (78154 B, 768×900), `categories-390.png` (68618 B, 390×1600 para evitar el artefacto de costura de elementos fijos), `categories-electron-1280.png` (76632 B).
+- Capturas **recortadas al panel**, sanitizadas: solo catálogo QA sintético (nombres/IDs), métricas agregadas y advertencia; sin usuario, cookies, QR, tickets ni ventas. La captura de 390 muestra foco visible en la región de tabla y `skip-link` fuera del viewport (`bottom=-29`, `transform=-74`), sin ocultarlo por CSS.
+- **No son aceptación humana**: V-VIS y la comparación con el baseline E1/paneles E2 aceptados quedan para el responsable.
+
+### Omitidos, límites y defectos
+
+- **Omitido explícito (no aprobado):** 413/429/503, DTO inválido live, expiración/refresh y multipestaña. No se indujo caos, saturación de rate limit, revocación de sesiones ni se heredó la excepción de series E2-03.
+- Límites: dataset QA pequeño; coste observado **32 ms** no es SLA; 100k ventas/366 días no medido; las capturas no se comparan automáticamente contra un baseline; la base cero con ítems solo aplica a `metric=amount` (quantity≥1 por constraint).
+- **Defectos de producto hallados en E2-15: ninguno.** El 404 inicial y los dos ajustes de aserción fueron entorno/arnés, no runtime. No se modificó producto, contrato, OpenAPI ni datos históricos existentes.
+- Verificación y revisión independientes **no ejecutadas** en esta unidad; V-VIS/V-REAL humana y aceptación funcional **pendientes**.
+
+### Corrección de residuales de revisión — 2026-11-25
+
+Cambios de arnés/documentación dentro de la misma tarea; sin tocar producto/runtime, contratos, OpenAPI, esquema, migraciones, dependencias ni CSV. Sin commit.
+
+- **R1 (carrera/cancelación):** la suite acumula ahora `request.failure()?.errorText` y exige que al menos uno sea aborto real (`/ERR_ABORTED|cancel/i`), además de comparar la última respuesta lógica **completada** con la que la UI aplica. Texto real observado de Playwright/Chromium: `net::ERR_ABORTED`; la aserción se ajustó a lo que la corrida demuestra. Resultado: **4 solicitudes, 3 `requestfailed` `net::ERR_ABORTED`, 1 respuesta completada y aplicada**.
+- **R2 (rutas antiguas):** dos comprobaciones 400 con filtro `category`/`categoryId` contra `GET /api/v1/admin/dashboard/summary` con sesión ADMINISTRADOR (en el test R02/R04/R17) y `GET /api/v1/sales/summary` con sesión CAJERO (en el test R09). Ambas devuelven **400 `VALIDATION_ERROR`** con Problem Details saneado y cabeceras privadas; el parámetro extra se rechaza. `/sales/summary` admite CAJERO, por lo que se reutilizó esa sesión sin roles nuevos.
+- **R3 (documental):** se precisa que la secuencia «venta → reclasificación» la acredita el script externo `e2-15-fixtures.mjs` (INSERT de la venta y después UPDATE de `products.category_id`), no el oráculo; `e2-15-oracle.mjs` solo lee el estado actual.
+- **R4 (documental):** la nota de secretos se reformula: el manifiesto se consume programáticamente y no se imprime ni se versiona; contiene credenciales QA en claro fuera del repositorio y **debe borrarse o rotarse tras la corrida**. Este registro no afirma que ya se haya borrado.
+- **R6 (documental):** el test omitido se renombra exactamente a «413/429/503 reales, DTO inválido live, expiración/refresh y multipestaña», sin 500 y sin omitir multipestaña.
+
+Comandos ejecutados en `frontend/unified/` (corrida de esta corrección):
+
+| Comando | Resultado real |
+| --- | --- |
+| `npm.cmd run lint` | Correcto |
+| `npm.cmd run typecheck` | Correcto |
+| `node node_modules/typescript/bin/tsc --ignoreConfig --noEmit --strict --skipLibCheck --target ES2023 --module ESNext --moduleResolution bundler --types node,vite/client e2e-live/dashboard-categories-acceptance.spec.ts src/app/desktop.ts` | Correcto |
+| `npm.cmd run test` | **44 archivos, 720/720** |
+| `npm.cmd run test:e2e` | **89/89** (simulada; no sustituye live) |
+| `npm.cmd run test:e2e:live -- dashboard-categories-acceptance.spec.ts` (manifiesto opaco) | **13 correctas / 1 omitida explícita, 22.6 s** (la corrida previa registrada fue 23.2 s) |
+| raíz: `git diff --check` | Correcto (solo avisos LF→CRLF) |
+
+Sin cambio de producto hallado. E2-15 continúa **EN CURSO / NO ACEPTADA**; no se declara aceptación humana ni cierre E2/CSV.
+
+### Ejecución live del coordinador — 2026-11-25
+
+Como el verificador independiente seguía con shell denegado y no se rodeó la denegación, el **coordinador** ejecutó la suite live dirigida para no depender solo de la evidencia del autor. Se registra como evidencia del coordinador, **no** como verificación independiente.
+
+- Preparación: backend local ya escuchando en `:3000` (comprobado `GET /api/v1/health` → 200) y Vite en `:5173`; manifiesto QA de E2-15 consumido opacamente (`E2E_LIVE=1`, `E2E_LIVE_MANIFEST=...\da-e2-15\e2-15-manifest.json`). No se imprimieron credenciales ni el manifiesto, ni se resembró, reseteó o migró nada.
+- Comando (desde `frontend/unified`): `npm.cmd run test:e2e:live -- dashboard-categories-acceptance.spec.ts`.
+- Resultado propio: **13 correctas / 1 omitida, 21.9 s**, sin mocks ni intercepción. Pasaron R01/R09/R10/R11 (DTO, ambas métricas, tres métodos), conciliación con resumen administrativo y `/sales/summary` (CAJERO), reclasificación real con total intacto, categoría inactiva, base cero y residuo 99.99, cero/empates/acentos y orden SQL, µs y bordes `from`/`to−1µs`/`to` con mínimo 2000 y 366 días, entrada estricta y errores reales incluidos los nuevos 400 de filtro `category` en rutas antiguas, categoría borrada → 500 saneado con fallo parcial aislado, 401 y 403 de todos los roles sin GET administrativos, teclado/foco/carrera con **3 `net::ERR_ABORTED` y 1 respuesta aplicada**, axe a 1280/768/390 y Electron con aislamiento.
+- Coste observado por el coordinador: **33 ms** en el recorrido de 366 días sobre 59 productos/26 ventas QA; no es SLA. El único omitido es el bloque de 413/429/503 reales, DTO inválido live, expiración/refresh y multipestaña, conforme a lo registrado.
+
+### Decisión requerida al responsable para aceptar E2-15
+
+1. Revisar y aceptar las capturas sanitizadas del panel en 1280/768/390 y Electron como referencia visual de la capacidad E2-15.
+2. Aceptar o rechazar que los escenarios 413/429/503, DTO inválido live, expiración/refresh y multipestaña queden como **limitación registrada no probada**, sin autorizar caos ni revocación.
+3. Confirmar la aceptación funcional de E2-15 y, si procede, autorizar el siguiente paso de la secuencia (**CSV-00**, contrato documental) y la revisión independiente pendiente. Hasta entonces E2-15 sigue **EN CURSO / NO ACEPTADA** y E2 no se cierra: el cierre sigue siendo CSV-03.
+
+### Cierre de E2-15 — aceptación del responsable, 2026-11-25
+
+El responsable respondió **«Acepto E2-15 y sigo a CSV-00»** tras revisar la propuesta con la ruta de capturas. Registro:
+
+1. **V-VIS aceptada:** las capturas sanitizadas de panel en 1280, 768, 390 y Electron (`C:\Users\angel\AppData\Local\Temp\opencode\da-e2-15\captures\`) quedan aprobadas como referencia visual de la capacidad de participación por categorías. Siguen siendo recortes de panel con catálogo QA sintético, no capturas de página completa ni comparación automática contra baseline.
+2. **Omitidos aceptados como limitación no probada:** 413/429/503 reales, DTO inválido live, expiración/refresh y multipestaña no se declaran probados; no se autoriza caos, saturación de rate limit ni revocación de sesiones.
+3. **Evidencia aceptada:** aceptación explícita de la evidencia ejecutada (13 live correctas/1 omitida del autor y 13/1 reproducidas por el coordinador, oráculo SQL independiente de 42 escenarios, 720/720 unitarias, 89/89 E2E simuladas, 190/190 integración, 70 ejemplos OpenAPI), con la salvedad ya registrada de que la verificación independiente nominal no se acreditó por denegación de shell.
+
+**Estado: TASK-DA-E2-15 CERRADA Y ACEPTADA por el responsable el 2026-11-25 con las limitaciones anteriores; sin commit autorizado.** E2 **no** queda cerrada: el cierre único sigue siendo **CSV-03**, y la siguiente tarea autorizada es **CSV-00** (contrato documental), cuya aceptación explícita se solicitará antes de CSV-01/02.
+
+## TASK-DA-E2-CSV-00 — Propuesta documental de exportación CSV
+
+Estado: **PROPUESTA DOCUMENTAL REDACTADA, NO ACEPTADA; sin runtime, UI, SQL ejecutable, CSV real ni commit**. Fecha 2026-11-25. Autor `dashboard-backend-implementer`; verificación y revisión independientes **pendientes**, no atribuidas. `CSV-01`/`CSV-02`/`CSV-03` no iniciadas. E2 no se cierra hasta `CSV-03`.
+
+### Archivos de esta tarea
+
+- `frontend/docs/specs/dashboard-admin/contracts/E2-csv-contract.md`: contrato propuesto de cinco exportaciones (ventas + series + ranking + sin movimiento + categorías), formato, columnas, metadatos, límites, errores, generación, matriz CSV-R01…R35 y decisiones D01–D28 pendientes.
+- `backend/docs/api/openapi.yaml`: adiciones exclusivamente CSV con `x-contract-status: proposed-2026-11-25`; paths `sales-export.csv`, `sales-series-export.csv`, `product-ranking-export.csv`, `no-movement-products-export.csv` y `category-participation-export.csv`; respuestas Problem comunes y `DashboardCsvInputInstant`. No se modificaron esquemas existentes.
+- `frontend/docs/specs/dashboard-admin/tasks.md`: solo estado propio CSV-00.
+- Este registro: estado, comandos y límites de la propuesta. No se registra aceptación ficticia.
+
+### Decisiones que requieren aceptación explícita
+
+- Rutas/alcance D01–D04; ventas D05–D09; analítica D10–D18; formato D19–D21; seguridad/cabeceras/errores D22–D25; generación y puertas D26–D28. Detalle completo en el contrato.
+- Puntos sensibles: cinco archivos frente a «cuatro exportaciones»; prefijo `/api/v1/admin/dashboard/...-export.csv` frente a las candidatas `/admin/sales/export.csv` y `/api/v1/admin/sales/export.csv`; una fila por venta con `orderStatus` actual; ventas con `from`/`to` obligatorios y 0–3 decimales; ranking con top N y metadatos del conjunto completo; sin movimiento completo sin cursor; BOM UTF-8; prefijo antifórmulas `'` solo en texto; topes 20 000/745/368/20/2 000/1 000; generación acotada en memoria.
+
+### Comandos ejecutados y resultados reales
+
+| Directorio / comando | Resultado |
+| --- | --- |
+| `backend/`: `npm.cmd run format:check` | Correcto; todos los archivos cumplen Prettier. |
+| `backend/`: `npm.cmd run api:validate` | Correcto; OpenAPI válido, **75 ejemplos** conformes a esquema y ruta (70 previos + 5 CSV). |
+| `backend/`: `node scripts/check-doc-links.mjs` | **286 enlaces locales revisados, 0 inexistentes**; fragmentos no comprobados. |
+| raíz: `git diff --check` | Correcto; solo avisos LF→CRLF preexistentes, sin errores de whitespace. |
+| raíz: `git status --short` | Cambios previos de E2-13/14/15 conservados; esta tarea añade `contracts/E2-csv-contract.md` y modifica OpenAPI/tasks/validation. Sin secretos, CSV real, capturas ni artefactos temporales. |
+
+### No ejecutado y límites
+
+- Sin runtime, rutas implementadas, UI, SQL ejecutable, migraciones, dependencias, pruebas HTTP/BD, benchmarks, descargas reales, apertura en hoja de cálculo ni V-REAL. No se atribuye a los ejemplos documentales una ejecución HTTP.
+- La aceptación del contrato, la verificación independiente y la revisión independiente siguen pendientes. OpenAPI `proposed-2026-11-25` no equivale a contrato aceptado.
+- No se crea commit. Cualquier commit/push/despliegue requiere encargo explícito.
+
+### Contradicciones registradas
+
+- Spec `/admin/sales/export.csv`, plan `/api/v1/admin/sales/export.csv` y propuesta `/api/v1/admin/dashboard/sales-export.csv`: ninguna aceptada; decisión D02.
+- `Sale` no tiene `status`; se propone `orderStatus` actual, no snapshot histórico (D07).
+- Ranking top N no exporta el conjunto completo de productos; solo metadatos completos (D11).
+- `/sales` admite fechas opcionales y hasta seis decimales; la exportación propone reglas más estrictas sin cambiar `/sales` (D04).
+- 413 es límite global de body, no de filas; el tope de filas propone 400 `EXPORT_LIMIT_EXCEEDED` (D25).
+
+### Puerta siguiente
+
+Solicitar verificación y revisión independientes y someter al responsable la aceptación agrupada D01–D28. Hasta entonces CSV-00 es **propuesta no aceptada**; CSV-01/02 no pueden iniciarse y CSV-03 sigue siendo el cierre único de E2.

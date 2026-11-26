@@ -311,7 +311,7 @@ Estado `200`; no 404, no productos ficticios, no ceros de relleno.
 | S02 | `ADMINISTRADOR` con sesión vigente | `200`; cabeceras privadas dentro del middleware de ruta. |
 | S03 | `CLIENTE`, `CAJERO`, `PREPARACION` o `GERENTE` | `403 FORBIDDEN`, sin consultar el agregado. |
 | S04 | `PIN_CHANGE_REQUIRED` u `ORIGIN_NOT_ALLOWED` | `403` con el código existente correspondiente. |
-| S05 | 413, 429, 500 inesperado, 503 de dependencia reconocida | Problem Details saneados; sin ceros/fallback; 413/429 globales pueden carecer de cabeceras privadas con el orden actual. |
+| S05 | 413, 429, 500 inesperado, 503 de dependencia reconocida | Problem Details saneados; sin ceros/fallback; cabeceras privadas según la evidencia de E2-09 con fallos inyectados en integración (413/429/500/503), sin declarar caos live ejecutado. |
 
 ## Semántica C-DATA y coste
 
@@ -368,7 +368,7 @@ La implementación concreta, los índices existentes y la medición pertenecen a
 
 - Solo `ADMINISTRADOR`; `authenticate` + `authorize('ADMINISTRADOR')` existentes. `GERENTE` no hereda esta lectura analítica: recibe `403`.
 - Must-change-PIN y Origin conservan sus códigos actuales (`PIN_CHANGE_REQUIRED`, `ORIGIN_NOT_ALLOWED`) dentro de `403`.
-- `Cache-Control: no-store` y `Referrer-Policy: no-referrer` dentro del middleware privado de ruta, en éxito y en errores que lo atraviesen. Los rechazos globales previos (Origin/parsing, 413, 429) **no garantizan** esas cabeceras con el orden actual de middleware; E2-09 debe verificarlo. No se cambia el orden de middleware en esta tarea.
+- `Cache-Control: no-store` y `Referrer-Policy: no-referrer` dentro del middleware privado de ruta, en éxito y en errores que lo atraviesen. Los rechazos globales previos (Origin/parsing, 413, 429) se documentan aquí según la evidencia de implementación de E2-09: la integración con fallos inyectados (`dashboard-no-movement.integration.test.ts`, caso que sanea 413/429/500/503) asserta ambas cabeceras, y Origin directo al backend se verificó en live (403 con cabeceras). Esa evidencia es **integración con fallos inyectados y una comprobación live de Origin**, no caos live contra 413/429/500/503 ni prueba de proveedor externo. No se cambia el orden de middleware en esta tarea.
 - Errores `application/problem+json` con `type,title,status,detail,instance,code,requestId` y `errors` de validación cuando corresponda; sin stack, SQL, secretos ni PII.
 - Códigos aceptados: `400 VALIDATION_ERROR` (entrada/rango/cursor/body), `401 UNAUTHENTICATED`, `403 FORBIDDEN` (roles) / `PIN_CHANGE_REQUIRED` / `ORIGIN_NOT_ALLOWED`, `413 PAYLOAD_TOO_LARGE` global, `429 RATE_LIMITED`, `500 INTERNAL_ERROR` y `503 DEPENDENCY_UNAVAILABLE` solo para fallos reconocidos por `problemHandler`. No se promete 503 para todo fallo ni éxito con ceros inventados.
 - No se devuelven datos de cliente, pago, ticket, personal ni secretos. Los nombres de producto/categoría son de catálogo.
@@ -397,7 +397,7 @@ Todos los resultados son **exigencias del contrato aceptado**, no pruebas ejecut
 | R15 | RF-13/RNF-02 | Nombres iguales, mayúsculas/acentos, orden por nombre y desempate por ID | Orden `name COLLATE "C" ASC, productId ASC`; duplicados de nombre separados; frontend no reordena | E2-09, E2-10, E2-11 |
 | R16 | RF-19 | Cursor malformado, manipulado, de otro endpoint, con otros filtros/límite o nombre/ID inválido | `400 VALIDATION_ERROR` sin consultar; cursor válido compatible devuelve página | E2-09, E2-10 |
 | R17 | RF-03/19 | Bordes temporales: mínimo 2000, `from=to`, 366 días, 366 días +1 ms, 0–3 decimales, 4–6 decimales; venta en `from`, `to−1 µs`, `to`; alta en `to−1 µs`, `to` | Incluye `from`/`to−1µs`; excluye `to`; 400 fuera de dominio/rango/precisión; microsegundos intactos | E2-09, E2-11 |
-| R18 | RF-13 | Cero productos en el universo sin movimiento; método sin ventas; página tras cursor sin más filas | `200`, `items:[]`, `totalNoMovementProducts:"0"`, `nextCursor:null`; no 404 ni ceros ficticios | E2-09, E2-10 |
+| R18 | RF-13 | Tres casos distintos: (a) conjunto sin movimiento vacío; (b) método sin ventas; (c) página tras la última clave del cursor | (a) `200`, `items:[]`, `totalNoMovementProducts:"0"`, `nextCursor:null`; (b) `200` con el **universo elegible completo** (puede ser no vacío), el método no vacía la lista; (c) `200`, `items:[]`, `nextCursor:null` **conservando** el total anterior al cursor. No 404 ni ceros ficticios. Aclaración editorial del 2026-11-25 que no cambia DTO, consulta ni decisiones D04/D07 | E2-09, E2-10, E2-11 |
 | R19 | RF-01/19 | Sin sesión; ADMINISTRADOR; CLIENTE/CAJERO/PREPARACION/GERENTE; PIN/Origin; cabeceras; body/query extra | 401/200/403; denegados sin agregado; `no-store`/`no-referrer` en el alcance del middleware; sin CSRF nuevo; body no vacío 400 | E2-09, E2-11 |
 | R20 | RF-19/RNF-06 | 413/429/500/503; respuesta internamente coherente; volumen, antijoin, sin N+1; fallo en frontend | Problem Details saneados; sin ceros/fallback; una lectura coherente; coste medido sin índices implícitos; el frontend conserva paneles y sesión única | E2-09, E2-10, E2-11 |
 
@@ -427,7 +427,7 @@ D01–D10 fueron **aceptadas por delegación del responsable al coordinador el 2
 
 | ID | Decisión | Contenido aceptado | Estado |
 | --- | --- | --- | --- |
-| D09 | Seguridad y errores | Solo ADMINISTRADOR; 401/403 (incluido GERENTE); no-store/no-referrer en middleware privado con límite documentado para rechazos globales; 400/413/429/500/503 Problem Details saneados; sin CSRF nuevo. Reserva explícita: la cobertura de cabeceras en rechazos globales previos no está garantizada y E2-09 debe verificarla | Aceptada por delegación el 2026-11-25 (con reserva de verificación) |
+| D09 | Seguridad y errores | Solo ADMINISTRADOR; 401/403 (incluido GERENTE); no-store/no-referrer en middleware privado; 400/413/429/500/503 Problem Details saneados; sin CSRF nuevo. Reserva resuelta documentalmente el 2026-11-25: cabeceras en rechazos globales acreditadas por integración de E2-09 con fallos inyectados y Origin live directo, sin caos live de 413/429/500/503 | Aceptada por delegación el 2026-11-25 (reserva conciliada) |
 | D10 | C-DATA y coste | Antijoin/`NOT EXISTS` sobre ventas pagadas; sin unir opciones/refunds/intentos; sin N+1 ni inferencia desde páginas; una lectura coherente. Reserva explícita: coste a medir en E2-09 y sin índices, migraciones ni CSV en esta tarea | Aceptada por delegación el 2026-11-25 (con reserva de medición/CSV) |
 
 ## OpenAPI y estado de contrato

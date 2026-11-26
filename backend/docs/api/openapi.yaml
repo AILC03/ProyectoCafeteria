@@ -7039,7 +7039,7 @@ paths:
       operationId: readAdministrativeCategoryParticipation
       description: >-
         CONTRATO TASK-DA-E2-12 aceptado por delegación del responsable el 2026-11-25.
-        No implementa runtime; backend, UI y aceptación real pertenecen a E2-13/14/15 y
+        Implementación backend E2-13; UI y aceptación real pertenecen a E2-14/15 y
         el CSV de esta capacidad al cierre E2. Solo ADMINISTRADOR con sesión vigente.
         Participación por categorías sobre ventas pagadas brutas del periodo UTC
         semiabierto [from,to) y método opcional. Agrupa por Product.categoryId ACTUAL:
@@ -7080,13 +7080,14 @@ paths:
         métrica seleccionada; con base cero e ítems devuelve "0.00" y la UI debe mostrar
         «sin base» usando denominator, no interpretar 0.00 como participación. La suma
         de porcentajes redondeados no se fuerza a 100.00 ni se reasigna: cada porcentaje
-        se desvía menos de 0.005 puntos y el residuo es menor que 0.005×n puntos
-        porcentuales. Cero líneas produce 200 con items vacío, denominadores "0" y
-        totalCategories "0", no 404. IDs, unidades, importes, conteos y porcentajes son
-        strings exactos; sin Number, PII ni datos de pago. generatedAt no es token de
-        snapshot. Cache-Control no-store y Referrer-Policy no-referrer dentro del
-        middleware privado; su cobertura en rechazos globales previos (Origin/parsing,
-        413/429) no está garantizada con el orden actual y E2-13 debe verificarla.
+        se desvía hasta 0.005 puntos y el residuo es hasta 0.005 × n puntos
+        porcentuales (cota inclusiva). Cero líneas produce 200 con items vacío,
+        denominadores "0" y totalCategories "0", no 404. IDs, unidades, importes,
+        conteos y porcentajes son strings exactos; sin Number, PII ni datos de pago.
+        generatedAt no es token de snapshot. Cache-Control no-store y Referrer-Policy
+        no-referrer dentro del
+        middleware privado; la integración de E2-13 verificó su cobertura en rechazos
+        globales previos (Origin/parsing, 413/429) con el orden de middleware actual.
         Errores application/problem+json saneados: 400 VALIDATION_ERROR, 401
         UNAUTHENTICATED, 403 FORBIDDEN para cualquier rol distinto de ADMINISTRADOR
         (incluido GERENTE)/PIN_CHANGE_REQUIRED/ORIGIN_NOT_ALLOWED, 413
@@ -7198,13 +7199,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
         '413':
-          description: PAYLOAD_TOO_LARGE del parser global antes del rechazo de body en ruta; la cobertura de cabeceras privadas no está garantizada con el orden actual y E2-13 debe verificarla.
+          description: PAYLOAD_TOO_LARGE del parser global antes del rechazo de body en ruta; la integración de E2-13 verificó que conserva las cabeceras privadas con el orden de middleware actual.
           content:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
         '429':
-          description: RATE_LIMITED del limitador existente; puede ocurrir antes de cabeceras privadas de ruta y su cobertura no está garantizada con el orden actual; E2-13 debe verificarla. Sin bucle de reintentos.
+          description: RATE_LIMITED del limitador existente; la integración de E2-13 verificó que ocurre después del middleware privado y conserva las cabeceras con el orden actual. Sin bucle de reintentos.
           content:
             application/problem+json:
               schema:
@@ -8278,6 +8279,590 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
+  /api/v1/admin/dashboard/sales-export.csv:
+    get:
+      x-contract-status: proposed-2026-11-25
+      tags:
+        - DashboardAdmin
+      summary: exportAdministrativeSalesCsv
+      operationId: exportAdministrativeSalesCsv
+      description: >-
+        PROPUESTA TASK-DA-E2-CSV-00, NO ACEPTADA. Solo ADMINISTRADOR con sesión vigente.
+        Descarga CSV de todas las ventas pagadas del rango UTC semiabierto [from,to) y método
+        opcional, no solo la página visible de /api/v1/sales. Una fila por Sale; incluye IDs,
+        saleNumber, fechas UTC/local, método, estado actual de la orden, moneda, total bruto en
+        centavos MXN, unidades y número de líneas. No incluye cliente, correo, teléfono, ticket,
+        QR, token ni datos del personal. La exportación es más estricta que /api/v1/sales: from/to
+        obligatorios, 0–3 decimales, mínimo 2000-01-01T08:00:00.000Z y máximo 366 días absolutos.
+        Rechaza cursor, limit, order, page, top, metric, direction, category, timeZone, extras,
+        repetidos, arrays, valores vacíos y body no vacío. Tope propuesto 20 000 ventas; si el
+        conjunto completo lo supera, responde 400 EXPORT_LIMIT_EXCEEDED sin CSV parcial. Formato
+        propuesto: UTF-8 con BOM, coma, RFC 4180, CRLF, prefila de metadatos #meta y escape
+        antifórmulas solo en campos de texto. Cabeceras privadas no-store/no-referrer dentro del
+        middleware privado temprano /api/v1/admin/dashboard; sin CSRF nuevo para GET. Contrato
+        pendiente de aceptación explícita antes de CSV-01/02.
+      security:
+        - accessCookie: []
+        - productionAccessCookie: []
+      parameters:
+        - name: from
+          in: query
+          required: true
+          description: Inicio inclusivo UTC, escalar único; 0–3 decimales; mínimo 2000-01-01T08:00:00.000Z.
+          schema:
+            $ref: '#/components/schemas/DashboardCsvInputInstant'
+        - name: to
+          in: query
+          required: true
+          description: Fin exclusivo UTC, mayor que from; máximo 366 días absolutos.
+          schema:
+            $ref: '#/components/schemas/DashboardCsvInputInstant'
+        - name: method
+          in: query
+          required: false
+          description: Omitido incluye CASH y STRIPE; no acepta vacío, null literal ni minúsculas.
+          schema:
+            type: string
+            enum:
+              - CASH
+              - STRIPE
+      responses:
+        '200':
+          description: CSV de ventas completo; metadatos #meta, encabezado y filas de datos.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Referrer-Policy:
+              schema:
+                type: string
+                enum:
+                  - no-referrer
+            X-Content-Type-Options:
+              schema:
+                type: string
+                enum:
+                  - nosniff
+            Content-Disposition:
+              schema:
+                type: string
+              example: attachment; filename="dashboard-sales-20261124T080000Z-20261125T080000Z-cash.csv"
+          content:
+            text/csv:
+              schema:
+                type: string
+              example: |
+                #meta,export,sales-export
+                #meta,schemaVersion,1
+                #meta,generatedAt,2026-11-25T18:30:00.000Z
+                #meta,currency,MXN
+                #meta,timeZone,America/Tijuana
+                #meta,period.from,2026-11-24T08:00:00.000Z
+                #meta,period.to,2026-11-25T08:00:00.000Z
+                #meta,method,CASH
+                #meta,rowCount,2
+                #meta,rowLimit,20000
+                #meta,truncated,false
+                #meta,contentKind,data
+                #meta,containsImage,false
+                #meta,orderStatusScope,current-at-generation
+                #meta,totals.totalCents,8500
+                #meta,totals.unitsSold,3
+                #meta,totals.lineCount,3
+                saleId,saleNumber,orderId,paymentId,soldAtUtc,soldAtLocal,method,orderStatus,currency,totalCents,unitsSold,lineCount
+                1,V000001,101,201,2026-11-24T16:00:00.123456Z,2026-11-24T08:00:00.123456-08:00,CASH,LISTO,MXN,4000,2,2
+                2,V000002,102,202,2026-11-24T17:00:00.000001Z,2026-11-24T09:00:00.000001-08:00,CASH,EN_PREPARACION,MXN,4500,1,1
+        '400':
+          $ref: '#/components/responses/DashboardCsvBadRequest'
+        '401':
+          $ref: '#/components/responses/DashboardCsvUnauthorized'
+        '403':
+          $ref: '#/components/responses/DashboardCsvForbidden'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '429':
+          $ref: '#/components/responses/DashboardCsvRateLimited'
+        '500':
+          $ref: '#/components/responses/DashboardCsvInternalError'
+        '503':
+          $ref: '#/components/responses/DashboardCsvUnavailable'
+  /api/v1/admin/dashboard/sales-series-export.csv:
+    get:
+      x-contract-status: proposed-2026-11-25
+      tags:
+        - DashboardAdmin
+      summary: exportAdministrativeSalesSeriesCsv
+      operationId: exportAdministrativeSalesSeriesCsv
+      description: >-
+        PROPUESTA TASK-DA-E2-CSV-00, NO ACEPTADA. Solo ADMINISTRADOR. Descarga CSV de la misma
+        serie horaria/diaria que /api/v1/admin/dashboard/sales-series, con los mismos filtros,
+        granularidad, método opcional, buckets, totales y límites. Exporta siempre las tres
+        métricas (totalCents, ticketCount, unitsSold), sin parámetro metric; incluye buckets
+        vacíos y parciales. from/to UTC [from,to), 0–3 decimales, mínimo 2000-01-01T08:00:00.000Z.
+        hour: máximo 744 h y 745 buckets; day: máximo 366×24 h y 368 buckets; exceso 400 sin
+        truncar. Rechaza cursor, limit, top, metric, category, timeZone, extras, repetidos,
+        arrays, valores vacíos y body. Formato UTF-8 con BOM, coma, RFC 4180, CRLF y metadatos
+        #meta. Cabeceras privadas no-store/no-referrer; sin CSRF nuevo para GET. Contrato
+        pendiente de aceptación antes de CSV-01/02.
+      security:
+        - accessCookie: []
+        - productionAccessCookie: []
+      parameters:
+        - name: from
+          in: query
+          required: true
+          description: Inicio inclusivo UTC; 0–3 decimales; mínimo 2000-01-01T08:00:00.000Z.
+          schema:
+            $ref: '#/components/schemas/DashboardCsvInputInstant'
+        - name: to
+          in: query
+          required: true
+          description: Fin exclusivo UTC; límites de duración y buckets según granularidad.
+          schema:
+            $ref: '#/components/schemas/DashboardCsvInputInstant'
+        - name: granularity
+          in: query
+          required: true
+          schema:
+            type: string
+            enum:
+              - hour
+              - day
+        - name: method
+          in: query
+          required: false
+          description: Omitido incluye CASH y STRIPE; no acepta vacío, null literal ni minúsculas.
+          schema:
+            type: string
+            enum:
+              - CASH
+              - STRIPE
+      responses:
+        '200':
+          description: CSV de serie completa; metadatos #meta, encabezado y buckets.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Referrer-Policy:
+              schema:
+                type: string
+                enum:
+                  - no-referrer
+            X-Content-Type-Options:
+              schema:
+                type: string
+                enum:
+                  - nosniff
+            Content-Disposition:
+              schema:
+                type: string
+              example: attachment; filename="dashboard-sales-series-20261124T081500Z-20261124T091500Z-hour-all.csv"
+          content:
+            text/csv:
+              schema:
+                type: string
+              example: |
+                #meta,export,sales-series-export
+                #meta,schemaVersion,1
+                #meta,generatedAt,2026-11-25T18:30:00.000Z
+                #meta,currency,MXN
+                #meta,timeZone,America/Tijuana
+                #meta,period.from,2026-11-24T08:15:00.000Z
+                #meta,period.to,2026-11-24T09:15:00.000Z
+                #meta,method,all
+                #meta,granularity,hour
+                #meta,bucketCount,2
+                #meta,totals.totalCents,8500
+                #meta,totals.ticketCount,2
+                #meta,totals.unitsSold,3
+                #meta,rowCount,2
+                #meta,rowLimit,745
+                #meta,truncated,false
+                #meta,contentKind,data
+                #meta,containsImage,false
+                bucketIndex,startUtc,endUtc,localStart,effectiveFromUtc,effectiveToUtc,partial,totalCents,ticketCount,unitsSold
+                1,2026-11-24T08:00:00.000Z,2026-11-24T09:00:00.000Z,2026-11-24T00:00:00-08:00,2026-11-24T08:15:00.000Z,2026-11-24T09:00:00.000Z,true,4000,1,2
+                2,2026-11-24T09:00:00.000Z,2026-11-24T10:00:00.000Z,2026-11-24T01:00:00-08:00,2026-11-24T09:00:00.000Z,2026-11-24T09:15:00.000Z,true,4500,1,1
+        '400':
+          $ref: '#/components/responses/DashboardCsvBadRequest'
+        '401':
+          $ref: '#/components/responses/DashboardCsvUnauthorized'
+        '403':
+          $ref: '#/components/responses/DashboardCsvForbidden'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '429':
+          $ref: '#/components/responses/DashboardCsvRateLimited'
+        '500':
+          $ref: '#/components/responses/DashboardCsvInternalError'
+        '503':
+          $ref: '#/components/responses/DashboardCsvUnavailable'
+  /api/v1/admin/dashboard/product-ranking-export.csv:
+    get:
+      x-contract-status: proposed-2026-11-25
+      tags:
+        - DashboardAdmin
+      summary: exportAdministrativeProductRankingCsv
+      operationId: exportAdministrativeProductRankingCsv
+      description: >-
+        PROPUESTA TASK-DA-E2-CSV-00, NO ACEPTADA. Solo ADMINISTRADOR. Descarga CSV del mismo
+        ranking top N que /api/v1/admin/dashboard/product-ranking, con los mismos filtros,
+        metric/direction obligatorios, top 5/10/20 y method opcional. El archivo contiene hasta
+        top filas; los metadatos matchedProductCount/matchedTotals/truncated describen el conjunto
+        completo anterior al corte, no se exportan productos fuera del top. Agrupa por productId,
+        usa SUM(quantity) y SUM(lineTotalCents) histórico, sin opciones/refunds/intentos. Incluye
+        position, productId, name, nameSource, unitsSold y totalCents. Rechaza cursor, limit,
+        category, timeZone, extras, repetidos, arrays, valores vacíos y body. Rango máximo 366
+        días. Formato UTF-8 con BOM, coma, RFC 4180, CRLF, metadatos #meta y antifórmulas solo
+        en texto. Cabeceras privadas no-store/no-referrer; sin CSRF nuevo para GET. Contrato
+        pendiente de aceptación antes de CSV-01/02.
+      security:
+        - accessCookie: []
+        - productionAccessCookie: []
+      parameters:
+        - name: from
+          in: query
+          required: true
+          description: Inicio inclusivo UTC; 0–3 decimales; mínimo 2000-01-01T08:00:00.000Z.
+          schema:
+            $ref: '#/components/schemas/DashboardCsvInputInstant'
+        - name: to
+          in: query
+          required: true
+          description: Fin exclusivo UTC; máximo 366 días absolutos.
+          schema:
+            $ref: '#/components/schemas/DashboardCsvInputInstant'
+        - name: metric
+          in: query
+          required: true
+          schema:
+            type: string
+            enum:
+              - units
+              - amount
+        - name: direction
+          in: query
+          required: true
+          schema:
+            type: string
+            enum:
+              - top
+              - bottom
+        - name: top
+          in: query
+          required: false
+          description: Default 5; solo forma léxica 5, 10 o 20.
+          schema:
+            type: string
+            enum:
+              - '5'
+              - '10'
+              - '20'
+            default: '5'
+        - name: method
+          in: query
+          required: false
+          description: Omitido incluye CASH y STRIPE; no acepta vacío, null literal ni minúsculas.
+          schema:
+            type: string
+            enum:
+              - CASH
+              - STRIPE
+      responses:
+        '200':
+          description: CSV del top N; metadatos del conjunto completo y filas del corte.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Referrer-Policy:
+              schema:
+                type: string
+                enum:
+                  - no-referrer
+            X-Content-Type-Options:
+              schema:
+                type: string
+                enum:
+                  - nosniff
+            Content-Disposition:
+              schema:
+                type: string
+              example: attachment; filename="dashboard-product-ranking-20261124T080000Z-20261125T080000Z-units-top5-all.csv"
+          content:
+            text/csv:
+              schema:
+                type: string
+              example: |
+                #meta,export,product-ranking-export
+                #meta,schemaVersion,1
+                #meta,generatedAt,2026-11-25T18:30:00.000Z
+                #meta,currency,MXN
+                #meta,timeZone,America/Tijuana
+                #meta,period.from,2026-11-24T08:00:00.000Z
+                #meta,period.to,2026-11-25T08:00:00.000Z
+                #meta,method,all
+                #meta,metric,units
+                #meta,direction,top
+                #meta,top,5
+                #meta,matchedProductCount,3
+                #meta,matchedTotals.unitsSold,12
+                #meta,matchedTotals.totalCents,34500
+                #meta,truncated,false
+                #meta,rowCount,3
+                #meta,rowLimit,20
+                #meta,contentKind,data
+                #meta,containsImage,false
+                position,productId,name,nameSource,unitsSold,totalCents
+                1,10,"Café ""La Especial"", S.A.",current,6,21000
+                2,11,'=1+1,snapshot,3,8500
+                3,12,'-Moka,snapshot,3,5000
+        '400':
+          $ref: '#/components/responses/DashboardCsvBadRequest'
+        '401':
+          $ref: '#/components/responses/DashboardCsvUnauthorized'
+        '403':
+          $ref: '#/components/responses/DashboardCsvForbidden'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '429':
+          $ref: '#/components/responses/DashboardCsvRateLimited'
+        '500':
+          $ref: '#/components/responses/DashboardCsvInternalError'
+        '503':
+          $ref: '#/components/responses/DashboardCsvUnavailable'
+  /api/v1/admin/dashboard/no-movement-products-export.csv:
+    get:
+      x-contract-status: proposed-2026-11-25
+      tags:
+        - DashboardAdmin
+      summary: exportAdministrativeNoMovementProductsCsv
+      operationId: exportAdministrativeNoMovementProductsCsv
+      description: >-
+        PROPUESTA TASK-DA-E2-CSV-00, NO ACEPTADA. Solo ADMINISTRADOR. Descarga CSV del conjunto
+        completo de productos activos sin movimiento en [from,to) y método opcional, sin cursor,
+        sin paginación y sin top N. Reutiliza la definición aceptada: Product.deletedAt IS NULL,
+        categoría existente con isActive=true y deletedAt IS NULL, Product.createdAt < to, y
+        ausencia de línea de Sale pagada en el rango/método; isAvailable no filtra. Incluye
+        productId, name, categoryId, categoryName, isAvailable, createdAtUtc y createdAtLocal.
+        Metadatos universe.asOf/definition/includesUnavailable y totalNoMovementProducts. Rango
+        máximo 366 días. Tope propuesto 2000 productos; exceso 400 EXPORT_LIMIT_EXCEEDED sin
+        archivo parcial. Rechaza limit, cursor, top, metric, direction, category, extras,
+        repetidos, arrays, valores vacíos y body. Formato UTF-8 con BOM, coma, RFC 4180, CRLF,
+        metadatos #meta y antifórmulas solo en texto. Cabeceras privadas no-store/no-referrer;
+        sin CSRF nuevo para GET. Contrato pendiente de aceptación antes de CSV-01/02.
+      security:
+        - accessCookie: []
+        - productionAccessCookie: []
+      parameters:
+        - name: from
+          in: query
+          required: true
+          description: Inicio inclusivo UTC; 0–3 decimales; mínimo 2000-01-01T08:00:00.000Z.
+          schema:
+            $ref: '#/components/schemas/DashboardCsvInputInstant'
+        - name: to
+          in: query
+          required: true
+          description: Fin exclusivo UTC; corte de cohorte createdAt < to; máximo 366 días.
+          schema:
+            $ref: '#/components/schemas/DashboardCsvInputInstant'
+        - name: method
+          in: query
+          required: false
+          description: Omitido incluye CASH y STRIPE; no acepta vacío, null literal ni minúsculas.
+          schema:
+            type: string
+            enum:
+              - CASH
+              - STRIPE
+      responses:
+        '200':
+          description: CSV completo de productos sin movimiento; metadatos y filas.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Referrer-Policy:
+              schema:
+                type: string
+                enum:
+                  - no-referrer
+            X-Content-Type-Options:
+              schema:
+                type: string
+                enum:
+                  - nosniff
+            Content-Disposition:
+              schema:
+                type: string
+              example: attachment; filename="dashboard-no-movement-20261124T080000Z-20261125T080000Z-all.csv"
+          content:
+            text/csv:
+              schema:
+                type: string
+              example: |
+                #meta,export,no-movement-products-export
+                #meta,schemaVersion,1
+                #meta,generatedAt,2026-11-25T18:30:00.000Z
+                #meta,currency,MXN
+                #meta,timeZone,America/Tijuana
+                #meta,period.from,2026-11-24T08:00:00.000Z
+                #meta,period.to,2026-11-25T08:00:00.000Z
+                #meta,method,all
+                #meta,universe.asOf,2026-11-25T08:00:00.000Z
+                #meta,universe.definition,product-not-deleted+category-active+category-not-deleted+created-before-asOf+availability-ignored+current-catalog-state
+                #meta,universe.includesUnavailable,true
+                #meta,totalNoMovementProducts,2
+                #meta,rowCount,2
+                #meta,rowLimit,2000
+                #meta,truncated,false
+                #meta,contentKind,data
+                #meta,containsImage,false
+                productId,name,categoryId,categoryName,isAvailable,createdAtUtc,createdAtLocal
+                10,Latte,3,Cafés,true,2024-01-15T18:00:00.000000Z,2024-01-15T10:00:00.000000-08:00
+                12,Moka,3,Cafés,false,2026-11-20T17:30:00.123456Z,2026-11-20T09:30:00.123456-08:00
+        '400':
+          $ref: '#/components/responses/DashboardCsvBadRequest'
+        '401':
+          $ref: '#/components/responses/DashboardCsvUnauthorized'
+        '403':
+          $ref: '#/components/responses/DashboardCsvForbidden'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '429':
+          $ref: '#/components/responses/DashboardCsvRateLimited'
+        '500':
+          $ref: '#/components/responses/DashboardCsvInternalError'
+        '503':
+          $ref: '#/components/responses/DashboardCsvUnavailable'
+  /api/v1/admin/dashboard/category-participation-export.csv:
+    get:
+      x-contract-status: proposed-2026-11-25
+      tags:
+        - DashboardAdmin
+      summary: exportAdministrativeCategoryParticipationCsv
+      operationId: exportAdministrativeCategoryParticipationCsv
+      description: >-
+        PROPUESTA TASK-DA-E2-CSV-00, NO ACEPTADA. Solo ADMINISTRADOR. Descarga CSV de la misma
+        participación por categoría vigente que /api/v1/admin/dashboard/category-participation,
+        con metric obligatoria y method opcional, sin top N, cursor ni paginación. Incluye
+        categoryId, name, isActive, unitsSold, totalCents y sharePercent (dos decimales, half-up,
+        calculado en backend, sin normalizar a 100.00). Se incluyen categorías inactivas con
+        movimiento para conciliar; una categoría borrada o línea sin categoría resoluble produce
+        500 INTERNAL_ERROR saneado, no una categoría ficticia. Metadatos denominator y
+        totalCategories. Rango máximo 366 días. Tope propuesto 1000 categorías; exceso 400
+        EXPORT_LIMIT_EXCEEDED sin archivo parcial. Rechaza top, direction, limit, cursor,
+        category, categoryId, timeZone, extras, repetidos, arrays, valores vacíos y body. Formato
+        UTF-8 con BOM, coma, RFC 4180, CRLF, metadatos #meta y antifórmulas solo en texto.
+        Cabeceras privadas no-store/no-referrer; sin CSRF nuevo para GET. Contrato pendiente de
+        aceptación antes de CSV-01/02.
+      security:
+        - accessCookie: []
+        - productionAccessCookie: []
+      parameters:
+        - name: from
+          in: query
+          required: true
+          description: Inicio inclusivo UTC; 0–3 decimales; mínimo 2000-01-01T08:00:00.000Z.
+          schema:
+            $ref: '#/components/schemas/DashboardCsvInputInstant'
+        - name: to
+          in: query
+          required: true
+          description: Fin exclusivo UTC; máximo 366 días absolutos.
+          schema:
+            $ref: '#/components/schemas/DashboardCsvInputInstant'
+        - name: metric
+          in: query
+          required: true
+          description: Obligatoria, sin default; define sharePercent y orden primario.
+          schema:
+            type: string
+            enum:
+              - units
+              - amount
+        - name: method
+          in: query
+          required: false
+          description: Omitido incluye CASH y STRIPE; no acepta vacío, null literal ni minúsculas.
+          schema:
+            type: string
+            enum:
+              - CASH
+              - STRIPE
+      responses:
+        '200':
+          description: CSV de todas las categorías con movimiento; metadatos y filas.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                  - no-store
+            Referrer-Policy:
+              schema:
+                type: string
+                enum:
+                  - no-referrer
+            X-Content-Type-Options:
+              schema:
+                type: string
+                enum:
+                  - nosniff
+            Content-Disposition:
+              schema:
+                type: string
+              example: attachment; filename="dashboard-category-participation-20261124T080000Z-20261125T080000Z-amount-all.csv"
+          content:
+            text/csv:
+              schema:
+                type: string
+              example: |
+                #meta,export,category-participation-export
+                #meta,schemaVersion,1
+                #meta,generatedAt,2026-11-25T18:30:00.000Z
+                #meta,currency,MXN
+                #meta,timeZone,America/Tijuana
+                #meta,period.from,2026-11-24T08:00:00.000Z
+                #meta,period.to,2026-11-25T08:00:00.000Z
+                #meta,method,all
+                #meta,metric,amount
+                #meta,denominator.unitsSold,12
+                #meta,denominator.totalCents,36000
+                #meta,totalCategories,3
+                #meta,rowCount,3
+                #meta,rowLimit,1000
+                #meta,truncated,false
+                #meta,contentKind,data
+                #meta,containsImage,false
+                categoryId,name,isActive,unitsSold,totalCents,sharePercent
+                3,Cafés,true,8,26000,72.22
+                5,Panadería,false,3,7500,20.83
+                7,Postres,true,1,2500,6.94
+        '400':
+          $ref: '#/components/responses/DashboardCsvBadRequest'
+        '401':
+          $ref: '#/components/responses/DashboardCsvUnauthorized'
+        '403':
+          $ref: '#/components/responses/DashboardCsvForbidden'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '429':
+          $ref: '#/components/responses/DashboardCsvRateLimited'
+        '500':
+          $ref: '#/components/responses/DashboardCsvInternalError'
+        '503':
+          $ref: '#/components/responses/DashboardCsvUnavailable'
 tags:
   - name: Auth
     description: Autenticación y recuperación.
@@ -8313,6 +8898,49 @@ components:
             $ref: '#/components/schemas/Problem'
     InternalError:
       description: INTERNAL_ERROR. Respuesta saneada sin SQL, stack ni secretos.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    DashboardCsvBadRequest:
+      description: >-
+        VALIDATION_ERROR o EXPORT_LIMIT_EXCEEDED. Entrada estricta inválida, rango/precisión
+        fuera de contrato, extras/repetidos/arrays/body no vacío o filas por encima del tope.
+        Nunca se devuelve CSV parcial.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    DashboardCsvUnauthorized:
+      description: UNAUTHENTICATED. Sin sesión vigente; no se consulta el conjunto.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    DashboardCsvForbidden:
+      description: >-
+        FORBIDDEN para CLIENTE/CAJERO/PREPARACION/GERENTE; PIN_CHANGE_REQUIRED u
+        ORIGIN_NOT_ALLOWED según middleware existente. Sin consulta de agregados.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    DashboardCsvRateLimited:
+      description: RATE_LIMITED del limitador existente; sin bucle de reintentos.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    DashboardCsvInternalError:
+      description: INTERNAL_ERROR saneado; sin stack, SQL, secretos ni CSV parcial.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    DashboardCsvUnavailable:
+      description: >-
+        DEPENDENCY_UNAVAILABLE solo para fallos de dependencia reconocidos por problemHandler;
+        no se sustituye por ceros ni por un archivo incompleto.
       content:
         application/problem+json:
           schema:
@@ -8909,6 +9537,15 @@ components:
               description: Todas las categorías con al menos una línea en el conjunto filtrado, ordenadas por métrica descendente, name COLLATE "C" ascendente y categoryId numérico ascendente. Sin top N ni relleno de ceros; cero resultados devuelve array vacío. Si una categoría borrada o una línea sin categoría resoluble apareciera, es un 500 interno saneado, no una categoría ficticia.
               items:
                 $ref: '#/components/schemas/DashboardCategoryParticipationItem'
+    DashboardCsvInputInstant:
+      type: string
+      format: date-time
+      pattern: ^[2-9]\d{3}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$
+      description: >-
+        Propuesta CSV-00: fecha UTC real terminada en Z, años 2000–9999, 0–3 decimales y
+        segundos 00–59. Validar además from>=2000-01-01T08:00:00.000Z, to>from y rango máximo;
+        no normalizar ni truncar entradas inválidas. Las fracciones de 4–6 decimales se rechazan.
+      example: '2026-11-24T08:00:00.000Z'
     Category:
       type: object
       additionalProperties: false

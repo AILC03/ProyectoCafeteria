@@ -1,4 +1,4 @@
-# Suite E2E live — TASK-DA-E1-09, E2-03 y E2-07
+# Suite E2E live — TASK-DA-E1-09, E2-03, E2-07, E2-11 y E2-15
 
 Suite de aceptación **contra backend real**, separada de la suite simulada de
 `frontend/unified/e2e`. No usa `page.route` ni `context.route`: el navegador
@@ -8,6 +8,8 @@ habla con Vite (`http://localhost:5173`), que reenvía `/api` al backend real.
   (TASK-DA-E1-09).
 - `dashboard-series-acceptance.spec.ts`: aceptación real de series horarias y
   diarias (TASK-DA-E2-03).
+- `dashboard-categories-acceptance.spec.ts`: aceptación real de participación
+  por categorías (TASK-DA-E2-15).
 
 ## Requisitos previos
 
@@ -154,3 +156,197 @@ Variables y comando son los mismos de las tareas anteriores. Cada tarea usa su
 propio manifiesto; ejecuta el archivo dirigido, no el directorio completo con un
 manifiesto ajeno. V-VIS y la prueba guiada humana se registran en `validation.md`;
 esta suite no las declara por sí sola.
+
+## E2-11 — activos sin movimiento (EN CURSO / NO ACEPTADA)
+
+Archivo dirigido: `dashboard-no-movement-acceptance.spec.ts`. **No ejecutar el
+directorio entero con este manifiesto.** No usa mocks, interceptores, escrituras
+de catálogo/ventas ni modificación de cookies. Login/logout QA son los únicos
+cambios de sesión. No ejecuta los scripts históricos `removed-*` ni prepara datos.
+
+```powershell
+$env:E2E_LIVE = '1'
+$env:E2E_LIVE_MANIFEST = 'C:\Users\angel\AppData\Local\Temp\opencode\da-e2-07\e2-11-manifest.json'
+npm.cmd run test:e2e:live -- dashboard-no-movement-acceptance.spec.ts
+```
+
+### Oráculo independiente y manifiesto privado
+
+El manifiesto E2-07 de ranking **no sirve** como oráculo de E2-11. El temporal
+`e2-11-oracle.mjs` junto al manifiesto genera E2-11 mediante lecturas PostgreSQL
+`REPEATABLE READ READ ONLY`, usando **EXCEPT** entre el universo completo y los
+IDs de líneas de ventas del rango/método; no importa código backend, no consulta
+el endpoint y no aplica límite/cursor. Orden SQL `name COLLATE "C", id` y fechas
+`to_char(..., 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`; IDs se convierten a texto antes
+de JSON. Copia las credenciales QA existentes opacamente, sin imprimirlas.
+Es externo, no es un script de siembra ni se ejecuta desde la suite.
+
+Estructura (sin incluir valores de credenciales):
+
+- `dataset`: etiqueta QA, `users`: `admin/cashier/prep` con las credenciales
+  existentes y `manager` (username/password), `customer/pinChange`
+  (identifier/pin) de **cuentas QA nuevas**, sin cambiar credenciales existentes.
+  No registrar, adjuntar ni versionar el manifiesto.
+- `captureDir`: directorio externo precreado para capturas sanitizadas.
+- `scenarios[]`: `{id,from,to,method,items}`; `method` null/CASH/STRIPE,
+  `items` es el conjunto completo de `NoMovementItem` esperado por SQL, no una
+  respuesta copiada de la API. El escenario `main` además tiene
+  `startDate/endDate` locales inclusivas para los controles UI.
+- IDs requeridos: `main`, `no-sales`, `cohort`, `after-cohort`, `zero`, `maximum`,
+  `from-exclusive-control`, `micro-left`, `micro-center`, `micro-right`, cada uno con los tres métodos. Fechas y restricciones
+  concretas del dataset actual: consultar el acta E2-11 en `validation.md`.
+- `fixtures[]`: hechos SQL de las 12 altas sintéticas, con productId/name/createdAt,
+  categoryDeleted/categoryActive y sales(soldAt/method/status/totalCents/refundCents).
+  Acreditan las precondiciones discriminatorias, no se deducen del endpoint.
+
+Para otro dataset se necesita un oráculo independiente, escenarios y autorización
+propios; no cambiar expectativas a partir del resultado del endpoint. La suite
+acredita solo casos materializados: sus nombres no garantizan R01–R20 completos.
+
+### Cobertura ejecutable y límites explícitos
+
+- Compara **cada fila y cada página** con SQL para 30 cortes × 10/20/50; total
+  antes de cursor, default 20, sin IDs duplicados, sin corte top N. UI acumula
+  20+14 y reinicia al cambiar método/límite, sin reconstruir ausencias.
+- 400/401/403, Problem Details y cabeceras, Origin directo a localhost:3000
+  (Vite reescribe Origin), precisión de entrada 0–3 frente a 4–6 decimales,
+  mínimo/rango máximo, extras/repetidos/arrays/body y cursores incompatibles,
+  normalizados/manipulados y terminal con total no cero.
+- Cero real, filtro inválido sin GET nuevo, carrera con Cargar más y
+  `requestfailed` observado, recarga por teclado, logout y localStorage vacío.
+- Axe completo en viewports 1280×900/768×900/390×900, sin overflow general;
+  capturas **recortadas al panel** para excluir usuario, shell, ventas y QR.
+  Reloj real, dataset estable y estado inicial de 20 filas; no se congela
+  `generatedAt` ni se oculta ningún error de accesibilidad. Electron real con
+  perfil temporal externo eliminado al terminar y aislamiento comprobado.
+- Los controles de foco/axe se mantienen como aserciones exigibles, no `fixme`.
+  `expect.soft` permite registrar logout y las demás capturas, pero **falla** la
+  prueba. Resultado y defectos en el acta; no significa aceptación.
+- Cuatro omitidos anteriores **habilitados con fixtures QA autorizados**: reembolso
+  total Stripe conserva movimiento; nombres iguales con IDs distintos y orden C
+  de A/B/Same/Same/a/Á repetible y presentado sin reordenar; alta/venta en
+  `2026-11-26T07:59:59.999999Z` y `08:00:00.000000Z` contrastadas mediante ventanas
+  consecutivas de 1 ms; CLIENTE/GERENTE403 y PIN_CHANGE_REQUIRED403 mediante
+  login real con CSRF y cookies del contexto (sin imprimirlas), guardas sin GET
+  administrativos una vez resuelta `/auth/me`. Incluye categoría borrada defensiva
+  con `is_active=true`: prueba `deleted_at` independientemente de inactividad.
+- **Dos omitidos explícitos**: caos 413/429/500/503/fallo parcial/DTO inválido y
+  expiración/refresh/multipestaña. No hay autorización para inducirlos ni heredar la
+  excepción de series E2-03. R10/R12 son exigencias backend según la matriz del
+  contrato: su integración existente no se presenta como caso live ni se exige
+  duplicarla en el navegador.
+
+### Preparación QA autorizada (externa, no ejecutada por la suite)
+
+Continuación secuencial E2-11 por autorización «si autorizo», separada de la
+correctiva frontend B01/B02 ya verificada/revisada. Temporales bajo
+`C:\Users\angel\AppData\Local\Temp\opencode\da-e2-07\`:
+
+1. `e2-11-fixtures.mjs` sin argumentos comprueba `current_database()` exactamente
+   `cafeteria_da_e2_07`, producto7/nombre/alta, categoría2/nombre y venta1/fecha.
+   Antes de escribir exigió 33 productos/7 ventas/0 reembolsos y ningún producto
+   de esta ampliación. No accede a `.env` ni a secretos de conexión: usa el
+   `POSTGRES_USER` opaco del contenedor local autorizado con psql por stdin.
+2. `e2-11-originals.mjs --record` registra huella de columnas no secretas del
+   catálogo original y ventas/pagos/líneas originales. **Solo una vez**;
+   sin argumentos compara la huella, no reescribe la referencia.
+3. `e2-11-fixtures.mjs --apply` fue ejecutado una sola vez: transacción con guardas
+   repetidas y locks breves; **solo INSERT**, 12 productos/1 categoría/3 ventas
+   Stripe/1 reembolso/3 cuentas QA, sin proveedor, sesiones prefabricadas ni UPDATE
+   de filas existentes. Contraseñas/NIP aleatorios y hashes Argon2id se procesan
+   opacamente; credenciales en `e2-11-extension-private.json`, fuera del repo,
+   nunca imprimir/copiar. Si existe ese archivo, rehúsa reseed automático. No
+   ejecutar de nuevo ni borrar esa guarda; un fallo exige inspección autorizada.
+4. `e2-11-oracle.mjs` regenera expectativas completas exclusivamente por SQL
+   read-only EXCEPT y hechos de fixtures, incorpora opacamente usuarios QA al
+   manifiesto. `e2-11-stability.mjs` vuelve a generar y compara SHA256 de
+   escenarios, sin credenciales. No usar el endpoint como oráculo.
+
+Dataset resultante: **45 productos/10 ventas/1 reembolso/5 categorías**. `main`
+conserva rango UI 24–25 noviembre locales, con **34/38/35** sin método/CASH/STRIPE.
+`no-sales` ahora usa `[2026-11-23T08:00Z,09:00Z)`, sin ventas y con25 elegibles,
+porque la nueva venta µs cae dentro del antiguo intervalo sin ventas. No se
+reescribieron históricos para acomodarlo. La categoría borrada activa con producto
+es inconsistencia **intencional y aislada**, permitida por constraints y autorizada
+solo para comprobar defensa R03; no afirma que el CRUD permita crearla.
+
+Los scripts y credenciales siguen externos; esta descripción permite reconstruir
+las precondiciones sin versionar secretos. No hay reset/reseed/removed-seed,
+migraciones, cambios runtime, revocación de sesiones ni caos. Las capturas actuales
+del panel conservan20 filas iniciales pero corresponden al **dataset ampliado**,
+no al anterior; la aprobación visual E2-10 no acepta estas capturas de E2-11.
+
+R18 agrupa casos incompatibles: método sin ventas conserva universo elegible y
+página terminal conserva total anterior al cursor. Se prueba la semántica de las
+secciones normativas; la aclaración documental corresponde al responsable, no a
+una modificación unilateral de contrato. El acta distingue además la reserva de
+cabeceras globales del contrato frente a la descripción verificada E2-09 de OpenAPI.
+
+La aceptación humana E2-11, teclado manual, revisión/verificación independientes y
+decisiones sobre omitidos siguen siendo puertas obligatorias. Esta suite no inicia
+E2-12/13, CSV ni cierre E2.
+
+## E2-15 — participación por categorías (EN CURSO / NO ACEPTADA)
+
+Archivo dirigido: `dashboard-categories-acceptance.spec.ts`. **No ejecutar el
+directorio entero con este manifiesto.** No usa `page.route`/`context.route` ni
+interceptores, no escribe catálogo/ventas y no modifica cookies. Login/logout QA
+son los únicos cambios de sesión. No ejecuta scripts de siembra ni `removed-*`.
+
+```powershell
+$env:E2E_LIVE = '1'
+$env:E2E_LIVE_MANIFEST = 'C:\Users\angel\AppData\Local\Temp\opencode\da-e2-15\e2-15-manifest.json'
+npm.cmd run test:e2e:live -- dashboard-categories-acceptance.spec.ts
+```
+
+### Oráculo independiente y manifiesto privado
+
+`e2-15-oracle.mjs` (externo) lee PostgreSQL `cafeteria_da_e2_07` en
+`REPEATABLE READ READ ONLY`, agrupa líneas históricas por
+`Product.categoryId` actual con `name COLLATE "C"` y `categoryId` numérico, y
+calcula denominadores y `sharePercent` half-up con `BigInt` fuera del endpoint.
+No importa backend/repositorio ni copia respuestas HTTP. Para cada corte produce
+`itemsUnits` e `itemsAmount` completos, `summary` (`ticketCount`, `totalCents`,
+`unitsSold`, `cashCents`, `stripeCents`) y hechos de fixtures. Las credenciales
+existentes se copian opacamente al manifiesto; no se imprimen ni versionan.
+
+Escenarios del dataset E2-15 (42 = 14 rangos × 3 métodos): `main`,
+`main-from-exclusive`, `reclass`, `inactive`, `zero-amount`, `ties`, `thirds`,
+`zero`, `min-boundary`, `maximum` (366 días exactos), `micro-left`,
+`micro-center`, `micro-right` y `deleted-category` (500 saneado). El manifiesto
+incluye fechas locales para los cortes que se aplican por UI.
+
+### Cobertura ejecutable
+
+- Conciliación exacta navegador→API contra oráculo y contra
+  `/admin/dashboard/summary` + `/sales/summary` con sesión CAJERO, en ambos
+  `metric` y en método omitido/CASH/STRIPE.
+- Reclasificación real posterior a la venta (producto sintético movido de
+  categoría 1 a 3): el historial aparece bajo la categoría actual, la anterior
+  no recibe el importe y el total no cambia. Categoría inactiva con movimiento
+  se incluye con `isActive:false`.
+- Base cero con ítems (`metric=amount`, líneas de importe 0), «sin base» en UI,
+  cero real `[]`, tercios con residuo `33.33 × 3 = 99.99` mostrado sin
+  normalizar, empates y nombres `A/B/Empate/a/Á` con orden `COLLATE "C"`.
+- Precisión de microsegundos y bordes: venta en `from`, venta en `to−1 µs`,
+  exclusión de `to`, mínimo 2000 y máximo 366 días (+1 ms rechazado).
+- Negativos de query/body/extras/repetidos/arrays, 400/401/403/500 con Problem
+  Details y cabeceras privadas; Origin directo al backend; roles
+  CAJERO/PREPARACION/CLIENTE/GERENTE/PIN sin GET administrativos.
+- Carrera/cancelación real (`requestfailed`), teclado/foco, axe WCAG 2.1 A/AA a
+  1280/768/390, capturas **recortadas al panel** y Electron real con
+  `terminalOnly`, `nodeIntegration=false`, `contextIsolation/sandbox/webSecurity`.
+- El fallo parcial se observa con el rango de categoría borrada (500 real): el
+  panel de categorías muestra error saneado mientras el resumen y la mezcla
+  siguen visibles. No se induce caos, 429/503 ni revocación de sesiones.
+
+### Límites explícitos
+
+- 413/429/503, DTO inválido live, expiración/refresh y multipestaña quedan como
+  **omitidos explícitos**: no hay autorización para caos ni revocación. La
+  excepción de series E2-03 no se hereda.
+- El dataset es sintético y aislado; la ampliación E2-15 solo inserta
+  productos/categorías/ventas y realiza **una** mutación controlada de
+  `category_id` sobre un producto sintético. No resetea ni reescribe históricos.
+- Las capturas no son aprobación humana ni reemplazan la revisión independiente;
+  V-VIS/V-REAL y la aceptación funcional se registran en `validation.md`.
