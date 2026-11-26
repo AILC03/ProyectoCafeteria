@@ -54,6 +54,7 @@ export type SalesNoMovementItem = {
   categoryName: string;
   isAvailable: boolean;
   createdAt: string;
+  createdAtLocal: string;
 };
 
 export type SalesNoMovementAggregate = {
@@ -91,6 +92,28 @@ export type SalesCategoryParticipationInput = {
   method?: 'CASH' | 'STRIPE';
   metric: 'units' | 'amount';
 };
+
+export type SalesExportRow = {
+  saleId: string;
+  saleNumber: string;
+  orderId: string;
+  paymentId: string;
+  soldAtUtc: string;
+  soldAtLocal: string;
+  method: 'CASH' | 'STRIPE';
+  orderStatus: string;
+  totalCents: string;
+  unitsSold: string;
+  lineCount: string;
+};
+
+/** Tope contractual de filas de la exportación de ventas. */
+export const SALES_EXPORT_MAX_ROWS = 20000;
+/** Tope contractual de productos sin movimiento. */
+export const NO_MOVEMENT_EXPORT_MAX_ROWS = 2000;
+/** Tope contractual de categorías con movimiento. */
+export const CATEGORY_EXPORT_MAX_ROWS = 1000;
+export const RANKING_EXPORT_MAX_ROWS = 20;
 
 export class SalesRepository {
   constructor(private db: PrismaClient) {}
@@ -142,6 +165,56 @@ export class SalesRepository {
         position: { id: data.id.toString(), createdAt: positionTime },
       }));
     });
+  }
+  /**
+   * Exportación de ventas en una sola lectura. Pide `tope + 1` filas para
+   * detectar el exceso antes de serializar cualquier byte y conserva
+   * `soldAt`/`createdAt` en PostgreSQL (`to_char` con US) para no perder µs.
+   * Una fila por Sale; unidades y líneas se agregan en un LATERAL por orden
+   * para no multiplicar por opciones ni por líneas.
+   */
+  salesExport(
+    actor: Principal,
+    input: { from: Date; to: Date; method?: 'CASH' | 'STRIPE' },
+  ): Promise<SalesExportRow[]> {
+    const method = input.method ? Prisma.sql`AND p.method::text=${input.method}` : Prisma.empty;
+    return this.read(actor, async (tx) =>
+      tx.$queryRaw<SalesExportRow[]>(Prisma.sql`
+        SELECT s.id::text AS "saleId",
+               s.sale_number AS "saleNumber",
+               s.order_id::text AS "orderId",
+               s.payment_id::text AS "paymentId",
+               to_char(s.sold_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS "soldAtUtc",
+               to_char(s.sold_at AT TIME ZONE 'America/Tijuana','YYYY-MM-DD"T"HH24:MI:SS.US') ||
+                 CASE
+                   WHEN (s.sold_at AT TIME ZONE 'America/Tijuana') >= (s.sold_at AT TIME ZONE 'UTC')
+                   THEN '+'
+                   ELSE '-'
+                 END ||
+                 lpad(
+                   abs(extract(epoch FROM (
+                     (s.sold_at AT TIME ZONE 'America/Tijuana') - (s.sold_at AT TIME ZONE 'UTC')
+                   ))/3600)::int::text,
+                   2,
+                   '0'
+                 ) || ':00' AS "soldAtLocal",
+               p.method::text AS method,
+               o.status::text AS "orderStatus",
+               s.total_cents::text AS "totalCents",
+               coalesce(u.units,0)::text AS "unitsSold",
+               coalesce(u.lines,0)::text AS "lineCount"
+        FROM sales s
+        JOIN payments p ON p.id=s.payment_id
+        JOIN orders o ON o.id=s.order_id
+        LEFT JOIN LATERAL (
+          SELECT sum(oi.quantity)::bigint AS units,count(*)::bigint AS lines
+          FROM order_items oi WHERE oi.order_id=s.order_id
+        ) u ON TRUE
+        WHERE s.sold_at >= ${input.from}::timestamptz
+          AND s.sold_at < ${input.to}::timestamptz ${method}
+        ORDER BY s.sold_at ASC,s.id ASC
+        LIMIT ${SALES_EXPORT_MAX_ROWS + 1}`),
+    );
   }
   summary(actor: Principal, input: SalesFilters) {
     return this.read(actor, async (tx) => {
@@ -356,7 +429,20 @@ export class SalesRepository {
                      'categoryId',pg.category_id::text,
                      'categoryName',pg.category_name,
                      'isAvailable',pg.is_available,
-                     'createdAt',to_char(pg.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')
+                     'createdAt',to_char(pg.created_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
+                     'createdAtLocal',to_char(pg.created_at AT TIME ZONE 'America/Tijuana','YYYY-MM-DD"T"HH24:MI:SS.US') ||
+                       CASE
+                         WHEN (pg.created_at AT TIME ZONE 'America/Tijuana') >= (pg.created_at AT TIME ZONE 'UTC')
+                         THEN '+'
+                         ELSE '-'
+                       END ||
+                       lpad(
+                         abs(extract(epoch FROM (
+                           (pg.created_at AT TIME ZONE 'America/Tijuana') - (pg.created_at AT TIME ZONE 'UTC')
+                         ))/3600)::int::text,
+                         2,
+                         '0'
+                       ) || ':00'
                    )
                    ORDER BY pg.name COLLATE "C" ASC,pg.id ASC
                  ) FILTER (WHERE pg.id IS NOT NULL),
@@ -381,7 +467,7 @@ export class SalesRepository {
    * unen opciones, reembolsos, eventos, incidentes ni reintentos. `sold_at`
    * permanece en PostgreSQL con microsegundos intactos.
    */
-  categoryParticipation(actor: Principal, input: SalesCategoryParticipationInput) {
+  categoryParticipation(actor: Principal, input: SalesCategoryParticipationInput, limit?: number) {
     const method = input.method ? Prisma.sql`AND p.method::text = ${input.method}` : Prisma.empty;
     const primary =
       input.metric === 'units' ? Prisma.sql`ct.units_sold` : Prisma.sql`ct.total_cents`;
@@ -442,8 +528,13 @@ export class SalesRepository {
                        'totalCents', ct.total_cents::text
                      )
                      ORDER BY ${primary} DESC, ct.name COLLATE "C" ASC, ct.category_id ASC
+                     ${Prisma.empty}
                    )
-                   FROM category_totals ct
+                   FROM (
+                      SELECT * FROM category_totals ct
+                      ORDER BY ${primary} DESC, ct.name COLLATE "C" ASC, ct.category_id ASC
+                      ${limit === undefined ? Prisma.empty : Prisma.sql`LIMIT ${limit}`}
+                    ) ct
                  ),
                  '[]'::jsonb
                ) AS items

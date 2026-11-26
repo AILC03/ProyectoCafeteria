@@ -1,6 +1,14 @@
 import { decodeCursor, paginate } from '../../shared/http/pagination.js';
-import { invalidInput } from '../../shared/http/problem.js';
+import { exportLimitExceeded, invalidInput } from '../../shared/http/problem.js';
 import type { Principal } from '../auth/auth.types.js';
+import {
+  buildCategoryCsv,
+  buildNoMovementCsv,
+  buildRankingCsv,
+  buildSalesCsv,
+  buildSeriesCsv,
+  type CsvExport,
+} from './sales.export.js';
 import {
   decodeNoMovementCursor,
   encodeNoMovementCursor,
@@ -9,13 +17,19 @@ import {
   type DashboardSummaryQuery,
   type NoMovementCursorFilters,
   type SalesCategoryParticipationQuery,
+  type SalesExportQuery,
   type SalesFilters,
   type SalesNoMovementQuery,
   type SalesOrder,
   type SalesRankingQuery,
   type SalesSeriesQuery,
 } from './sales.validation.js';
-import type { SalesRepository } from './sales.read.repository.js';
+import {
+  CATEGORY_EXPORT_MAX_ROWS,
+  NO_MOVEMENT_EXPORT_MAX_ROWS,
+  SALES_EXPORT_MAX_ROWS,
+  type SalesRepository,
+} from './sales.read.repository.js';
 export { SalesRepository } from './sales.read.repository.js';
 
 const SERIES_HOUR_MS = 60 * 60 * 1000;
@@ -529,6 +543,241 @@ export class SalesService {
       },
     };
   }
+  /**
+   * CSV-01 ventas: una fila por Sale del conjunto completo. El repositorio pide
+   * `tope + 1`; si se supera el tope se responde Problem Details antes de
+   * serializar. Los totales se calculan sobre las mismas filas exportadas.
+   */
+  async salesCsv(actor: Principal, input: SalesExportQuery): Promise<CsvExport> {
+    const from = new Date(parseSalesSeriesInstant(input.from)),
+      to = new Date(parseSalesSeriesInstant(input.to));
+    const rows = await this.repository.salesExport(actor, {
+      from,
+      to,
+      ...(input.method ? { method: input.method } : {}),
+    });
+    if (rows.length > SALES_EXPORT_MAX_ROWS) throw exportLimitExceeded();
+    const totals = rows.reduce(
+      (accumulated, row) => ({
+        totalCents: accumulated.totalCents + BigInt(row.totalCents),
+        unitsSold: accumulated.unitsSold + BigInt(row.unitsSold),
+        lineCount: accumulated.lineCount + BigInt(row.lineCount),
+      }),
+      { totalCents: 0n, unitsSold: 0n, lineCount: 0n },
+    );
+    return buildSalesCsv({ from, to }, input.method, this.now().toISOString(), { rows, totals });
+  }
+
+  /** CSV-01 series: mismos buckets/agregados y tres métricas que el endpoint. */
+  async salesSeriesCsv(actor: Principal, input: SalesSeriesQuery): Promise<CsvExport> {
+    const from = parseSalesSeriesInstant(input.from),
+      to = parseSalesSeriesInstant(input.to);
+    const buckets = buildSalesSeriesBuckets(from, to, input.granularity);
+    const aggregates = await this.repository.seriesAggregates(
+      actor,
+      { from: new Date(from), to: new Date(to), method: input.method },
+      buckets,
+    );
+    const items = buckets.map((bucket, index) => {
+      const aggregate = aggregates[index];
+      if (!aggregate) throw new Error('Agregado de serie incompleto');
+      return {
+        start: bucket.start.toISOString(),
+        end: bucket.end.toISOString(),
+        localStart: bucket.localStart,
+        effectiveFrom: bucket.effectiveFrom.toISOString(),
+        effectiveTo: bucket.effectiveTo.toISOString(),
+        partial: bucket.partial,
+        totalCents: aggregate.totalCents,
+        ticketCount: aggregate.ticketCount,
+        unitsSold: aggregate.unitsSold,
+      };
+    });
+    return buildSeriesCsv(
+      { from: new Date(from), to: new Date(to) },
+      input.method,
+      this.now().toISOString(),
+      input.granularity,
+      items,
+    );
+  }
+
+  /** CSV-01 ranking: mismo corte top N y metadatos del conjunto completo. */
+  async productRankingCsv(actor: Principal, input: SalesRankingQuery): Promise<CsvExport> {
+    const from = parseSalesSeriesInstant(input.from),
+      to = parseSalesSeriesInstant(input.to);
+    const top = Number(input.top);
+    const aggregate = await this.repository.rankingAggregates(actor, {
+      from: new Date(from),
+      to: new Date(to),
+      method: input.method,
+      metric: input.metric,
+      direction: input.direction,
+      limit: top,
+    });
+    if (!aggregate || !Array.isArray(aggregate.items))
+      throw new Error('Agregado de ranking incompleto');
+    const items = aggregate.items.map((item) => {
+      if (typeof item.name !== 'string') throw new Error('Nombre de producto no resuelto');
+      if (item.nameSource !== 'current' && item.nameSource !== 'snapshot')
+        throw new Error('Origen de nombre de producto inválido');
+      return {
+        productId: item.productId,
+        name: item.name,
+        nameSource: item.nameSource,
+        unitsSold: item.unitsSold,
+        totalCents: item.totalCents,
+      };
+    });
+    return buildRankingCsv(
+      { from: new Date(from), to: new Date(to) },
+      input.method,
+      this.now().toISOString(),
+      {
+        metric: input.metric,
+        direction: input.direction,
+        top: input.top,
+        matchedProductCount: aggregate.matchedProductCount,
+        matchedUnitsSold: aggregate.matchedUnitsSold,
+        matchedTotalCents: aggregate.matchedTotalCents,
+        items,
+      },
+    );
+  }
+
+  /** CSV-01 sin movimiento: conjunto completo, sin cursor ni top N. */
+  async noMovementProductsCsv(actor: Principal, input: SalesExportQuery): Promise<CsvExport> {
+    const from = new Date(parseSalesSeriesInstant(input.from)),
+      to = new Date(parseSalesSeriesInstant(input.to));
+    const aggregate = await this.repository.noMovementProducts(actor, {
+      from,
+      to,
+      ...(input.method ? { method: input.method } : {}),
+      limit: NO_MOVEMENT_EXPORT_MAX_ROWS,
+    });
+    if (
+      !aggregate ||
+      typeof aggregate.totalNoMovementProducts !== 'string' ||
+      !CANONICAL_NON_NEGATIVE_INTEGER.test(aggregate.totalNoMovementProducts) ||
+      !Array.isArray(aggregate.items)
+    )
+      throw new Error('Agregado de productos sin movimiento incompleto');
+    if (BigInt(aggregate.totalNoMovementProducts) > BigInt(NO_MOVEMENT_EXPORT_MAX_ROWS))
+      throw exportLimitExceeded();
+    if (BigInt(aggregate.totalNoMovementProducts) !== BigInt(aggregate.items.length))
+      throw new Error('Agregado de productos sin movimiento incoherente');
+    const items = aggregate.items.map((item) => {
+      if (
+        typeof item.productId !== 'string' ||
+        typeof item.name !== 'string' ||
+        typeof item.categoryId !== 'string' ||
+        typeof item.categoryName !== 'string' ||
+        typeof item.isAvailable !== 'boolean' ||
+        typeof item.createdAt !== 'string' ||
+        typeof item.createdAtLocal !== 'string'
+      )
+        throw new Error('Producto sin movimiento incompleto');
+      return {
+        productId: item.productId,
+        name: item.name,
+        categoryId: item.categoryId,
+        categoryName: item.categoryName,
+        isAvailable: item.isAvailable,
+        createdAt: item.createdAt,
+        createdAtLocal: item.createdAtLocal,
+      };
+    });
+    return buildNoMovementCsv(
+      { from, to },
+      input.method,
+      this.now().toISOString(),
+      NO_MOVEMENT_UNIVERSE_DEFINITION,
+      items,
+    );
+  }
+
+  /** CSV-01 categorías: todas las categorías con movimiento, inactivas incluidas. */
+  async categoryParticipationCsv(
+    actor: Principal,
+    input: SalesCategoryParticipationQuery,
+  ): Promise<CsvExport> {
+    const from = new Date(parseSalesSeriesInstant(input.from)),
+      to = new Date(parseSalesSeriesInstant(input.to));
+    const aggregate = await this.repository.categoryParticipation(
+      actor,
+      {
+        from,
+        to,
+        ...(input.method ? { method: input.method } : {}),
+        metric: input.metric,
+      },
+      CATEGORY_EXPORT_MAX_ROWS + 1,
+    );
+    if (
+      !aggregate ||
+      typeof aggregate.inconsistentRows !== 'string' ||
+      !CANONICAL_NON_NEGATIVE_INTEGER.test(aggregate.inconsistentRows) ||
+      typeof aggregate.denominatorUnitsSold !== 'string' ||
+      !CANONICAL_NON_NEGATIVE_INTEGER.test(aggregate.denominatorUnitsSold) ||
+      typeof aggregate.denominatorTotalCents !== 'string' ||
+      !CANONICAL_NON_NEGATIVE_INTEGER.test(aggregate.denominatorTotalCents) ||
+      typeof aggregate.totalCategories !== 'string' ||
+      !CANONICAL_NON_NEGATIVE_INTEGER.test(aggregate.totalCategories) ||
+      !Array.isArray(aggregate.items)
+    )
+      throw new Error('Agregado de participación por categorías incompleto');
+    if (aggregate.inconsistentRows !== '0')
+      throw new Error('Integridad de categorías no resoluble');
+    if (BigInt(aggregate.totalCategories) > BigInt(CATEGORY_EXPORT_MAX_ROWS))
+      throw exportLimitExceeded();
+    if (BigInt(aggregate.totalCategories) !== BigInt(aggregate.items.length))
+      throw new Error('Agregado de participación por categorías incoherente');
+    let unitsTotal = 0n,
+      centsTotal = 0n;
+    const items = aggregate.items.map((item) => {
+      if (
+        typeof item.categoryId !== 'string' ||
+        !CANONICAL_POSITIVE_INTEGER.test(item.categoryId) ||
+        typeof item.name !== 'string' ||
+        typeof item.isActive !== 'boolean' ||
+        typeof item.unitsSold !== 'string' ||
+        !CANONICAL_NON_NEGATIVE_INTEGER.test(item.unitsSold) ||
+        typeof item.totalCents !== 'string' ||
+        !CANONICAL_NON_NEGATIVE_INTEGER.test(item.totalCents)
+      )
+        throw new Error('Categoría de participación incompleta');
+      const unitsSold = BigInt(item.unitsSold),
+        totalCents = BigInt(item.totalCents);
+      unitsTotal += unitsSold;
+      centsTotal += totalCents;
+      return {
+        categoryId: item.categoryId,
+        name: item.name,
+        isActive: item.isActive,
+        unitsSold: item.unitsSold,
+        totalCents: item.totalCents,
+        sharePercent: formatSharePercent(
+          input.metric === 'units' ? unitsSold : totalCents,
+          input.metric === 'units'
+            ? BigInt(aggregate.denominatorUnitsSold)
+            : BigInt(aggregate.denominatorTotalCents),
+        ),
+      };
+    });
+    if (
+      unitsTotal !== BigInt(aggregate.denominatorUnitsSold) ||
+      centsTotal !== BigInt(aggregate.denominatorTotalCents)
+    )
+      throw new Error('Agregado de participación por categorías incoherente');
+    return buildCategoryCsv({ from, to }, input.method, this.now().toISOString(), {
+      metric: input.metric,
+      denominatorUnitsSold: aggregate.denominatorUnitsSold,
+      denominatorTotalCents: aggregate.denominatorTotalCents,
+      totalCategories: aggregate.totalCategories,
+      items,
+    });
+  }
+
   async administrativeSummary(actor: Principal, input: DashboardSummaryQuery) {
     const aggregate = await this.repository.administrativeSummary(actor, input);
     const totalCents = BigInt(aggregate.totalCents);

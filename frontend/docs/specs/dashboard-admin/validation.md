@@ -1812,3 +1812,108 @@ El responsable respondió **«Acepto el contrato y sigo con CSV-01»** a la soli
 - **Puertas vigentes:** `CSV-03` sigue siendo el único cierre de E2 y requiere su propia aceptación real con descarga contra entorno autorizado. La verificación independiente nominal de esta propuesta quedó documentada por la revisión `dashboard-reviewer` (sin bloqueantes tras B-01/B-02); la ejecución de comandos la realizó el autor.
 
 **Estado: TASK-DA-E2-CSV-00 CERRADA Y CONTRATO ACEPTADO el 2026-11-25; sin commit autorizado en este registro.** Siguiente tarea autorizada: **CSV-01**.
+
+## TASK-DA-E2-CSV-01 — Backend de exportación CSV
+
+Estado: **IMPLEMENTADO Y VERIFICADO POR EL AUTOR; CORRECCIONES DE REVISIÓN R1/P1/P2/P4/R6 APLICADAS; PENDIENTE DE VERIFICACIÓN INDEPENDIENTE Y REVISIÓN; NO ACEPTADO; SIN COMMIT.** Fecha 2026-11-25. Autor `dashboard-backend-implementer`. No se inician `CSV-02`/`CSV-03`; E2 no se cierra hasta `CSV-03`. La verificación independiente de ejecución sigue pendiente y no se declara realizada.
+
+### Alcance implementado
+
+- Cinco rutas GET solo `ADMINISTRADOR`, con el middleware privado temprano `/api/v1/admin/dashboard` y sin CSRF nuevo:
+  - `/api/v1/admin/dashboard/sales-export.csv` (`from`, `to`, `method`).
+  - `/api/v1/admin/dashboard/sales-series-export.csv` (`from`, `to`, `granularity`, `method`).
+  - `/api/v1/admin/dashboard/product-ranking-export.csv` (`from`, `to`, `metric`, `direction`, `top`, `method`).
+  - `/api/v1/admin/dashboard/no-movement-products-export.csv` (`from`, `to`, `method`).
+  - `/api/v1/admin/dashboard/category-participation-export.csv` (`from`, `to`, `metric`, `method`).
+- Entrada estricta con Zod: sin cursor/página/top no contratado, rechazo de extras/repetidos/arrays/vacíos/body y de `token`/`access_token`/`jwt`/cualquier parámetro no contratado como `400 VALIDATION_ERROR`.
+- Serializador compartido reutilizado por las cinco exportaciones: UTF-8 con BOM, coma, RFC 4180, CRLF final, comillas dobles y neutralización antifórmulas (`=`, `+`, `-`, `@`, tab, CR, LF y espacios iniciales + fórmula) solo en campos de texto. Importes, IDs, unidades, conteos, fechas y porcentajes no se alteran.
+- Metadatos `#meta` antes del encabezado con export/schemaVersion/generatedAt/currency/timeZone/period/method, `rowCount`, `rowLimit`, `truncated`, `contentKind=data`, `containsImage=false`, `rowOrder` de ventas y totales/metadatos específicos por capacidad.
+- Fechas de fila producidas en PostgreSQL con `to_char(... 'US')`: `soldAtUtc`, `soldAtLocal`, `createdAtUtc` y `createdAtLocal` conservan seis decimales y offset IANA de Tijuana; no se formatean con `Date` en JavaScript.
+- Generación acotada en memoria, sin streaming, colas, archivos temporales, persistencia ni migraciones. Ventas, series, ranking y sin movimiento usan una sola lectura; categorías usa una sola lectura con `LIMIT` interno para no materializar más de `tope + 1`.
+- Topes: ventas 20 000 (`400 EXPORT_LIMIT_EXCEEDED`), series 745/368, ranking 20 (top 5/10/20), sin movimiento 2 000 y categorías 1 000. El exceso se detecta antes de escribir el primer byte del CSV.
+- Cabeceras de éxito: `Content-Type: text/csv; charset=utf-8`, `Content-Disposition: attachment; filename="<ASCII>"`, `Cache-Control: no-store`, `Referrer-Policy: no-referrer` y `X-Content-Type-Options: nosniff`.
+- Errores exclusivamente `application/problem+json`: 400 `VALIDATION_ERROR`/`EXPORT_LIMIT_EXCEEDED`, 401, 403 (rol/PIN/Origin), 413, 429, 500 y 503 saneados; nunca CSV parcial con 200.
+- Sin PII: ventas no incluyen cliente, nombre, correo, teléfono, folio, ticket, QR, token ni personal; la analítica solo expone catálogo, IDs y agregados.
+
+### Archivos
+
+- `backend/src/shared/http/csv.ts` (nuevo): serializador RFC 4180/BOM/CRLF/antifórmulas.
+- `backend/src/shared/http/problem.ts`: código `EXPORT_LIMIT_EXCEEDED`.
+- `backend/src/modules/sales/sales.validation.ts`: esquema estricto `salesExportQuery` para ventas y sin movimiento.
+- `backend/src/modules/sales/sales.read.repository.ts`: lectura de ventas para CSV, fecha local de alta en sin movimiento y `LIMIT` acotado opcional en categorías; sin cambios en el DTO JSON de endpoints existentes.
+- `backend/src/modules/sales/sales.export.ts` (nuevo): serialización de las cinco exportaciones, metadatos, nombres ASCII y filas.
+- `backend/src/modules/sales/sales.service.ts`: métodos CSV con topes y conciliación.
+- `backend/src/modules/sales/sales.routes.ts`: cinco rutas y envío de buffer completo.
+- `backend/docs/api/openapi.yaml`: descripciones CSV actualizadas a contrato aceptado/implementado; `x-contract-status: approved-2026-11-25` y 75 ejemplos conservados.
+- `backend/tests/dashboard-csv.test.ts` (nuevo) y `backend/tests/integration/dashboard-csv.integration.test.ts` (nuevo).
+
+### Evidencia por criterio
+
+| Criterio / RF | Evidencia ejecutada |
+| --- | --- |
+| RF-21 ventas completas frente a página | Integración: 26 ventas en el rango y `/api/v1/sales` devuelve 20; el CSV contiene las 26, `rowCount` completo y concilia con `/sales/summary` y resumen administrativo. |
+| RF-21 una fila por `Sale`, unidades/líneas y bruto | Fixture multilínea con opción, reembolso y `unitsSold=3`, `lineCount=2`, `totalCents` bruto; el reembolso no reduce el importe. |
+| RF-21 orden y µs | `soldAtUtc ASC, saleId ASC` comprobado con empate exacto de `sold_at`; `2027-06-01T09:00:00.123456Z` y `...02:00:00.123456-07:00` presentes; `to − 1 µs` incluido, `to` y justo antes de `from` excluidos. |
+| RF-21 método, cero y tope | CASH/STRIPE concilian con resumen; rango sin ventas devuelve metadatos + encabezado sin filas; tope 20 000 cubierto por unitarias y por mapeo HTTP 400 sin CSV con servicio inyectado. |
+| RF-22 series | Conciliación con endpoint para `hour` y `day`; DST primavera 23 h y otoño 25 h con hora local repetida; 745 buckets aceptados, exceso 400; guarda de 368 buckets en unitarias. |
+| RF-22 ranking | Top 5/10/20 y `top`/`bottom` con `units`/`amount` comparados fila a fila con el endpoint; `matchedProductCount`/`matchedTotals`/`truncated` exactos; comillas, acentos, `=1+1` y `-Moka` escapados sin alterar importes. |
+| RF-22 sin movimiento | 104 filas reales > página del endpoint; conjunto completo sin cursor comparado con todas las páginas; producto vendido, alta en `to`, categoría inactiva y baja excluidos; no disponible incluido; método CASH reincorpora la venta STRIPE; cero con encabezado; 2 001+ productos reales → 400 sin archivo. |
+| RF-22 categorías | Paridad con endpoint para `units`/`amount` y los tres métodos; inactiva con movimiento incluida; reclasificación refleja categoría actual; base cero `0.00`; residuo 99.99 sin normalizar; cero filas; categoría borrada → 500 saneado; tope 1 000 cubierto por unitarias y mapeo HTTP 400 sin CSV. |
+| RF-23 seguridad | 401 sin sesión; 403 para CLIENTE/CAJERO/PREPARACION/GERENTE; 403 PIN; 403 Origin inválido; extras/tokens/repetidos/arrays/body → 400; cabeceras privadas en éxitos y errores; 413/429/500/503 saneados sin CSV parcial; sin CSRF nuevo. |
+| RF-23 formato | BOM `EF BB BF`, CRLF final, comas/comillas/saltos RFC 4180, acentos, antifórmulas incluidos tab/CR/LF y espacios+fórmula; importes/IDs de 16 dígitos y fechas de seis decimales sin alterar. |
+| RNF-02 precisión | IDs como strings exactos (fixture con ID > `Number.MAX_SAFE_INTEGER` en unitarias de ranking/series existentes, serializador e integración CSV de ranking con `9007199254740993`); importes agregados con `BigInt`; porcentajes half-up de backend. |
+| RNF-06 coste | Sin N+1: una lectura por capacidad; sin archivos temporales/persistencia; memoria acotada por topes y `LIMIT`. No se promete latencia. |
+
+### Comandos ejecutados y resultados reales
+
+Ejecutados desde `backend/` salvo el último, el 2026-11-25:
+
+| Comando | Resultado |
+| --- | --- |
+| `npm.cmd run format:check` | Correcto; Prettier sin diferencias. |
+| `npm.cmd run typecheck` | Correcto. |
+| `npm.cmd run lint` | Correcto. |
+| `npm.cmd test` | **204 pruebas aprobadas, 205 omitidas** (las omitidas son suites de integración fuera de `npm test`); 17 archivos aprobados, 12 omitidos. Incluye 16 unitarias nuevas de CSV. |
+| `npm.cmd run build` | Correcto. |
+| `npm.cmd run api:validate` | OpenAPI válido; **75 ejemplos** conformes y ruta correcta. |
+| `npm.cmd run db:validate` | Esquema Prisma válido; sin migraciones nuevas. |
+| `npm.cmd run test:integration` | **205/205 pruebas en 12 suites**, incluida `dashboard-csv.integration.test.ts` con **15/15**. |
+| raíz: `git diff --check` | Sin errores de whitespace; solo avisos preexistentes LF→CRLF. |
+
+### Correcciones de revisión aplicadas (2026-11-25)
+
+Sin cambio del contrato aceptado, sin migraciones, dependencias, UI, CSV-02/03 ni commit. El coordinador confirmó por `git diff HEAD` que en `sales.routes.ts` solo se añadió la constante `csvAccess` y que `router.use('/sales', privateCashResponse)` es preexistente; R7 no es hallazgo.
+
+| Residual | Corrección aplicada |
+| --- | --- |
+| R1 precedencia token/extra | Documentada en `contracts/E2-csv-contract.md` (principio 2, CSV-R20 y D31): `authenticate`/`authorize` se evalúan antes de la validación de query; sin sesión `401 UNAUTHENTICATED` aunque haya token, rol no autorizado `403 FORBIDDEN`, y solo `ADMINISTRADOR` convierte token/extra en `400 VALIDATION_ERROR`. Nueva integración recorre las cinco rutas con `&token=abc` y fija 401 sin sesión, 403 con CAJERO y 400 con ADMINISTRADOR. |
+| P1 ranking sin movimiento | Nueva aserción de integración con rango sin ventas: ranking responde 200 con metadatos (`rowCount=0`, `matchedProductCount=0`, totales 0, `truncated=false`), encabezado y cero filas; nunca error. |
+| P2 series con ventas | La prueba de series ahora exige, además de la paridad con el endpoint, al menos un bucket `0,0,0` en la serie con ventas. |
+| P4 antifórmulas en ventas | Nueva integración siembra `saleNumber` con `=`, `+`, `-`, `@`, tab, CR, LF y espacios iniciales + fórmula; verifica prefijo `'` en el texto y que `saleId`, `orderId`, `paymentId`, `totalCents` y `unitsSold` no se alteran. Unitaria adicional inyecta `method`/`orderStatus` con fórmula en el serializador y comprueba importe/ID intactos. |
+| R6 OpenAPI obsoleto | `backend/docs/api/openapi.yaml` actualiza las dos descripciones que decían «contrato pendiente»/«Propuesta CSV-00» para reflejar el contrato aceptado el 2026-11-25; sin tocar esquemas ni ejemplos (validación conserva 75 ejemplos). |
+
+Comandos ejecutados tras las correcciones, desde `backend/` salvo el último:
+
+| Comando | Resultado |
+| --- | --- |
+| `npm.cmd run format:check` | Correcto; Prettier sin diferencias. |
+| `npm.cmd run typecheck` | Correcto. |
+| `npm.cmd run lint` | Correcto. |
+| `npm.cmd test` | **204 aprobadas, 205 omitidas**. |
+| `npm.cmd run build` | Correcto. |
+| `npm.cmd run api:validate` | OpenAPI válido; **75 ejemplos** conformes. |
+| `npm.cmd run db:validate` | Esquema Prisma válido; sin migraciones nuevas. |
+| `npm.cmd run test:integration` | **205/205 en 12 suites**, CSV **15/15**. |
+| raíz: `git diff --check` | Sin errores de whitespace; solo avisos preexistentes LF→CRLF. |
+
+Estas correcciones no constituyen verificación independiente ni aceptación: la revisión independiente sigue pendiente y el verificador reportó shell denegado, por lo que la evidencia de ejecución es del coordinador.
+
+### Omitidos, límites y decisiones pendientes
+
+- **No es verificación independiente ni aceptación.** La revisión `dashboard-reviewer` y la verificación nominal quedan pendientes; este registro no las atribuye.
+- Tope de 20 000 ventas: no se sembraron 20 001 ventas reales por coste; la detección `LIMIT tope + 1` está cubierta por unitarias y el mapeo HTTP 400 sin archivo con servicio inyectado. Igual criterio para el tope de 1 000 categorías (no se crearon 1 001 categorías con movimiento reales). El tope de 2 000 productos sin movimiento sí se ejecutó con **2 001 productos reales** y devolvió 400.
+- **368 buckets `day`:** la guarda unitarias acepta 368 y rechaza 369; por HTTP el máximo alcanzable bajo el rango contractual de 366 × 24 h observado fue 367 buckets. No se fuerza un rango fuera del contrato.
+- 413/429/500/503 se cubren con el parser/limitador/middleware existentes y fallos inyectados, no con caos real; 500 de categoría borrada sí usa datos reales.
+- No se ejecutó `db:verify`: no hay cambios de esquema, migraciones, índices ni datos históricos que reverificar. No se ejecutaron pruebas live de navegador/Electron ni descarga real en hoja de cálculo; pertenecen a `CSV-02`/`CSV-03`.
+- OpenAPI ya no conserva las descripciones obsoletas «contrato pendiente»/«Propuesta CSV-00»: R6 las actualizó al contrato aceptado; los esquemas y ejemplos no cambiaron.
+- No hay commit, push, despliegue, dependencias nuevas ni secretos. La aceptación de CSV-01 y la secuencia a CSV-02 requieren decisión del responsable.

@@ -187,6 +187,43 @@ export const dashboardSummaryQuery = z
   });
 export type DashboardSummaryQuery = z.infer<typeof dashboardSummaryQuery>;
 
+/**
+ * Entrada CSV de ventas y activos sin movimiento: solo `from`/`to`/`method`,
+ * con la precisión (0–3 decimales), dominio y máximo de 366 días de E2. Es más
+ * estricta que `/sales` y rechaza cursor, paginación, top, arrays y extras.
+ */
+export const salesExportQuery = z
+  .object({
+    from: salesSeriesInstant,
+    to: salesSeriesInstant,
+    method: z.enum(['CASH', 'STRIPE']).optional(),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    const from = parseSalesSeriesInstant(value.from),
+      to = parseSalesSeriesInstant(value.to);
+    if (!Number.isFinite(from) || !Number.isFinite(to)) return;
+    if (from < SALES_SERIES_MIN_INSTANT_MS)
+      context.addIssue({
+        code: 'custom',
+        message: 'El inicio no puede ser anterior al dominio aceptado',
+        path: ['from'],
+      });
+    if (!(from < to))
+      context.addIssue({
+        code: 'custom',
+        message: 'El rango debe ser positivo y exclusivo al final',
+        path: ['to'],
+      });
+    if (to - from > SALES_SERIES_MAX_DAY_RANGE_MS)
+      context.addIssue({
+        code: 'custom',
+        message: 'El rango supera el límite aceptado',
+        path: ['to'],
+      });
+  });
+export type SalesExportQuery = z.infer<typeof salesExportQuery>;
+
 /** E2-09: token cerrado de la definición actual del universo sin movimiento. */
 export const NO_MOVEMENT_UNIVERSE_DEFINITION =
   'product-not-deleted+category-active+category-not-deleted+created-before-asOf+availability-ignored+current-catalog-state';

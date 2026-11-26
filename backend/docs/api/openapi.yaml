@@ -8287,7 +8287,7 @@ paths:
       summary: exportAdministrativeSalesCsv
       operationId: exportAdministrativeSalesCsv
       description: >-
-        PROPUESTA TASK-DA-E2-CSV-00, NO ACEPTADA. Solo ADMINISTRADOR con sesión vigente.
+        Contrato aceptado 2026-11-25; implementación backend TASK-DA-E2-CSV-01. Solo ADMINISTRADOR con sesión vigente.
         Descarga CSV de todas las ventas pagadas del rango UTC semiabierto [from,to) y método
         opcional, no solo la página visible de /api/v1/sales. Una fila por Sale; incluye IDs,
         saleNumber, fechas UTC/local, método, estado actual de la orden, moneda, total bruto en
@@ -8295,14 +8295,14 @@ paths:
         QR, token ni datos del personal. La exportación es más estricta que /api/v1/sales: from/to
         obligatorios, 0–3 decimales, mínimo 2000-01-01T08:00:00.000Z y máximo 366 días absolutos.
         Rechaza cursor, limit, order, page, top, metric, direction, category, timeZone, extras,
-        repetidos, arrays, valores vacíos y body no vacío. Tope propuesto 20 000 ventas; si el
+        repetidos, arrays, valores vacíos y body no vacío. Tope contractual 20 000 ventas; si el
         conjunto completo lo supera, responde 400 EXPORT_LIMIT_EXCEEDED sin CSV parcial. Orden de
-        filas propuesto `soldAtUtc ASC, saleId ASC`, publicado como metadato `rowOrder`; el
+        filas `soldAtUtc ASC, saleId ASC`, publicado como metadato `rowOrder`; el
         markdown del contrato CSV es la fuente normativa de columnas (OpenAPI es informativo).
-        Formato propuesto: UTF-8 con BOM, coma, RFC 4180, CRLF, prefila de metadatos #meta y escape
+        Formato: UTF-8 con BOM, coma, RFC 4180, CRLF, prefila de metadatos #meta y escape
         antifórmulas solo en campos de texto. Cabeceras privadas no-store/no-referrer dentro del
         middleware privado temprano /api/v1/admin/dashboard; sin CSRF nuevo para GET. Contrato
-        pendiente de aceptación explícita antes de CSV-01/02.
+        aceptado 2026-11-25 e implementado en CSV-01.
       security:
         - accessCookie: []
         - productionAccessCookie: []
@@ -8399,7 +8399,7 @@ paths:
       summary: exportAdministrativeSalesSeriesCsv
       operationId: exportAdministrativeSalesSeriesCsv
       description: >-
-        PROPUESTA TASK-DA-E2-CSV-00, NO ACEPTADA. Solo ADMINISTRADOR. Descarga CSV de la misma
+        Contrato aceptado 2026-11-25; implementación backend TASK-DA-E2-CSV-01. Solo ADMINISTRADOR. Descarga CSV de la misma
         serie horaria/diaria que /api/v1/admin/dashboard/sales-series, con los mismos filtros,
         granularidad, método opcional, buckets, totales y límites. Exporta siempre las tres
         métricas (totalCents, ticketCount, unitsSold), sin parámetro metric; incluye buckets
@@ -8410,7 +8410,7 @@ paths:
         truncar. Rechaza cursor, limit, top, metric, category, timeZone, extras, repetidos,
         arrays, valores vacíos y body. Formato UTF-8 con BOM, coma, RFC 4180, CRLF y metadatos
         #meta. Cabeceras privadas no-store/no-referrer; sin CSRF nuevo para GET. Contrato
-        pendiente de aceptación antes de CSV-01/02.
+        aceptado 2026-11-25 e implementado en CSV-01.
       security:
         - accessCookie: []
         - productionAccessCookie: []
@@ -8515,7 +8515,7 @@ paths:
       summary: exportAdministrativeProductRankingCsv
       operationId: exportAdministrativeProductRankingCsv
       description: >-
-        PROPUESTA TASK-DA-E2-CSV-00, NO ACEPTADA. Solo ADMINISTRADOR. Descarga CSV del mismo
+        Contrato aceptado 2026-11-25; implementación backend TASK-DA-E2-CSV-01. Solo ADMINISTRADOR. Descarga CSV del mismo
         ranking top N que /api/v1/admin/dashboard/product-ranking, con los mismos filtros,
         metric/direction obligatorios, top 5/10/20 y method opcional. El archivo contiene hasta
         top filas; los metadatos matchedProductCount/matchedTotals/truncated describen el conjunto
@@ -8525,7 +8525,7 @@ paths:
         category, timeZone, extras, repetidos, arrays, valores vacíos y body. Rango máximo 366
         días. Formato UTF-8 con BOM, coma, RFC 4180, CRLF, metadatos #meta y antifórmulas solo
         en texto. Cabeceras privadas no-store/no-referrer; sin CSRF nuevo para GET. Contrato
-        pendiente de aceptación antes de CSV-01/02.
+        aceptado 2026-11-25 e implementado en CSV-01.
       security:
         - accessCookie: []
         - productionAccessCookie: []
@@ -8651,18 +8651,18 @@ paths:
       summary: exportAdministrativeNoMovementProductsCsv
       operationId: exportAdministrativeNoMovementProductsCsv
       description: >-
-        PROPUESTA TASK-DA-E2-CSV-00, NO ACEPTADA. Solo ADMINISTRADOR. Descarga CSV del conjunto
+        Contrato aceptado 2026-11-25; implementación backend TASK-DA-E2-CSV-01. Solo ADMINISTRADOR. Descarga CSV del conjunto
         completo de productos activos sin movimiento en [from,to) y método opcional, sin cursor,
         sin paginación y sin top N. Reutiliza la definición aceptada: Product.deletedAt IS NULL,
         categoría existente con isActive=true y deletedAt IS NULL, Product.createdAt < to, y
         ausencia de línea de Sale pagada en el rango/método; isAvailable no filtra. Incluye
         productId, name, categoryId, categoryName, isAvailable, createdAtUtc y createdAtLocal.
         Metadatos universe.asOf/definition/includesUnavailable y totalNoMovementProducts. Rango
-        máximo 366 días. Tope propuesto 2000 productos; exceso 400 EXPORT_LIMIT_EXCEEDED sin
+        máximo 366 días. Tope contractual 2000 productos; exceso 400 EXPORT_LIMIT_EXCEEDED sin
         archivo parcial. Rechaza limit, cursor, top, metric, direction, category, extras,
         repetidos, arrays, valores vacíos y body. Formato UTF-8 con BOM, coma, RFC 4180, CRLF,
         metadatos #meta y antifórmulas solo en texto. Cabeceras privadas no-store/no-referrer;
-        sin CSRF nuevo para GET. Contrato pendiente de aceptación antes de CSV-01/02.
+        sin CSRF nuevo para GET. Contrato aceptado 2026-11-25 e implementado en CSV-01.
       security:
         - accessCookie: []
         - productionAccessCookie: []
@@ -8758,19 +8758,19 @@ paths:
       summary: exportAdministrativeCategoryParticipationCsv
       operationId: exportAdministrativeCategoryParticipationCsv
       description: >-
-        PROPUESTA TASK-DA-E2-CSV-00, NO ACEPTADA. Solo ADMINISTRADOR. Descarga CSV de la misma
+        Contrato aceptado 2026-11-25; implementación backend TASK-DA-E2-CSV-01. Solo ADMINISTRADOR. Descarga CSV de la misma
         participación por categoría vigente que /api/v1/admin/dashboard/category-participation,
         con metric obligatoria y method opcional, sin top N, cursor ni paginación. Incluye
         categoryId, name, isActive, unitsSold, totalCents y sharePercent (dos decimales, half-up,
         calculado en backend, sin normalizar a 100.00). Se incluyen categorías inactivas con
         movimiento para conciliar; una categoría borrada o línea sin categoría resoluble produce
         500 INTERNAL_ERROR saneado, no una categoría ficticia. Metadatos denominator y
-        totalCategories. Rango máximo 366 días. Tope propuesto 1000 categorías; exceso 400
+        totalCategories. Rango máximo 366 días. Tope contractual 1000 categorías; exceso 400
         EXPORT_LIMIT_EXCEEDED sin archivo parcial. Rechaza top, direction, limit, cursor,
         category, categoryId, timeZone, extras, repetidos, arrays, valores vacíos y body. Formato
         UTF-8 con BOM, coma, RFC 4180, CRLF, metadatos #meta y antifórmulas solo en texto.
-        Cabeceras privadas no-store/no-referrer; sin CSRF nuevo para GET. Contrato pendiente de
-        aceptación antes de CSV-01/02.
+        Cabeceras privadas no-store/no-referrer; sin CSRF nuevo para GET. Contrato aceptado
+        2026-11-25 e implementado en CSV-01.
       security:
         - accessCookie: []
         - productionAccessCookie: []
@@ -8886,7 +8886,7 @@ tags:
   - name: CustomerRegistration
     description: Alta de cliente solo con token de registro de ticket pagado; no registro abierto.
   - name: DashboardAdmin
-    description: Propuesta DA-001 para Inicio administrativo; contrato pendiente de aceptación.
+    description: Capacidades administrativas de Inicio DA-001 (E1/E2) y exportaciones CSV con contrato aceptado el 2026-11-25; la implementación y la verificación independiente se registran fuera de esta descripción.
 components:
   responses:
     ForbiddenOrigin:
@@ -9549,7 +9549,7 @@ components:
       format: date-time
       pattern: ^[2-9]\d{3}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$
       description: >-
-        Propuesta CSV-00: fecha UTC real terminada en Z, años 2000–9999, 0–3 decimales y
+        Contrato CSV aceptado el 2026-11-25: fecha UTC real terminada en Z, años 2000–9999, 0–3 decimales y
         segundos 00–59. Validar además from>=2000-01-01T08:00:00.000Z, to>from y rango máximo;
         no normalizar ni truncar entradas inválidas. Las fracciones de 4–6 decimales se rechazan.
       example: '2026-11-24T08:00:00.000Z'
