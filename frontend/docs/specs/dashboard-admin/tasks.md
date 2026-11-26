@@ -327,7 +327,7 @@ Las épicas sustituidas se conservan como trazabilidad, no como tareas ejecutabl
 - Verificación: V-DOC + V-FE + V-VIS; MSW de varias páginas, vacío/altas/método/errores/429/respuestas antiguas, V-REAL en E2-11.
 - Revisor: frontend independiente con datos/catálogo y aceptación visual humana, por confirmar antes de ejecución.
 - Commit esperado (no autorizado): `feat(dashboard-admin): present E2 no-movement products`.
-- Estado propio E2-10: **implementado, verificado y revisado sin bloqueantes técnicos; V-VIS humana pendiente; commit pendiente de autorización**. Evidencia en [validation.md](./validation.md): 622/622 unit/componente, 78/78 E2E, parser/cursor/DTO, etiqueta de rango/método, paginación Cargar más, estados/fallo parcial/aborto, tabla accesible; capturas 1280/768/390 generadas. No cierra E2/CSV.
+- Estado propio E2-10: **implementado, verificado y revisado sin bloqueantes técnicos; aceptación visual con ajuste solicitado; commit pendiente de autorización**. Evidencia en [validation.md](./validation.md): 622/622 unit/componente, 78/78 E2E, parser/cursor/DTO, etiqueta de rango/método, paginación Cargar más, estados/fallo parcial/aborto, tabla accesible; capturas 1280/768/390 generadas. El responsable validó el comportamiento y pidió sustituir el código técnico de «Definición del universo» por texto intuitivo; ajuste aplicado y re-verificado. No cierra E2/CSV.
 
 ### TASK-DA-E2-11 — Aceptación real de activos sin movimiento
 

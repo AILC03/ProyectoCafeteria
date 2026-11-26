@@ -75,7 +75,8 @@ describe('no-movement products panel', () => {
     const altas = table.querySelectorAll('time');
     expect(altas[1]).toHaveAttribute('dateTime', '2026-11-20T17:30:00.123456Z');
     expect(screen.getByText(/Corte del universo:/)).toBeInTheDocument();
-    expect(screen.getByText(/createdAt < to/)).toBeInTheDocument();
+    expect(screen.getByText(/no dados de baja/)).toBeInTheDocument();
+    expect(screen.queryByText(/createdAt < to/)).not.toBeInTheDocument();
     expect(screen.getByText(/La lista incluye productos agotados/)).toBeInTheDocument();
     expect(screen.getByText(/Total del conjunto sin movimiento/)).toHaveTextContent(
       /Total del conjunto sin movimiento en este rango y método: 3\. Mostrando 3 de 3\./,

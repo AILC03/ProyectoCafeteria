@@ -1052,7 +1052,7 @@ Estado actual: **implementado, verificado y revisado sin bloqueantes técnicos; 
 ### V-VIS y pendientes
 
 - Capturas 1280/768/390 en `frontend/unified/test-results/dashboard-no-movement-*` (ignorado); en 390/768 scroll horizontal interno.
-- **Aceptación visual humana pendiente**; se intentará cubrir en E2-11. No se hereda de E1/ranking.
+- El responsable revisó el panel el 2026-11-25: **comportamiento correcto** (lista, Cargar más, disponibilidad, teclado) y pidió **quitar el código técnico de «Definición del universo»** para hacerlo más intuitivo. Se sustituyó por texto legible («productos que existen, no dados de baja, categoría activa, creados antes del corte; agotados incluidos») y se eliminó la etiqueta/código crudo; pruebas dirigidas 16/16, E2E 6/6, `typecheck`/`lint` correctos. La nueva presentación queda pendiente de una confirmación visual final del responsable.
 - Residuales: deduplicación con catálogo mutable conserva primer dato; cambio de filtros durante Cargar más no tiene prueba dedicada; guarda no assertea explícitamente cero GET de no-movement en roles negativos.
 - Sin integración real; corresponde a E2-11. Commit pendiente de autorización.
 

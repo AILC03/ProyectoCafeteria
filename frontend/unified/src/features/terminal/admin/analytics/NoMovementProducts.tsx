@@ -73,13 +73,12 @@ function NoMovementUniverseNote({ universe }: { universe: NoMovementUniverse }) 
     <div className="dashboard-no-movement-universe">
       <p>
         <strong>Corte del universo:</strong>{' '}
-        <time dateTime={universe.asOf}>{formatLocalInstant(universe.asOf)}</time>. Incluye productos
-        no borrados con categoría activa y no borrada, creados antes del corte
-        (<code>createdAt &lt; to</code>). La disponibilidad no filtra el universo: se muestra por
-        producto.
+        <time dateTime={universe.asOf}>{formatLocalInstant(universe.asOf)}</time>.
       </p>
-      <p className="dashboard-no-movement-definition">
-        <strong>Definición del universo:</strong> <code>{universe.definition}</code>
+      <p>
+        Incluye productos que existen (no dados de baja), pertenecen a una categoría activa y
+        fueron creados antes de ese corte. Los productos agotados también aparecen: la
+        disponibilidad es un dato informativo, no un filtro.
       </p>
       <p className="dashboard-no-movement-note">
         {universe.includesUnavailable

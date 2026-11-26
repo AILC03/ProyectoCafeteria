@@ -135,12 +135,8 @@ test.describe('TASK-DA-E2-10 no-movement products panel', () => {
     await expect(table.getByText('Activo 01')).toBeVisible();
     await expect(table.getByText('No disponible').first()).toBeVisible();
     await expect(page.getByText(/Corte del universo:/)).toBeVisible();
-    await expect(page.getByText(/createdAt < to/)).toBeVisible();
-    await expect(
-      page.getByText(
-        'product-not-deleted+category-active+category-not-deleted+created-before-asOf+availability-ignored+current-catalog-state',
-      ),
-    ).toBeVisible();
+    await expect(page.getByText(/no dados de baja/)).toBeVisible();
+    await expect(page.getByText(/createdAt < to/)).toHaveCount(0);
     const panel = page.locator('.dashboard-no-movement');
     await expect(panel.getByText(/Total del conjunto sin movimiento/)).toContainText('25');
     await expect(panel.getByText(/Periodo consultado:/)).toContainText(
