@@ -58,7 +58,7 @@ Para cliente se proponen 390×844 y 1280×800; comprobar además reflow a 320 px
 | --- | --- | --- | --- | --- | --- |
 | REF-T | Lote terminal (HYB-03) | `bienvenida`, `acceso`, `pos` (`PosHeader` + `OrderingWorkspace`) | Tema elegido: `theme-nordic` (*Nordic Mint*); viewports: `1024×768`, `1280×800`; fuente `c88d01b` / captura `5595892` en `evidence/HYB-03/`; actores sintéticos `visitante` y `CAJERO` | Aprobado explícitamente por el responsable (2026-11-25) | Aprobado |
 | ADAPT-LOGIN-STAFF | Adaptación previa (HYB-03 / HYB-06) | `/terminal/acceso` (`TerminalAuthPage.tsx`) | Tema `theme-nordic`; viewports `1024×768`, `1280×800`; formulario único usuario (hasta 24 chars, `isValidStaffUsername`) y contraseña (`8–24` chars, `isValidStaffPassword`) en `.kiosk-chassis`, estados `loading`, `recoverable-error`, `authenticated` y `role="alert"` | Aprobado explícitamente por el responsable (2026-11-25) | Aprobado |
-| REF-C | Lote cliente (HYB-04) | acceso, menú/cabecera/tarjetas, personalización | Por capturar en HYB-02/04; fuente inicial `c88d01b` | No solicitada | Pendiente |
+| REF-C | Lote cliente (HYB-04) | `acceso` (`AuthPage.tsx`), `menu` (`Header.tsx` + `MenuPage.tsx` + `ProductCard.tsx`), `personalizacion` (`ProductModal.tsx`) | Paleta única café/crema (`#fcf9f6`, `#0f0301`, `#974818`); viewports `390×844`, `1280×800`; fuente `c88d01b` / captura `6f7ce51` en `evidence/HYB-04/`; actores sintéticos `visitante` y `CLIENTE` | Aprobado explícitamente por el responsable (2026-11-26) | Aprobado |
 | ADAPT-* | Adaptación previa (resto de bloques) | caja/cobro/ticket, reimpresión, cuenta, registro y transversales | Por proponer por bloque; nunca sustituir fuente original por UI nueva | No solicitada | Pendiente |
 
 ## Lote visual de terminal — `REF-T` (HYB-03, Aprobado 2026-11-25)
@@ -105,4 +105,34 @@ Para cliente se proponen 390×844 y 1280×800; comprobar además reflow a 320 px
     - `authenticated`: tarjeta resumen dentro de `.kiosk-chassis` con destino real según rol y acción segura de cambio de actor (`replaceActor`).
 - **Estado:** **Aprobado explícitamente por el responsable (2026-11-25)** como entrada para HYB-06 (no aprueba el resultado implementado hasta cerrar HYB-06).
 
-**Decisiones abiertas:** tema y viewports de cliente (`HYB-04`); disponibilidad/licencia y empaquetado local de tipografías `Outfit`/`Inter` antes de cerrar `HYB-05…HYB-08`.
+## Lote visual de cliente — `REF-C` (HYB-04, Aprobado 2026-11-26)
+
+- **Paleta única confirmada (sin selector de tema):** esquema café/crema original extraído de [`frontend/clientes/tailwind.config.js`](file:///c:/Trabajo/Antigravity/ProyectoCafeteria/frontend/clientes/tailwind.config.js) y [`frontend/clientes/src/index.css`](file:///c:/Trabajo/Antigravity/ProyectoCafeteria/frontend/clientes/src/index.css); viewports confirmados **`390×844`** (móvil) y **`1280×800`** (escritorio).
+- **Especificación de captura:** [`hyb04-client-batch.visual.spec.ts`](file:///c:/Trabajo/Antigravity/ProyectoCafeteria/frontend/unified/e2e/visual/hyb04-client-batch.visual.spec.ts) → evidencias en `frontend/docs/specs/frontend-visual-migration/evidence/HYB-04/<surface>/<viewport>/` (`acceso`, `menu`, `personalizacion`).
+- **Estado:** **Aprobado explícitamente por el responsable (2026-11-26)** como lote de referencia comparable para `HYB-18…HYB-20` (no aprueba automáticamente cuenta, registro por ticket ni copia de fuentes/activos externos sin verificar licencia y empaquetado local).
+
+### Tokens de diseño (`REF-C`, extraídos de `frontend/clientes/tailwind.config.js` y `src/index.css`)
+
+| Rol | Token / Selector | Valor exacto |
+| --- | --- | --- |
+| Fondo principal / superficie | `surface`, `background`, `surface-bright` (`body`) | `#fcf9f6` |
+| Superficies elevadas / tarjetas | `surface-container-lowest`, `surface-container-low`, `surface-container`, `surface-container-high`, `surface-container-highest` | `#ffffff`, `#f6f3f0`, `#f0edea`, `#eae8e5`, `#e5e2df` |
+| Primario y contenedores oscuros | `primary`, `primary-container`, `on-primary`, `on-primary-container` | `#0f0301`, `#2d1a12`, `#ffffff`, `#9e8074` |
+| Secundario / acento cálido | `secondary`, `secondary-container`, `on-secondary`, `on-secondary-container` | `#974818`, `#fc9761`, `#ffffff`, `#742e00` |
+| Terciario | `tertiary`, `tertiary-container`, `on-tertiary` | `#080503`, `#221e1a`, `#ffffff` |
+| Textos base | `on-surface` / `on-background`, `on-surface-variant` | `#1b1c1a`, `#4f4440` |
+| Bordes y divisores | `outline`, `outline-variant` | `#817470`, `#d3c3be` |
+| Semánticos de error | `error`, `error-container`, `on-error`, `on-error-container` | `#ba1a1a`, `#ffdad6`, `#ffffff`, `#93000a` |
+| Radios (`tailwind.config.js`) | `DEFAULT`, `lg`, `xl`, `full` | `1rem` (`16px`), `2rem` (`32px`), `3rem` (`48px`), `9999px` |
+| Espaciados clave | `gutter`, `space-xs`, `space-sm`, `space-md`, `space-lg`, `space-xl` | `1.5rem`, `0.5rem`, `0.75rem`, `1.25rem`, `2rem`, `3rem` |
+
+### Tipografía, comportamiento responsive y resets excluidos (`REF-C`)
+
+- **Tipografía e iconos:** `'Plus Jakarta Sans', sans-serif` (pesos `300..800`) y `'Material Symbols Outlined'` (declarados vía Google Fonts en [`frontend/clientes/index.html`](file:///c:/Trabajo/Antigravity/ProyectoCafeteria/frontend/clientes/index.html)). **Licencia y carga efectiva pendientes de verificación** durante la ejecución de captura HYB-04 antes de empaquetar fuentes o iconos locales.
+- **Superficies y mapeo del lote (`sin selección de rol ni registro público inline`):**
+  1. `acceso` (`AuthPage.tsx` → `/cliente/iniciar-sesion`): mantiene estética café/crema para el acceso por identificador (teléfono/número de cliente) + PIN de 4 dígitos y entrada como invitado; **excluye** cualquier selección de rol y **no** incluye pestaña inline de registro público con ticket (el registro con ticket en `unified` vive en `/cliente/registro-ticket` bajo su propia adaptación previa HYB-23).
+  2. `menu` (`Header.tsx` + `MenuPage.tsx` + `ProductCard.tsx` → `/cliente/menu`): cabecera superior fija (`h-16`, `max-w-[1280px]`) y columna de catálogo centrada con `max-w-md` (`mx-auto`), barra horizontal de categorías, rejilla de 2 columnas (`grid-cols-2`) y tarjetas con estados disponible, sin imagen + nombre largo y agotado (`Agotado` / `No disponible`).
+  3. `personalizacion` (`ProductModal.tsx` → `ProductCustomizationDialog.tsx`): patrón de **overlay bottom-sheet en móvil** (`items-end`, `rounded-t-3xl`, pull-tab visible en `< sm`) y **modal centrado en escritorio** (`sm:items-center`, `sm:rounded-3xl`, `max-w-lg`), con grupos de opciones obligatorios (`minSelections: 1, maxSelections: 1`) y opcionales (`minSelections: 0, maxSelections: 2`).
+- **Resets y restricciones heredadas excluidas del destino unificado:** `select-none` global en `body` / contenedores (`index.html`, `MenuPage.tsx`), `maximum-scale=1.0, user-scalable=no` en `<meta name="viewport">` (`index.html`), y `focus:outline-none` sin anillo de foco accesible en inputs (`AuthPage.tsx`, reemplazado por foco visible `:focus-visible` en `unified`).
+
+**Decisiones abiertas:** verificación de licencia/empaquetado local de `Outfit`/`Inter` antes de cerrar `HYB-05…HYB-08` y de `Plus Jakarta Sans`/`Material Symbols Outlined` (o SVG locales equivalentes) antes de cerrar `HYB-18…HYB-20`.

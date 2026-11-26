@@ -67,6 +67,7 @@ export type SyntheticProduct = {
 export const SYNTHETIC_CATEGORIES: SyntheticCategory[] = [
   { id: 'cat-1', name: 'Café Caliente', slug: 'cafe-caliente', sortOrder: 1, active: true },
   { id: 'cat-2', name: 'Bebidas Frías', slug: 'bebidas-frias', sortOrder: 2, active: true },
+  { id: 'cat-3', name: 'Panadería', slug: 'panaderia', sortOrder: 3, active: true },
 ];
 
 export const SYNTHETIC_PRODUCTS: SyntheticProduct[] = [
@@ -78,7 +79,7 @@ export const SYNTHETIC_PRODUCTS: SyntheticProduct[] = [
     priceCents: 4500,
     imageUrl: null,
     available: true,
-    hasOptions: false,
+    hasOptions: true,
   },
   {
     id: 'prod-2',
@@ -89,6 +90,79 @@ export const SYNTHETIC_PRODUCTS: SyntheticProduct[] = [
     imageUrl: null,
     available: true,
     hasOptions: false,
+  },
+  {
+    id: 'prod-3',
+    categoryId: 'cat-1',
+    name: 'Flat White de Especialidad Tostado Medio Origen Único Chiapas',
+    description: 'Doble ristretto con microespuma sedosa sin imagen asignada.',
+    priceCents: 7200,
+    imageUrl: null,
+    available: true,
+    hasOptions: true,
+  },
+  {
+    id: 'prod-4',
+    categoryId: 'cat-1',
+    name: 'Espresso Tónico de Temporada',
+    description: 'Edición limitada actualmente agotada.',
+    priceCents: 6800,
+    imageUrl: null,
+    available: false,
+    hasOptions: false,
+  },
+  {
+    id: 'prod-5',
+    categoryId: 'cat-3',
+    name: 'Croissant de Mantequilla',
+    description: 'Hojaldre horneado cada mañana.',
+    priceCents: 5200,
+    imageUrl: null,
+    available: true,
+    hasOptions: false,
+  },
+];
+
+export type SyntheticOptionValue = {
+  id: string;
+  name: string;
+  surchargeCents: string;
+  isAvailable: boolean;
+};
+
+export type SyntheticOptionGroup = {
+  id: string;
+  name: string;
+  pricingScope: 'GLOBAL' | 'PER_PRODUCT';
+  minSelections: number;
+  maxSelections: number;
+  values: SyntheticOptionValue[];
+};
+
+export const SYNTHETIC_OPTION_GROUPS: SyntheticOptionGroup[] = [
+  {
+    id: 'opt-grp-size',
+    name: 'Tamaño',
+    pricingScope: 'GLOBAL',
+    minSelections: 1,
+    maxSelections: 1,
+    values: [
+      { id: 'opt-val-chico', name: 'Chico (8 oz)', surchargeCents: '0', isAvailable: true },
+      { id: 'opt-val-mediano', name: 'Mediano (12 oz)', surchargeCents: '1000', isAvailable: true },
+      { id: 'opt-val-grande', name: 'Grande (16 oz)', surchargeCents: '1800', isAvailable: true },
+    ],
+  },
+  {
+    id: 'opt-grp-extras',
+    name: 'Extras opcionales',
+    pricingScope: 'GLOBAL',
+    minSelections: 0,
+    maxSelections: 2,
+    values: [
+      { id: 'opt-val-shot', name: 'Shot extra de espresso', surchargeCents: '1500', isAvailable: true },
+      { id: 'opt-val-vainilla', name: 'Jarabe de vainilla', surchargeCents: '1000', isAvailable: true },
+      { id: 'opt-val-avena', name: 'Leche de avena', surchargeCents: '1200', isAvailable: true },
+    ],
   },
 ];
 
@@ -195,8 +269,44 @@ export async function installApiMocks(
       if (pathname === '/api/v1/products' && method === 'GET') {
         handledRequests.push({ method, pathname });
         await jsonResponse(route, 200, {
-          data: products,
+          data: products.map((product) => ({
+            ...product,
+            basePriceCents: String(product.priceCents),
+            isAvailable: product.available,
+          })),
           page: { limit: 100, nextCursor: null },
+        });
+        return;
+      }
+
+      const productOptionsMatch = pathname.match(/^\/api\/v1\/products\/([^/]+)\/options$/);
+      if (productOptionsMatch && method === 'GET') {
+        handledRequests.push({ method, pathname });
+        const product = products.find((p) => p.id === productOptionsMatch[1]);
+        if (!product) {
+          await jsonResponse(route, 404, { code: 'NOT_FOUND', message: 'Producto no encontrado' });
+          return;
+        }
+        await jsonResponse(route, 200, {
+          data: product.hasOptions ? SYNTHETIC_OPTION_GROUPS : [],
+        });
+        return;
+      }
+
+      const productDetailMatch = pathname.match(/^\/api\/v1\/products\/([^/]+)$/);
+      if (productDetailMatch && method === 'GET') {
+        handledRequests.push({ method, pathname });
+        const product = products.find((p) => p.id === productDetailMatch[1]);
+        if (!product) {
+          await jsonResponse(route, 404, { code: 'NOT_FOUND', message: 'Producto no encontrado' });
+          return;
+        }
+        await jsonResponse(route, 200, {
+          data: {
+            ...product,
+            basePriceCents: String(product.priceCents),
+            isAvailable: product.available,
+          },
         });
         return;
       }
@@ -259,6 +369,12 @@ export async function installApiMocks(
           await jsonResponse(route, 401, { message: 'No autenticado' });
           return;
         }
+        await jsonResponse(route, 200, { data: [] });
+        return;
+      }
+
+      if (pathname === '/api/v1/customers/me/orders' && method === 'GET') {
+        handledRequests.push({ method, pathname });
         await jsonResponse(route, 200, { data: [] });
         return;
       }

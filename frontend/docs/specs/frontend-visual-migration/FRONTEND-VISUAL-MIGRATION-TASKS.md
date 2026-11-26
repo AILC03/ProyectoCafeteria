@@ -55,7 +55,7 @@ Cada task cerrada incluye fila STATUS con evidencia real, decisiones, revisores,
   - Alcance: bienvenida, acceso original, POS/cabecera/catálogo/panel; hex/roles, fuentes, espaciado y wireframes fieles. Adaptar login a usuario/contraseña mediante propuesta, no restaurar ID/PIN staff.
   - Hecho cuando: responsable aprueba referencias y adaptación identificadas con rol/estado/viewports y recursos verificables; revisión visual confirma que el lote es comparable. No aprueba caja/cobro ni pantallas no mostradas.
 
-- [ ] **HYB-04 — Aprobar lote visual de cliente** (H).
+- [x] **HYB-04 — Aprobar lote visual de cliente** (H).
   - Requisitos: RV-01, RV-02, RV-07, CA-01, CA-03, CA-08, CA-10.
   - Dependencias: HYB-01, HYB-02; tema elegido expresamente.
   - Archivos: REFERENCES, escenarios/fixtures y evidence/HYB-04.
