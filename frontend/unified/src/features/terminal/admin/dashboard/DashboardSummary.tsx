@@ -37,6 +37,8 @@ import { CategoryParticipation } from '../analytics/CategoryParticipation';
 import { NoMovementProducts } from '../analytics/NoMovementProducts';
 import { ProductRanking } from '../analytics/ProductRanking';
 import { SalesSeries } from '../analytics/SalesSeries';
+import { CsvDownloadButton } from '../downloads/CsvDownloadButton';
+import { buildSalesCsvRequest } from '../downloads/csvDownload';
 
 type SummaryMethod = 'ALL' | DashboardMethod;
 
@@ -256,6 +258,12 @@ export function DashboardSummary({ now = () => new Date() }: { now?: () => Date 
     }
   }
 
+  const salesCsvRequest = buildSalesCsvRequest({
+    from: period.from,
+    to: period.to,
+    method,
+  });
+
   return (
     <section aria-labelledby="admin-dashboard-title" className="admin-dashboard">
       <div className="dashboard-heading">
@@ -462,7 +470,19 @@ export function DashboardSummary({ now = () => new Date() }: { now?: () => Date 
         </section>
 
         <section aria-labelledby="dashboard-sales-title" className="dashboard-operational-card">
-          <h3 id="dashboard-sales-title">Últimas ventas</h3>
+          <div className="dashboard-sales-heading">
+            <h3 id="dashboard-sales-title">Últimas ventas</h3>
+            <CsvDownloadButton
+              request={salesCsvRequest}
+              buttonLabel="Descargar ventas (CSV)"
+              panelLabel="las ventas del periodo"
+              formatError={formatSalesError}
+            />
+            <p className="dashboard-download-hint">
+              La exportación CSV incluye todas las ventas filtradas del periodo, no solo las 5
+              visibles.
+            </p>
+          </div>
           <p className="dashboard-updated">Máximo 5 ventas del periodo y método seleccionados.</p>
           {salesLoading && <p role="status">Consultando últimas ventas…</p>}
           {salesError !== null && <p role="alert">{salesError}</p>}

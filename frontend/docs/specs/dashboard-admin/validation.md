@@ -1917,3 +1917,105 @@ Estas correcciones no constituyen verificación independiente ni aceptación: la
 - No se ejecutó `db:verify`: no hay cambios de esquema, migraciones, índices ni datos históricos que reverificar. No se ejecutaron pruebas live de navegador/Electron ni descarga real en hoja de cálculo; pertenecen a `CSV-02`/`CSV-03`.
 - OpenAPI ya no conserva las descripciones obsoletas «contrato pendiente»/«Propuesta CSV-00»: R6 las actualizó al contrato aceptado; los esquemas y ejemplos no cambiaron.
 - No hay commit, push, despliegue, dependencias nuevas ni secretos. La aceptación de CSV-01 y la secuencia a CSV-02 requieren decisión del responsable.
+
+## TASK-DA-E2-CSV-02 — Descarga desde ventas y analítica
+
+Estado: **CORRECCIONES DE REVISIÓN APLICADAS Y VERIFICADAS LOCALMENTE POR EL EJECUTOR; PENDIENTE DE VERIFICACIÓN INDEPENDIENTE, REVISIÓN Y ACEPTACIÓN; NO CERRADA; SIN COMMIT**. Fecha 2026-11-25. Correcciones B-01, B-03/D36 y R-01…R-07 incorporadas. El responsable decidió **mantener el gestor de sesión actual** (la descarga delega el 401 en `SessionManager`, sin refresh ni reintento) como **limitación aceptada**, y **diferir la prueba Electron real y la revisión V-VIS/teclado manual a CSV-03**. No se inicia CSV-03 ni se declara E2 cerrada: el cierre único sigue siendo **CSV-03**. No se modificaron contrato, backend, DTOs, dependencias ni autenticación/sesión.
+
+### Alcance implementado
+
+- Extensión acotada del cliente HTTP existente (`apiFetchFile`) para GET autenticados: reutiliza `credentials: include`, `same-origin`/proxy, lectura de Problem Details y eventos de sesión de `apiFetch`; no crea un segundo cliente ni un gestor de refresh.
+- Cinco botones de descarga integrados en sus paneles, enviando exactamente los filtros visibles:
+  - ventas: `from`, `to`, `method` (omitido en «Todos»), sin cursor/página.
+  - series: `from`, `to`, `granularity` efectiva del panel (incluida la caída a `day` en rangos >31 días) y `method`.
+  - ranking: `from`, `to`, `metric`, `direction`, `top` y `method`.
+  - activos sin movimiento: `from`, `to`, `method`; nunca `limit`, `cursor` ni `top`.
+  - categorías: `from`, `to`, `metric` y `method`.
+- Nombre de archivo desde `Content-Disposition` (`filename`/`filename*`), saneado a ASCII, sin rutas, sin CR/LF, con extensión `.csv` acotada y longitud máxima. Si la cabecera falta o no es utilizable, se genera un nombre determinista a partir de la capacidad y los filtros con el mismo patrón del backend.
+- Distinción de respuesta: solo `text/csv` se entrega como archivo; un `application/problem+json` (o cualquier 200 que no sea CSV) lanza error y **nunca** se guarda como CSV. Los códigos `EXPORT_LIMIT_EXCEEDED`, `UNEXPECTED_CONTENT_TYPE` y 413 muestran mensajes específicos; 401 delega en el gestor de sesión sin reintento de descarga; 403/429 usan los mensajes existentes del panel.
+- Estado ocupado por botón con `aria-busy` y `aria-disabled`, anuncio `aria-live` de descarga/éxito y `role="alert"` para error. Un latch síncrono más `aria-disabled` evita dobles descargas; el botón permanece enfocable para teclado. Durante la descarga existe una acción «Cancelar descarga» que aborta el `AbortController`, no guarda archivo, anuncia «Descarga cancelada; no se guardó ningún archivo.» en la región de estado y permite reintentar. El cambio de filtros o el desmontaje aborta la solicitud en vuelo y descarta el resultado.
+- La región `role="status"`/`aria-live="polite"` está siempre montada (vacía en reposo); solo cambia su texto. Los errores usan un `role="alert"` separado y la región de estado queda vacía en ese caso.
+- El archivo se entrega mediante `Blob` + object URL temporal; la URL se libera en el siguiente macrotask (`setTimeout(0)`) para no revocarla antes de que el navegador consuma el clic, con liberación garantizada exactamente una vez. No hay `localStorage`, `sessionStorage`, archivos temporales persistentes ni token en URL (`token`/`access_token`/`jwt`). No se reconstruyen reportes ni se concatenan páginas en el navegador.
+- Junto al botón de ventas se aclara que la exportación CSV incluye **todas** las ventas filtradas del periodo, no solo las 5 visibles.
+- Sin cambios de composición general: los controles siguen el lenguaje visual existente y se colocan bajo el encabezado de cada panel; foco visible, teclado y textos no dependientes solo del color.
+
+### Archivos
+
+- `frontend/unified/src/shared/api/client.ts`: `apiFetchFile` + tipo `ApiFileResponse` (extensión acotada, sin cliente nuevo).
+- `frontend/unified/src/features/terminal/admin/downloads/csvDownload.ts` (nuevo): solicitudes por capacidad, nombre/fallback, object URL y descarga.
+- `frontend/unified/src/features/terminal/admin/downloads/CsvDownloadButton.tsx` (nuevo): botón accesible, busy, aborto, anuncios y errores.
+- `frontend/unified/src/features/terminal/admin/downloads/csvDownload.unit.test.ts` (nuevo).
+- `frontend/unified/src/features/terminal/admin/downloads/CsvDownloadButton.component.test.tsx` (nuevo).
+- `frontend/unified/src/shared/api/client.file.unit.test.ts` (nuevo).
+- `frontend/unified/src/features/terminal/admin/analytics/{SalesSeries,ProductRanking,NoMovementProducts,CategoryParticipation}.tsx`: botón de descarga por panel.
+- `frontend/unified/src/features/terminal/admin/analytics/noMovementApi.ts`: query de exportación sin `limit`/`cursor`/`top` y rechazo explícito de esas claves si llegan.
+- `frontend/unified/src/features/terminal/admin/dashboard/DashboardSummary.tsx`: descarga de ventas con periodo/método vigentes.
+- `frontend/unified/src/styles/base.css`: estilos acotados de fila de descarga y estado.
+- `frontend/unified/e2e/dashboard-csv-download.spec.ts` (nuevo).
+
+### Evidencia por criterio
+
+| Criterio / RF | Evidencia ejecutada |
+| --- | --- |
+| RF-21 ventas desde el panel | `buildSalesCsvRequest` envía `from`/`to` y `method` solo si no es «Todos»; E2E cambia el método a CASH y comprueba `method=CASH` en la solicitud; no envía `cursor`, `limit` ni `page`. |
+| RF-22 series/ranking/sin movimiento/categorías | Unitarias verifican granularidad/método de series, métrica/dirección/top de ranking, ausencia de `limit`/`cursor` en sin movimiento y métrica/método de categorías. E2E cambia granularidad a día, métrica de ranking a importe con top 10 y métrica de categorías a importe, y comprueba los parámetros reales interceptados. |
+| RF-23 autenticación y sin token en URL | `apiFetchFile` usa `credentials: include`, mismo origen/proxy y cabecera `Accept`; E2E comprueba que ninguna consulta CSV contiene `token=`, `access_token=` ni `jwt=`; no se escribe en storage y no hay mutaciones. |
+| R-21 text/csv y 200 | `apiFetchFile` solo devuelve `Blob` para `text/csv; charset=utf-8`; unitarias cubren éxito con cabecera y rechazo de 200 `application/json`/`text/html`. |
+| R-04/D33 nombre de archivo | Unitarias cubren `filename` entre comillas, sin comillas, `filename*` RFC 5987, fallback sin cabecera, saneado de ruta/CR/LF y extensión forzada; E2E usa el nombre del `Content-Disposition` simulado. |
+| R-06 export sin movimiento estricto | `buildNoMovementExportQuery` rechaza explícitamente claves fuera de `from`/`to`/`method` (incluidas `limit`, `cursor` y `top`) en vez de ignorarlas; prueba unitaria dirigida. |
+| R-12 Problem Details y 401 | Unitarias: 401 publica `session-expired` una sola vez y no reintenta; 403 PIN publica el evento; 403/429 se propagan. Componente: 400 `EXPORT_LIMIT_EXCEEDED` no crea object URL ni clic, muestra mensaje saneado y deja vacía la región de estado. E2E: 429 no dispara descarga y muestra «Demasiadas consultas». |
+| Aborto, cancelación y liberación (B-01/R-02, B-03/D36, R-01) | Componente con promesa diferida controlada por el test: el cambio de filtros aborta la solicitud en vuelo (observado por `request.signal`), no guarda el primer archivo y la siguiente acción usa los filtros nuevos; el botón «Cancelar descarga» aborta la señal, no guarda archivo, anuncia la cancelación y permite reintentar. Sin `delay`/`setTimeout` como sincronización ni `toBeEnabled()` sobre `aria-disabled`. Unitaria: `saveCsvToBrowser` hace un solo clic y libera el object URL en el siguiente macrotask. E2E dirigida: cancelación por teclado, sin evento de descarga y reintento correcto. |
+| R-08/D36 accesibilidad | Botón con nombre explícito, foco visible por el estilo global, activación por teclado en E2E, región `role="status"`/`aria-live` persistente, `aria-busy`, `aria-disabled` y `role="alert"` para error; cancelación accesible por teclado; axe WCAG 2.1 A/AA sin violaciones en la vista administrativa simulada. No se añadió color como único indicador. |
+| Descarga única | Componente: dos activaciones durante la descarga producen una sola solicitud/archivo. E2E: cada botón produce un único evento de descarga. |
+
+### Comandos ejecutados y resultados reales
+
+Ejecutados desde `frontend/unified/` salvo el último, el 2026-11-25:
+
+| Comando | Resultado |
+| --- | --- |
+| `npm.cmd run lint` | Correcto, sin avisos. |
+| `npm.cmd run typecheck` | Correcto. |
+| `npm.cmd run test` | **749/749 pruebas en 47 archivos**, ejecutado **dos veces** con el mismo resultado (28.27 s y 28.24 s). Incluye la prueba de rechazo de claves extra y la de cancelación. |
+| `npm.cmd run test -- src/features/terminal/admin/downloads/CsvDownloadButton.component.test.tsx` | **4/4 en cinco corridas consecutivas** (3.23–3.32 s), sin fallos intermitentes. |
+| `npm.cmd run test -- src/features/terminal/admin/downloads/CsvDownloadButton.component.test.tsx src/features/terminal/admin/downloads/csvDownload.unit.test.ts` | **21/21** dirigidas. |
+| `npm.cmd run test:e2e -- e2e/dashboard-csv-download.spec.ts` | **3/3** dirigidas (incluye cancelación por teclado). |
+| `npm.cmd run test:e2e` | **92/92 en Chromium**, sin regresiones; incluye Electron y axe existentes. |
+| `npm.cmd run build` | Correcto; aviso preexistente de chunk >500 kB, sin fallo. |
+| raíz: `git diff --check` | Sin errores de whitespace; solo avisos de normalización LF→CRLF. |
+
+### Omitidos, límites y decisiones pendientes
+
+- **No es verificación independiente ni aceptación.** La verificación nominal y la revisión `dashboard-reviewer`/frontend independiente siguen pendientes; este registro no las atribuye. La aceptación funcional corresponde al responsable.
+- **Decisión del responsable (401):** se mantiene el gestor de sesión actual y la descarga delega el 401 en `SessionManager` igual que el resto de la app; **no** se implementa refresh+reintento. Se registra como **limitación aceptada**, no como defecto pendiente.
+- **Decisión del responsable (Electron/V-VIS):** la prueba Electron real y la revisión V-VIS/teclado manual se **difieren a CSV-03**, junto con la descarga real y la hoja de cálculo. Las E2E de esta tarea usan interceptación de Playwright con respuestas CSV simuladas; MSW se usa en unitarias/componente.
+- No se generaron capturas V-VIS en esta tarea; las capturas existentes de E2 no se reutilizan como aceptación de CSV-02.
+- 401/403/429 y Problem Details se cubren con simulación (MSW/Playwright), no con caos real ni sesión expirada real. El patrón existente no reintenta solicitudes de datos automáticamente: 401 delega en el gestor de sesión y no se añadió bucle.
+- El fallback de nombre solo se ejerce cuando `Content-Disposition` falta o no es utilizable; el camino normal usa la cabecera del backend.
+- Sin cambios de contrato, backend, DTOs, dependencias, autenticación, sesión, `.env` ni secretos. Sin commit, push ni despliegue.
+
+### Ajustes posteriores de foco y liberación de object URL (2026-11-25)
+
+Ajustes acotados dentro de `CSV-02`, sin nueva capacidad, dependencias ni cambios de contrato/backend. No constituyen aceptación ni verificación independiente.
+
+- `CsvDownloadButton.tsx`: al cancelar, el foco vuelve al botón principal de descarga (`ref`) antes de que se desmonte «Cancelar descarga», evitando que caiga al documento. Se añadió aserción de foco en la prueba de componente de cancelación.
+- `csvDownload.ts`: la programación de `URL.revokeObjectURL` en `setTimeout(0)` se movió al bloque `finally` de `saveCsvToBrowser`, de modo que se agenda exactamente una vez aunque `anchor.click()` o `anchor.remove()` lancen. Se añadió una prueba unitaria con `click()` que lanza y revocación verificada tras avanzar los timers.
+
+| Comando (desde `frontend/unified/` salvo el último) | Resultado real |
+| --- | --- |
+| `npm.cmd run lint` | Correcto, sin avisos. |
+| `npm.cmd run typecheck` | Correcto. |
+| `npm.cmd run test -- src/features/terminal/admin/downloads/CsvDownloadButton.component.test.tsx src/features/terminal/admin/downloads/csvDownload.unit.test.ts` | **22/22** pruebas dirigidas en 2 archivos (incluye la nueva prueba de revocación con clic fallido). |
+| `npm.cmd test` | **750/750** pruebas en 47 archivos. |
+| `npm.cmd run test:e2e -- e2e/dashboard-csv-download.spec.ts` | **3/3** E2E dirigidas en Chromium. |
+| raíz: `git diff --check` | Sin errores de whitespace; solo avisos de normalización LF→CRLF en archivos ya modificados. |
+
+Estado tras estos ajustes: **cambios aplicados y comprobaciones locales registradas; pendiente de verificación independiente, revisión y aceptación; no cerrada; sin commit**.
+
+### Cierre técnico de CSV-02 — 2026-11-25
+
+El **coordinador** reejecutó la batería tras las correcciones: lint y typecheck correctos; `npm test` **749/749 dos veces** antes de los dos ajustes finales (y **750/750** según el ejecutor tras ellos); E2E **92/92** y dirigida CSV **3/3**; build correcto con el aviso preexistente de chunk; `git diff --check` correcto. El fallo intermitente de la primera corrida quedó atribuido a sincronización por tiempos reales en las pruebas nuevas y corregido con promesa diferida y verificación por señal.
+
+Re-revisión `dashboard-reviewer` (solo lectura): **B-01 y B-03 cerrados técnicamente; R-01…R-07 cerrados**; B-02 (Electron/V-VIS/teclado manual) cubierto como **diferimiento explícito a CSV-03** y B-04 (401 sin refresh+reintento) como **limitación aceptada por el responsable**, con nota cruzada añadida al contrato. Dos residuales menores —foco tras cancelar y revocación en `finally`— quedaron corregidos y probados después. Sin bloqueantes nuevos.
+
+**Estado: TASK-DA-E2-CSV-02 CERRADA TÉCNICAMENTE el 2026-11-25 con las limitaciones registradas; sin commit autorizado en este registro.** La evidencia de ejecución es del coordinador porque el verificador independiente nominal siguió con shell denegado. Siguiente y única tarea de cierre: **CSV-03**, con su propia aceptación real (descarga contra entorno autorizado, CSV completo, hoja de cálculo, Electron y V-VIS).

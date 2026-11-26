@@ -8,6 +8,8 @@ import {
   type SalesSeriesBucket,
   type SalesSeriesGranularity,
 } from './seriesApi';
+import { CsvDownloadButton } from '../downloads/CsvDownloadButton';
+import { buildSeriesCsvRequest } from '../downloads/csvDownload';
 
 type SeriesMethod = 'ALL' | 'CASH' | 'STRIPE';
 type SeriesState = {
@@ -237,6 +239,12 @@ export function SalesSeries({
       else seen.add(civil);
     }
   }
+  const csvRequest = buildSeriesCsvRequest({
+    from,
+    to,
+    granularity: activeGranularity,
+    method,
+  });
 
   return (
     <section aria-labelledby="dashboard-series-title" className="dashboard-series">
@@ -255,6 +263,15 @@ export function SalesSeries({
         >
           {current.loading ? 'Consultando…' : 'Actualizar series'}
         </button>
+      </div>
+
+      <div className="dashboard-download-row">
+        <CsvDownloadButton
+          request={csvRequest}
+          buttonLabel="Descargar series (CSV)"
+          panelLabel="las series"
+          formatError={formatSalesSeriesError}
+        />
       </div>
 
       <fieldset className="dashboard-series-granularity">

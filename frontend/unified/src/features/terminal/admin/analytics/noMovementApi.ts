@@ -220,6 +220,28 @@ export function buildNoMovementQuery(input: NoMovementFilter): string {
   return `?${params.toString()}`;
 }
 
+/** CSV export omits cursor/page/limit by contract; only range and method apply. */
+export function buildNoMovementExportQuery(input: {
+  from: string;
+  to: string;
+  method?: NoMovementMethod | 'ALL';
+}): string {
+  // Pagination and ranking keys are not part of the export contract; reject
+  // them explicitly instead of silently dropping caller mistakes.
+  if (
+    !isRecord(input) ||
+    Object.keys(input).some((key) => !['from', 'to', 'method'].includes(key))
+  ) {
+    throw invalid();
+  }
+  const filter = normalizeFilter(input);
+  const params = new URLSearchParams();
+  params.set('from', isoAt(filter.from));
+  params.set('to', isoAt(filter.to));
+  if (filter.method !== null) params.set('method', filter.method);
+  return `?${params.toString()}`;
+}
+
 function exactInteger(value: unknown): string {
   if (typeof value !== 'string' || !EXACT_NON_NEGATIVE_INTEGER.test(value)) fail();
   return value;

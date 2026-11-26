@@ -10,6 +10,8 @@ import {
   type NoMovementPageLimit,
   type NoMovementUniverse,
 } from './noMovementApi';
+import { CsvDownloadButton } from '../downloads/CsvDownloadButton';
+import { buildNoMovementCsvRequest } from '../downloads/csvDownload';
 
 type NoMovementFilterMethod = 'ALL' | DashboardMethod;
 type NoMovementState = {
@@ -207,6 +209,7 @@ export function NoMovementProducts({
   const current = state.key === key ? state : emptyState(key);
   const data = current.data;
   const zero = data !== null && current.items.length === 0;
+  const csvRequest = buildNoMovementCsvRequest({ from, to, method });
 
   function refreshList(): void {
     // aria-disabled preserves keyboard focus; the synchronous latch also blocks
@@ -275,6 +278,15 @@ export function NoMovementProducts({
         >
           {current.loading ? 'Consultando…' : 'Actualizar lista'}
         </button>
+      </div>
+
+      <div className="dashboard-download-row">
+        <CsvDownloadButton
+          request={csvRequest}
+          buttonLabel="Descargar sin movimiento (CSV)"
+          panelLabel="los activos sin movimiento"
+          formatError={formatNoMovementError}
+        />
       </div>
 
       <p className="dashboard-no-movement-label">

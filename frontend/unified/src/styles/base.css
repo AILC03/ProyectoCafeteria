@@ -107,6 +107,13 @@ button.secondary-button { background: #fff; color: #1e3a8a; border-color: #1e3a8
 .dashboard-heading { align-items: start; display: flex; flex-wrap: wrap; gap: 1rem; justify-content: space-between; }
 .dashboard-heading h2 { margin: 0 0 .35rem; }
 .dashboard-heading p { margin: 0; }
+.dashboard-download-row { align-items: center; display: flex; flex-wrap: wrap; gap: .5rem; }
+.dashboard-sales-heading { align-items: start; display: flex; flex-wrap: wrap; gap: 1rem; justify-content: space-between; }
+.dashboard-sales-heading h3 { font-size: 1rem; margin: 0 0 .35rem; }
+.dashboard-download { align-items: center; display: flex; flex-wrap: wrap; gap: .5rem; }
+.dashboard-download-status { color: #475569; font-size: .85rem; margin: 0; }
+.dashboard-download-status[role="alert"] { color: #9a3412; }
+.dashboard-download-hint { flex-basis: 100%; color: #475569; font-size: .85rem; margin: 0; }
 .dashboard-filters { border: 1px solid #cbd5e1; border-radius: .5rem; display: grid; gap: .85rem; padding: 1rem; }
 .dashboard-filters fieldset { border: 0; margin: 0; padding: 0; }
 .dashboard-filters legend { font-weight: 700; padding: 0; }

@@ -8,6 +8,8 @@ import {
   type CategoryParticipationMetric,
   type DashboardCategoryParticipation,
 } from './categoriesApi';
+import { CsvDownloadButton } from '../downloads/CsvDownloadButton';
+import { buildCategoryCsvRequest } from '../downloads/csvDownload';
 
 type CategoryMethod = 'ALL' | 'CASH' | 'STRIPE';
 type CategoryState = {
@@ -205,6 +207,7 @@ export function CategoryParticipation({
       ? data.denominator.unitsSold === '0'
       : data.denominator.totalCents === '0');
   const zero = data !== null && data.items.length === 0;
+  const csvRequest = buildCategoryCsvRequest({ from, to, metric, method });
 
   return (
     <section aria-labelledby="dashboard-categories-title" className="dashboard-categories">
@@ -223,6 +226,15 @@ export function CategoryParticipation({
         >
           {current.loading ? 'Consultando…' : 'Actualizar participación'}
         </button>
+      </div>
+
+      <div className="dashboard-download-row">
+        <CsvDownloadButton
+          request={csvRequest}
+          buttonLabel="Descargar participación (CSV)"
+          panelLabel="la participación por categorías"
+          formatError={formatCategoryParticipationError}
+        />
       </div>
 
       <CategoryWarning />

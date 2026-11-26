@@ -10,6 +10,8 @@ import {
   type ProductRankingMetric,
   type ProductRankingTop,
 } from './rankingApi';
+import { CsvDownloadButton } from '../downloads/CsvDownloadButton';
+import { buildRankingCsvRequest } from '../downloads/csvDownload';
 
 type RankingMethod = 'ALL' | 'CASH' | 'STRIPE';
 type RankingState = {
@@ -188,6 +190,7 @@ export function ProductRanking({
   const current = state.key === key ? state : { key, data: null, error: null, loading: true };
   const ranking = current.data;
   const zero = ranking !== null && ranking.matchedProductCount === '0';
+  const csvRequest = buildRankingCsvRequest({ from, to, metric, direction, top, method });
 
   return (
     <section aria-labelledby="dashboard-ranking-title" className="dashboard-ranking">
@@ -206,6 +209,15 @@ export function ProductRanking({
         >
           {current.loading ? 'Consultando…' : 'Actualizar ranking'}
         </button>
+      </div>
+
+      <div className="dashboard-download-row">
+        <CsvDownloadButton
+          request={csvRequest}
+          buttonLabel="Descargar ranking (CSV)"
+          panelLabel="el ranking"
+          formatError={formatProductRankingError}
+        />
       </div>
 
       <RankingFilters
