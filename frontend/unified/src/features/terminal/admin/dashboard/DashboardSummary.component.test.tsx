@@ -7,6 +7,7 @@ import { categoryParticipationForUrl } from '../../../../test/categoryFixture';
 import { noMovementForUrl } from '../../../../test/noMovementFixture';
 import { productRankingForUrl } from '../../../../test/rankingFixture';
 import { salesSeriesForUrl } from '../../../../test/seriesFixture';
+import { CSV_EXPORT_RANGE_UNAVAILABLE } from '../downloads/csvDownload';
 import { DashboardSummary } from './DashboardSummary';
 
 const now = () => new Date('2026-11-24T20:00:00.000Z');
@@ -183,6 +184,27 @@ describe('Inicio administrative summary', () => {
     fireEvent.change(screen.getByLabelText('Hasta'), { target: { value: '2026-03-01' } });
     fireEvent.click(screen.getByRole('button', { name: 'Aplicar rango' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(/posterior/);
+  });
+
+  test('keeps rendering and disables every export for the 1999-12-31 range', async () => {
+    server.use(
+      http.get('/api/v1/admin/dashboard/summary', ({ request }) =>
+        HttpResponse.json({ data: summaryFor(request.url) }),
+      ),
+    );
+    renderDashboard();
+    expect(await screen.findByText('Ventas registradas')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Desde'), { target: { value: '1999-12-31' } });
+    fireEvent.change(screen.getByLabelText('Hasta'), { target: { value: '1999-12-31' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Aplicar rango' }));
+
+    // The E1 summary still renders data while the E2 export is unavailable.
+    await waitFor(() => expect(screen.getAllByText(CSV_EXPORT_RANGE_UNAVAILABLE)).toHaveLength(5));
+    const salesButton = screen.getByRole('button', { name: 'Descargar ventas (CSV)' });
+    expect(salesButton).toBeDisabled();
+    expect(salesButton).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByRole('heading', { name: 'Resumen del periodo' })).toBeInTheDocument();
   });
 
   test('shows an explicit empty state and Sin comparación for zero sales', async () => {

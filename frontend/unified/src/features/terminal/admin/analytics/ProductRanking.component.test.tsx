@@ -16,6 +16,7 @@ import {
 } from '../../../../test/rankingFixture';
 import { salesSeriesForUrl } from '../../../../test/seriesFixture';
 import { DashboardSummary } from '../dashboard/DashboardSummary';
+import { CSV_EXPORT_RANGE_UNAVAILABLE } from '../downloads/csvDownload';
 import { ProductRanking } from './ProductRanking';
 
 const now = () => new Date('2026-11-24T20:00:00.000Z');
@@ -121,6 +122,18 @@ beforeEach(() => {
 });
 
 describe('product-ranking panel', () => {
+  test('renders safely and disables the export for ranges before 2000', () => {
+    renderRanking({
+      from: '1999-12-31T08:00:00.000Z',
+      to: '2000-01-01T08:00:00.000Z',
+    });
+    expect(screen.getByRole('heading', { name: 'Ranking de productos' })).toBeInTheDocument();
+    expect(screen.getByText(CSV_EXPORT_RANGE_UNAVAILABLE)).toBeInTheDocument();
+    const button = screen.getByRole('button', { name: 'Descargar ranking (CSV)' });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+  });
+
   test('requests the default units/top/5 and renders exact metadata and table', async () => {
     const queries: URLSearchParams[] = [];
     server.use(

@@ -8,6 +8,7 @@ import { noMovementForUrl } from '../../../../test/noMovementFixture';
 import { productRankingForUrl } from '../../../../test/rankingFixture';
 import { salesSeriesForUrl } from '../../../../test/seriesFixture';
 import { DashboardSummary } from '../dashboard/DashboardSummary';
+import { CSV_EXPORT_RANGE_UNAVAILABLE } from '../downloads/csvDownload';
 import { barHeightPercent, formatSeriesCount, SalesSeries } from './SalesSeries';
 
 const now = () => new Date('2026-11-24T20:00:00.000Z');
@@ -208,6 +209,18 @@ beforeEach(() => {
 });
 
 describe('sales-series panel', () => {
+  test('renders safely and disables the export for ranges before 2000', () => {
+    renderSeries({
+      from: '1999-12-31T08:00:00.000Z',
+      to: '2000-01-01T08:00:00.000Z',
+    });
+    expect(screen.getByRole('heading', { name: 'Series de ventas' })).toBeInTheDocument();
+    expect(screen.getByText(CSV_EXPORT_RANGE_UNAVAILABLE)).toBeInTheDocument();
+    const button = screen.getByRole('button', { name: 'Descargar series (CSV)' });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+  });
+
   test('keeps the drawing scale bounded without converting full amounts to Number', () => {
     expect(barHeightPercent('500', '1000')).toBe('50%');
     expect(barHeightPercent('9007199254740995', '9007199254740995')).toBe('100%');

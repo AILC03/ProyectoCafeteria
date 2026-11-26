@@ -11,7 +11,7 @@ import {
   type NoMovementUniverse,
 } from './noMovementApi';
 import { CsvDownloadButton } from '../downloads/CsvDownloadButton';
-import { buildNoMovementCsvRequest } from '../downloads/csvDownload';
+import { buildNoMovementCsvRequest, canExportRange } from '../downloads/csvDownload';
 
 type NoMovementFilterMethod = 'ALL' | DashboardMethod;
 type NoMovementState = {
@@ -209,7 +209,9 @@ export function NoMovementProducts({
   const current = state.key === key ? state : emptyState(key);
   const data = current.data;
   const zero = data !== null && current.items.length === 0;
-  const csvRequest = buildNoMovementCsvRequest({ from, to, method });
+  const csvRequest = canExportRange(from, to)
+    ? buildNoMovementCsvRequest({ from, to, method })
+    : null;
 
   function refreshList(): void {
     // aria-disabled preserves keyboard focus; the synchronous latch also blocks

@@ -9,7 +9,7 @@ import {
   type DashboardCategoryParticipation,
 } from './categoriesApi';
 import { CsvDownloadButton } from '../downloads/CsvDownloadButton';
-import { buildCategoryCsvRequest } from '../downloads/csvDownload';
+import { buildCategoryCsvRequest, canExportRange } from '../downloads/csvDownload';
 
 type CategoryMethod = 'ALL' | 'CASH' | 'STRIPE';
 type CategoryState = {
@@ -207,7 +207,9 @@ export function CategoryParticipation({
       ? data.denominator.unitsSold === '0'
       : data.denominator.totalCents === '0');
   const zero = data !== null && data.items.length === 0;
-  const csvRequest = buildCategoryCsvRequest({ from, to, metric, method });
+  const csvRequest = canExportRange(from, to)
+    ? buildCategoryCsvRequest({ from, to, metric, method })
+    : null;
 
   return (
     <section aria-labelledby="dashboard-categories-title" className="dashboard-categories">

@@ -242,6 +242,51 @@ test.describe('TASK-DA-E2-CSV-02 CSV downloads', () => {
     expect(await page.evaluate(() => localStorage.length)).toBe(0);
   });
 
+  test('keeps every panel rendered and disables exports for the 1999-12-31 range', async ({
+    page,
+    context,
+  }) => {
+    const mocks = await mock(context);
+    const downloads: string[] = [];
+    page.on('download', (download) => downloads.push(download.suggestedFilename()));
+
+    await page.goto('/terminal/administracion');
+    await expect(page.getByRole('button', { name: 'Descargar ventas (CSV)' })).toBeVisible();
+
+    await page.getByLabel('Desde').fill('1999-12-31');
+    await page.getByLabel('Hasta').fill('1999-12-31');
+    await page.getByRole('button', { name: 'Aplicar rango' }).click();
+
+    await expect(page.getByText('1999-12-31 a 1999-12-31')).toBeVisible();
+    for (const heading of [
+      'Resumen del periodo',
+      'Series de ventas',
+      'Ranking de productos',
+      'Activos sin movimiento',
+      'Participación por categorías',
+    ]) {
+      await expect(page.getByRole('heading', { name: heading })).toBeVisible();
+    }
+    for (const name of [
+      'Descargar ventas (CSV)',
+      'Descargar series (CSV)',
+      'Descargar ranking (CSV)',
+      'Descargar sin movimiento (CSV)',
+      'Descargar participación (CSV)',
+    ]) {
+      await expect(page.getByRole('button', { name, exact: true })).toBeDisabled();
+    }
+    await expect(
+      page.getByText(
+        'La exportación no está disponible para rangos anteriores al 1 de enero de 2000.',
+      ),
+    ).toHaveCount(5);
+
+    // No export request is fired for an unsupported range and nothing downloads.
+    expect(mocks.csvRequests).toEqual([]);
+    expect(downloads).toEqual([]);
+  });
+
   test('cancels an in-flight export by keyboard, announces it and allows a retry', async ({ page, context }) => {
     let release!: () => void;
     const gate = new Promise<void>((resolve) => {

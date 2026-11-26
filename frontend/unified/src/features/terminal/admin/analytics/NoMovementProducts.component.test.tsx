@@ -8,6 +8,7 @@ import {
   noMovementForUrl,
   zeroNoMovement,
 } from '../../../../test/noMovementFixture';
+import { CSV_EXPORT_RANGE_UNAVAILABLE } from '../downloads/csvDownload';
 import { NoMovementProducts } from './NoMovementProducts';
 
 const todayFrom = '2026-11-24T08:00:00.000Z';
@@ -39,6 +40,20 @@ beforeEach(() => {
 });
 
 describe('no-movement products panel', () => {
+  test('renders safely and disables the export for ranges before 2000', () => {
+    renderNoMovement({
+      from: '1999-12-31T08:00:00.000Z',
+      to: '2000-01-01T08:00:00.000Z',
+    });
+    expect(
+      screen.getByRole('heading', { name: 'Activos sin movimiento' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(CSV_EXPORT_RANGE_UNAVAILABLE)).toBeInTheDocument();
+    const button = screen.getByRole('button', { name: 'Descargar sin movimiento (CSV)' });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+  });
+
   test('requests the default page and renders the separated list, universe and exact metadata', async () => {
     const queries: URLSearchParams[] = [];
     server.use(

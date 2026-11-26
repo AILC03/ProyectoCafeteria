@@ -11,7 +11,7 @@ import {
   type ProductRankingTop,
 } from './rankingApi';
 import { CsvDownloadButton } from '../downloads/CsvDownloadButton';
-import { buildRankingCsvRequest } from '../downloads/csvDownload';
+import { buildRankingCsvRequest, canExportRange } from '../downloads/csvDownload';
 
 type RankingMethod = 'ALL' | 'CASH' | 'STRIPE';
 type RankingState = {
@@ -190,7 +190,9 @@ export function ProductRanking({
   const current = state.key === key ? state : { key, data: null, error: null, loading: true };
   const ranking = current.data;
   const zero = ranking !== null && ranking.matchedProductCount === '0';
-  const csvRequest = buildRankingCsvRequest({ from, to, metric, direction, top, method });
+  const csvRequest = canExportRange(from, to)
+    ? buildRankingCsvRequest({ from, to, metric, direction, top, method })
+    : null;
 
   return (
     <section aria-labelledby="dashboard-ranking-title" className="dashboard-ranking">

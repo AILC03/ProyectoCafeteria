@@ -7,6 +7,7 @@ import {
   buildRankingCsvRequest,
   buildSalesCsvRequest,
   buildSeriesCsvRequest,
+  canExportRange,
   downloadCsv,
   parseContentDispositionFilename,
   resolveCsvFilename,
@@ -97,6 +98,33 @@ describe('CSV export request builders', () => {
     expect(query.get('metric')).toBe('amount');
     expect(query.has('method')).toBe(false);
     expect(request.fallbackFilename).toContain('-amount-all.csv');
+  });
+});
+
+describe('canExportRange', () => {
+  it('accepts the exact 2000 minimum boundary and a 366-day leap range', () => {
+    expect(
+      canExportRange('2000-01-01T08:00:00.000Z', '2000-01-02T08:00:00.000Z'),
+    ).toBe(true);
+    expect(
+      canExportRange('2000-01-01T08:00:00.000Z', '2001-01-01T08:00:00.000Z'),
+    ).toBe(true);
+  });
+
+  it('rejects one millisecond before the minimum', () => {
+    expect(
+      canExportRange('2000-01-01T07:59:59.999Z', '2000-01-02T08:00:00.000Z'),
+    ).toBe(false);
+  });
+
+  it('rejects malformed, non-increasing and overlong ranges', () => {
+    expect(canExportRange('not-a-date', '2000-01-02T08:00:00.000Z')).toBe(false);
+    expect(canExportRange('2000-01-02T08:00:00.000Z', '2000-01-01T08:00:00.000Z')).toBe(false);
+    expect(canExportRange('2000-01-01T08:00:00.000Z', '2000-01-01T08:00:00.000Z')).toBe(false);
+    expect(canExportRange('2000-01-01T08:00:00.000Z', '2000-01-02')).toBe(false);
+    expect(
+      canExportRange('2000-01-01T08:00:00.000Z', '2001-01-02T08:00:00.001Z'),
+    ).toBe(false);
   });
 });
 
@@ -259,6 +287,67 @@ describe('downloadCsv', () => {
       expect(revokeObjectURL).toHaveBeenCalledTimes(1);
       expect(revokeObjectURL).toHaveBeenCalledWith('blob:csv-throw');
     } finally {
+      vi.useRealTimers();
+      URL.createObjectURL = originalCreate;
+      URL.revokeObjectURL = originalRevoke;
+    }
+  });
+
+  it('still releases the object URL once when remove throws', () => {
+    const originalCreate = URL.createObjectURL;
+    const originalRevoke = URL.revokeObjectURL;
+    const createObjectURL = vi.fn(() => 'blob:csv-remove-throw');
+    const revokeObjectURL = vi.fn();
+    URL.createObjectURL = createObjectURL;
+    URL.revokeObjectURL = revokeObjectURL;
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    const remove = vi.spyOn(HTMLAnchorElement.prototype, 'remove').mockImplementation(() => {
+      throw new Error('remove failed');
+    });
+
+    vi.useFakeTimers();
+    try {
+      expect(() => saveCsvToBrowser(new Blob(['data']), 'dashboard-safe.csv')).toThrow(
+        'remove failed',
+      );
+      expect(click).toHaveBeenCalledTimes(1);
+      // The revocation does not depend on the DOM detach succeeding.
+      expect(revokeObjectURL).not.toHaveBeenCalled();
+      vi.runAllTimers();
+      expect(revokeObjectURL).toHaveBeenCalledTimes(1);
+      expect(revokeObjectURL).toHaveBeenCalledWith('blob:csv-remove-throw');
+    } finally {
+      remove.mockRestore();
+      vi.useRealTimers();
+      URL.createObjectURL = originalCreate;
+      URL.revokeObjectURL = originalRevoke;
+    }
+  });
+
+  it('keeps the click failure and still releases once when remove also throws', () => {
+    const originalCreate = URL.createObjectURL;
+    const originalRevoke = URL.revokeObjectURL;
+    const revokeObjectURL = vi.fn();
+    URL.createObjectURL = vi.fn(() => 'blob:csv-both-throw');
+    URL.revokeObjectURL = revokeObjectURL;
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {
+      throw new Error('click failed');
+    });
+    const remove = vi.spyOn(HTMLAnchorElement.prototype, 'remove').mockImplementation(() => {
+      throw new Error('remove failed');
+    });
+
+    vi.useFakeTimers();
+    try {
+      expect(() => saveCsvToBrowser(new Blob(['data']), 'dashboard-safe.csv')).toThrow(
+        'click failed',
+      );
+      expect(revokeObjectURL).not.toHaveBeenCalled();
+      vi.runAllTimers();
+      expect(revokeObjectURL).toHaveBeenCalledTimes(1);
+      expect(revokeObjectURL).toHaveBeenCalledWith('blob:csv-both-throw');
+    } finally {
+      remove.mockRestore();
       vi.useRealTimers();
       URL.createObjectURL = originalCreate;
       URL.revokeObjectURL = originalRevoke;

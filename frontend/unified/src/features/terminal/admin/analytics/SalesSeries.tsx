@@ -9,7 +9,7 @@ import {
   type SalesSeriesGranularity,
 } from './seriesApi';
 import { CsvDownloadButton } from '../downloads/CsvDownloadButton';
-import { buildSeriesCsvRequest } from '../downloads/csvDownload';
+import { buildSeriesCsvRequest, canExportRange } from '../downloads/csvDownload';
 
 type SeriesMethod = 'ALL' | 'CASH' | 'STRIPE';
 type SeriesState = {
@@ -239,12 +239,14 @@ export function SalesSeries({
       else seen.add(civil);
     }
   }
-  const csvRequest = buildSeriesCsvRequest({
-    from,
-    to,
-    granularity: activeGranularity,
-    method,
-  });
+  const csvRequest = canExportRange(from, to)
+    ? buildSeriesCsvRequest({
+        from,
+        to,
+        granularity: activeGranularity,
+        method,
+      })
+    : null;
 
   return (
     <section aria-labelledby="dashboard-series-title" className="dashboard-series">

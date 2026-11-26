@@ -38,7 +38,7 @@ import { NoMovementProducts } from '../analytics/NoMovementProducts';
 import { ProductRanking } from '../analytics/ProductRanking';
 import { SalesSeries } from '../analytics/SalesSeries';
 import { CsvDownloadButton } from '../downloads/CsvDownloadButton';
-import { buildSalesCsvRequest } from '../downloads/csvDownload';
+import { buildSalesCsvRequest, canExportRange } from '../downloads/csvDownload';
 
 type SummaryMethod = 'ALL' | DashboardMethod;
 
@@ -258,11 +258,13 @@ export function DashboardSummary({ now = () => new Date() }: { now?: () => Date 
     }
   }
 
-  const salesCsvRequest = buildSalesCsvRequest({
-    from: period.from,
-    to: period.to,
-    method,
-  });
+  const salesCsvRequest = canExportRange(period.from, period.to)
+    ? buildSalesCsvRequest({
+        from: period.from,
+        to: period.to,
+        method,
+      })
+    : null;
 
   return (
     <section aria-labelledby="admin-dashboard-title" className="admin-dashboard">

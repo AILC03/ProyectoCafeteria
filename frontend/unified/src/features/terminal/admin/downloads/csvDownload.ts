@@ -39,6 +39,32 @@ const ENDPOINTS: Record<CsvExportKind, string> = {
 };
 
 const MAX_FILENAME_LENGTH = 116;
+const MAX_EXPORT_MS = 366 * 24 * 60 * 60 * 1000;
+const UTC_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/;
+
+/** Minimum `from` accepted by every E2 export: 2000-01-01 00:00 America/Tijuana. */
+export const CSV_EXPORT_MIN_FROM_MS = Date.parse('2000-01-01T08:00:00.000Z');
+
+export const CSV_EXPORT_RANGE_UNAVAILABLE =
+  'La exportación no está disponible para rangos anteriores al 1 de enero de 2000.';
+
+/**
+ * E2 exports reject `from` before 2000-01-01T08:00:00.000Z, malformed UTC
+ * instants and ranges over 366 days. Panels call this before building a
+ * request so an unsupported range disables the download instead of throwing
+ * while rendering.
+ */
+export function canExportRange(from: string, to: string): boolean {
+  if (!UTC_INSTANT.test(from) || !UTC_INSTANT.test(to)) return false;
+  const fromMs = Date.parse(from);
+  const toMs = Date.parse(to);
+  if (!Number.isFinite(fromMs) || !Number.isFinite(toMs)) return false;
+  return (
+    fromMs >= CSV_EXPORT_MIN_FROM_MS &&
+    fromMs < toMs &&
+    toMs - fromMs <= MAX_EXPORT_MS
+  );
+}
 
 /** `YYYYMMDDTHHMMSSZ`, the same compact instant used by the backend names. */
 function compactInstant(iso: string): string {
@@ -224,18 +250,26 @@ export function saveCsvToBrowser(blob: Blob, filename: string): void {
   anchor.rel = 'noopener';
   anchor.style.display = 'none';
   document.body.appendChild(anchor);
+  // Keep the first failure (click before remove) so neither one is swallowed,
+  // while the release below is scheduled exactly once no matter what throws.
+  let failure: { reason: unknown } | null = null;
   try {
     anchor.click();
-  } finally {
-    anchor.remove();
-    // Some engines start the download asynchronously after the click; deferring
-    // one macrotask avoids revoking the URL before it is consumed. Scheduling the
-    // release in `finally` keeps it guaranteed exactly once even if the click or
-    // the DOM detach throws.
-    setTimeout(() => {
-      URL.revokeObjectURL(objectUrl);
-    }, 0);
+  } catch (reason) {
+    failure = { reason };
   }
+  try {
+    anchor.remove();
+  } catch (reason) {
+    if (failure === null) failure = { reason };
+  }
+  // Some engines start the download asynchronously after the click; deferring
+  // one macrotask avoids revoking the URL before it is consumed. Scheduling the
+  // release outside both operations keeps it guaranteed exactly once.
+  setTimeout(() => {
+    URL.revokeObjectURL(objectUrl);
+  }, 0);
+  if (failure !== null) throw failure.reason;
 }
 
 /**

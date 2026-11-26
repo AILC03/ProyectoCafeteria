@@ -7,6 +7,7 @@ import {
   freeCategoryItems,
   roundingCategoryItems,
 } from '../../../../test/categoryFixture';
+import { CSV_EXPORT_RANGE_UNAVAILABLE } from '../downloads/csvDownload';
 import { CategoryParticipation } from './CategoryParticipation';
 
 const todayFrom = '2026-11-24T08:00:00.000Z';
@@ -38,6 +39,20 @@ beforeEach(() => {
 });
 
 describe('category participation panel', () => {
+  test('renders safely and disables the export for ranges before 2000', () => {
+    renderPanel({
+      from: '1999-12-31T08:00:00.000Z',
+      to: '2000-01-01T08:00:00.000Z',
+    });
+    expect(
+      screen.getByRole('heading', { name: 'Participación por categorías' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(CSV_EXPORT_RANGE_UNAVAILABLE)).toBeInTheDocument();
+    const button = screen.getByRole('button', { name: 'Descargar participación (CSV)' });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+  });
+
   test('renders the mandatory warning, denominator, metric selector and exact server shares', async () => {
     const queries: URLSearchParams[] = [];
     server.use(

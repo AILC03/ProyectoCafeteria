@@ -1,9 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { ApiError } from '../../../../shared/api/client';
-import { downloadCsv, type CsvExportRequest } from './csvDownload';
+import {
+  CSV_EXPORT_RANGE_UNAVAILABLE,
+  downloadCsv,
+  type CsvExportRequest,
+} from './csvDownload';
 
 export type CsvDownloadButtonProps = {
-  request: CsvExportRequest;
+  /** `null` when the visible range is outside the export contract. */
+  request: CsvExportRequest | null;
   buttonLabel: string;
   panelLabel: string;
   formatError: (error: unknown) => string;
@@ -47,7 +52,8 @@ export function CsvDownloadButton({
   const controller = useRef<AbortController | null>(null);
   const pending = useRef(false);
   const primaryButton = useRef<HTMLButtonElement | null>(null);
-  const requestKey = `${request.kind}|${request.endpoint}|${request.query}`;
+  const requestKey =
+    request === null ? 'unavailable-range' : `${request.kind}|${request.endpoint}|${request.query}`;
 
   // A filter change or unmount invalidates the in-flight file and clears its
   // announced state; no retry is started automatically.
@@ -64,7 +70,7 @@ export function CsvDownloadButton({
   }, [requestKey]);
 
   async function startDownload(): Promise<void> {
-    if (disabled || pending.current) return;
+    if (request === null || disabled || pending.current) return;
     pending.current = true;
     const localController = new AbortController();
     controller.current?.abort();
@@ -104,10 +110,15 @@ export function CsvDownloadButton({
   }
 
   const busy = state.status === 'busy';
-  const unavailable = disabled || busy;
+  const rangeUnavailable = request === null;
+  const unavailable = rangeUnavailable || disabled || busy;
   // The polite live region is always mounted so screen readers keep a stable
   // target; only its text changes with the download state.
-  const statusMessage = state.status === 'error' ? '' : state.message;
+  const statusMessage = rangeUnavailable
+    ? CSV_EXPORT_RANGE_UNAVAILABLE
+    : state.status === 'error'
+      ? ''
+      : state.message;
 
   return (
     <div className="dashboard-download">
@@ -118,6 +129,7 @@ export function CsvDownloadButton({
         onClick={() => {
           void startDownload();
         }}
+        disabled={rangeUnavailable}
         aria-disabled={unavailable}
         aria-busy={busy}
       >
