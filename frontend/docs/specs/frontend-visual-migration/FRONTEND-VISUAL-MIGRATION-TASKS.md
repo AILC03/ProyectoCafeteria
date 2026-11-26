@@ -41,7 +41,7 @@ Cada task cerrada incluye fila STATUS con evidencia real, decisiones, revisores,
   - Archivos: DOC/REFERENCES y DOC/STATUS con nombres completos `FRONTEND-VISUAL-MIGRATION-*.md`; lectura de originales y rutas/features actuales.
   - Hecho cuando: todas las superficies de spec §6 están inventariadas, con código original/destino, recursos/temas/licencias y diferencias; registros distinguen aprobación de referencia y resultado. El responsable elige temas o quedan como bloqueo para HYB-03/04.
 
-- [ ] **HYB-02 — Preparar harness aislado original/unificado/Electron** (H).
+- [x] **HYB-02 — Preparar harness aislado original/unificado/Electron** (H).
   - Requisitos: RV-01, CA-01, CA-04, CA-06, CA-09; plan §4.
   - Dependencia: HYB-01.
   - Archivos: `playwright.visual.config.ts`, `playwright.config.ts` (exclusión de visual), `e2e/visual/{capture.helpers,fixtures}.ts`, `harness.visual.spec.ts`, `.gitignore` sólo artefactos temporales.
