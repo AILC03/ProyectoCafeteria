@@ -30,6 +30,7 @@ export interface ProductCustomizationDialogProps {
   fallbackProduct: CatalogProduct;
   onClose: () => void;
   onConfirm: (summary: ConfirmedCustomization) => void;
+  presentation?: 'pos';
 }
 
 const MIN_QUANTITY = 1;
@@ -43,6 +44,7 @@ export function ProductCustomizationDialog({
   fallbackProduct,
   onClose,
   onConfirm,
+  presentation,
 }: ProductCustomizationDialogProps) {
   const dialogRef = useRef<HTMLElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -167,7 +169,7 @@ export function ProductCustomizationDialog({
 
   const dialogNode = (
     <div
-      className="auth-dialog-backdrop"
+      className={`auth-dialog-backdrop${presentation === 'pos' ? ' pos-customization-backdrop' : ' client-customization-backdrop'}`}
       role="presentation"
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
@@ -176,7 +178,7 @@ export function ProductCustomizationDialog({
       <section
         ref={dialogRef}
         tabIndex={-1}
-        className="auth-dialog catalog-dialog"
+        className={`auth-dialog catalog-dialog${presentation === 'pos' ? ' catalog-dialog-pos' : ' catalog-dialog-client'}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="customizer-title"

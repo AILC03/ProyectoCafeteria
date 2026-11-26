@@ -1,0 +1,27 @@
+/* HYB-13: Nordic operational sales view; source of truth and reprint are API-only. */
+.terminal-layout .terminal-history { width: 100%; max-width: 78rem; margin: 0 auto; padding: clamp(1rem, 2.5vw, 2rem); align-content: start; background: var(--term-bg-secondary); min-height: calc(100vh - 5rem); }
+.terminal-layout .history-page-header { display: grid; gap: .3rem; }
+.terminal-layout .history-page-header h1 { margin: 0; font-size: clamp(1.45rem, 2.5vw, 1.8rem); font-weight: 800; }
+.terminal-layout .history-page-header p { margin: .35rem 0 0; color: var(--term-text-muted); }
+.terminal-layout .history-filters { padding: 1rem; background: #fff; border: 1px solid var(--term-border-light); border-radius: 16px; }
+.terminal-layout .history-filters label { color: #334155; font-weight: 700; }
+.terminal-layout .history-filters input,
+.terminal-layout .history-filters select { min-height: 44px; min-width: 0; width: 100%; padding: .55rem .65rem; border: 1px solid #94a3b8; border-radius: 10px; background: #fff; font: inherit; }
+.terminal-layout .history-filters button { min-height: 44px; border-radius: 999px; background: #0f172a; border-color: #0f172a; font-weight: 700; }
+.terminal-layout .terminal-history > .cash-summary { gap: .8rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); }
+.terminal-layout .terminal-history > .cash-summary > div { padding: 1rem; background: #fff; border: 1px solid var(--term-border-light); border-radius: 12px; box-shadow: var(--term-shadow-sm); }
+.terminal-layout .terminal-history > .cash-summary dt { color: var(--term-text-muted); font-size: .8rem; font-weight: 700; text-transform: uppercase; }
+.terminal-layout .terminal-history > .cash-summary dd { font-size: 1.15rem; font-weight: 800; }
+.terminal-layout .terminal-history > [role='status'] { background: #fff; border: 1px dashed #cbd5e1; padding: 2rem; border-radius: 14px; text-align: center; }
+.terminal-layout .history-table-wrap { width: 100%; max-width: 100%; overflow-x: auto; background: #fff; border: 1px solid var(--term-border-light); border-radius: 16px; box-shadow: var(--term-shadow-sm); }
+.terminal-layout .history-table-wrap table { width: 100%; border-collapse: collapse; text-align: left; font-size: .9rem; }
+.terminal-layout .history-table-wrap caption { text-align: left; padding: 1rem 1.2rem; font-weight: 800; font-size: 1.05rem; }
+.terminal-layout .history-table-wrap th { padding: .85rem 1.1rem; background: var(--term-bg-secondary); color: #475569; white-space: nowrap; }
+.terminal-layout .history-table-wrap td { padding: .85rem 1.1rem; border-top: 1px solid var(--term-border-light); min-width: 6rem; overflow-wrap: anywhere; }
+.terminal-layout .history-table-wrap td:first-child { font-weight: 800; }
+.terminal-layout .history-table-wrap td button { min-height: 44px; border-radius: 10px; white-space: nowrap; }
+.terminal-layout .history-pagination { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; justify-content: center; }
+.terminal-layout .history-ticket { background: #fff; border: 1px solid var(--term-border-light); border-radius: 16px; padding: 1.25rem; width: fit-content; max-width: 100%; }
+.terminal-layout .history-ticket h2 { margin: 0; font-size: 1.1rem; }
+.terminal-layout .history-ticket > p { margin: 0; color: var(--term-text-muted); }
+@media print { .terminal-layout .history-ticket { border: 0; padding: 0; background: transparent; } }

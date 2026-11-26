@@ -1,0 +1,68 @@
+/* HYB-08: POS-specific ticket and dialog presentation; customer variant stays unchanged. */
+.terminal-layout .terminal-pos .pos-layout { gap: 0; }
+.terminal-layout .terminal-pos .pos-layout > .auth-card:not(.pos-catalog-panel) {
+  grid-column: 2;
+  min-width: 0;
+  margin: 0;
+  border: 1px solid var(--term-border-light);
+  border-bottom: 0;
+  border-radius: 0;
+  padding: 1.25rem 1.5rem;
+  box-shadow: none;
+  overflow-wrap: anywhere;
+}
+.terminal-layout .terminal-pos .pos-layout > .auth-card:last-child { border-bottom: 1px solid var(--term-border-light); }
+.terminal-layout .terminal-pos .pos-layout > .auth-card:not(.pos-catalog-panel) h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+.terminal-layout .terminal-pos .pos-layout > .auth-card:not(.pos-catalog-panel) p { margin: .25rem 0; }
+.terminal-layout .terminal-pos .pos-lines li {
+  padding: .75rem 0;
+  border-color: var(--term-border-light);
+}
+.terminal-layout .terminal-pos .pos-lines li span:first-child { min-width: 0; flex-basis: 100%; font-weight: 700; }
+.terminal-layout .terminal-pos .pos-layout > .auth-card:not(.pos-catalog-panel) button:not(.secondary-button) {
+  background: #0f172a;
+  border-color: #0f172a;
+  border-radius: 12px;
+  min-height: 44px;
+}
+.terminal-layout .terminal-pos .pos-layout > .auth-card:not(.pos-catalog-panel) button:disabled { opacity: .65; }
+.terminal-layout .terminal-pos .pos-layout > .auth-card:not(.pos-catalog-panel) input {
+  min-width: 0;
+  width: 100%;
+  min-height: 44px;
+  padding: .6rem .75rem;
+  border: 1px solid #94a3b8;
+  border-radius: 10px;
+  font: inherit;
+}
+.terminal-layout .terminal-pos .pos-layout > .auth-card:not(.pos-catalog-panel) .form-field { min-width: 0; }
+.terminal-layout .terminal-pos .pos-layout > .auth-card:not(.pos-catalog-panel) .field-hint { color: #475569; }
+
+.pos-customization-backdrop .catalog-dialog {
+  width: min(100%, 38rem);
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 1.5rem;
+  box-shadow: 0 20px 45px -10px rgb(0 0 0 / 25%);
+}
+.pos-customization-backdrop .option-group { border-color: #e2e8f0; border-radius: 16px; }
+.pos-customization-backdrop .option-button { min-height: 48px; border-color: #cbd5e1; border-radius: 12px; }
+.pos-customization-backdrop .option-button-selected {
+  border-color: #0f172a;
+  background: #f1f5f9;
+  color: #0f172a;
+}
+.pos-customization-backdrop .auth-dialog-actions button:not(.secondary-button) {
+  background: #0f172a;
+  border-color: #0f172a;
+  border-radius: 12px;
+}
+
+@media (max-width: 900px) {
+  .terminal-layout .terminal-pos .pos-layout > .auth-card:not(.pos-catalog-panel) { grid-column: 1; }
+}

@@ -119,7 +119,7 @@ test.describe('Automated accessibility (axe-core, WCAG 2.1 A/AA)', () => {
     await mockApi(context, CAJERO);
     await page.goto('/terminal/pos');
     await expect(page.getByRole('heading', { name: 'Punto de venta' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Personalizar Latte' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Personalizar.*Latte.*\$65\.00/ })).toBeVisible();
     await expectNoA11yViolations(page, '/terminal/pos (CAJERO)');
   });
 

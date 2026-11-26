@@ -59,7 +59,55 @@ Para cliente se proponen 390×844 y 1280×800; comprobar además reflow a 320 px
 | REF-T | Lote terminal (HYB-03) | `bienvenida`, `acceso`, `pos` (`PosHeader` + `OrderingWorkspace`) | Tema elegido: `theme-nordic` (*Nordic Mint*); viewports: `1024×768`, `1280×800`; fuente `c88d01b` / captura `5595892` en `evidence/HYB-03/`; actores sintéticos `visitante` y `CAJERO` | Aprobado explícitamente por el responsable (2026-11-25) | Aprobado |
 | ADAPT-LOGIN-STAFF | Adaptación previa (HYB-03 / HYB-06) | `/terminal/acceso` (`TerminalAuthPage.tsx`) | Tema `theme-nordic`; viewports `1024×768`, `1280×800`; formulario único usuario (hasta 24 chars, `isValidStaffUsername`) y contraseña (`8–24` chars, `isValidStaffPassword`) en `.kiosk-chassis`, estados `loading`, `recoverable-error`, `authenticated` y `role="alert"` | Aprobado explícitamente por el responsable (2026-11-25) | Aprobado |
 | REF-C | Lote cliente (HYB-04) | `acceso` (`AuthPage.tsx`), `menu` (`Header.tsx` + `MenuPage.tsx` + `ProductCard.tsx`), `personalizacion` (`ProductModal.tsx`) | Paleta única café/crema (`#fcf9f6`, `#0f0301`, `#974818`); viewports `390×844`, `1280×800`; fuente `c88d01b` / captura `6f7ce51` en `evidence/HYB-04/`; actores sintéticos `visitante` y `CLIENTE` | Aprobado explícitamente por el responsable (2026-11-26) | Aprobado |
+| ADAPT-CASH-SESSION | Adaptación previa (HYB-09) | `/terminal/caja` | Ver diseño bajo esta tabla; `theme-nordic`, viewports `1024×768`, `1280×800`; API única autoridad, estados propia/ajena e incierto | Aprobado explícitamente por el responsable (2026-11-26) antes de implementar HYB-09 | Aprobado como entrada, no resultado |
+| ADAPT-CASH-PAYMENT | Adaptación previa (HYB-10) | `/terminal/cobro` | Ver diseño bajo esta tabla; `CheckoutModal.jsx` como fuente visual; sólo CASH, orden y caja confirmadas por API | Aprobado explícitamente por el responsable (2026-11-26) antes de implementar HYB-10 | Aprobado como entrada, no resultado |
+| ADAPT-PROTECTED-TICKET | Adaptación previa (HYB-11) | `ProtectedTicket.tsx` en cobro e historial | Ver diseño bajo esta tabla; `ReceiptModal.jsx` como fuente visual; datos de ticket API, QR condicionado por vencimiento | Aprobado explícitamente por el responsable (2026-11-26) antes de implementar HYB-11 | Aprobado como entrada, no resultado |
+| ADAPT-HISTORY-REPRINT | Adaptación previa (HYB-13) | `/terminal/historial` | Ver diseño bajo esta tabla; historial sólo de ventas de API, reimpresión GET del ticket protegido existente | Aprobado explícitamente por el responsable (2026-11-26) antes de implementar HYB-13 | Aprobado como entrada, no resultado |
+| ADAPT-STAFF-ADMIN | Adaptación previa (HYB-17) | `/terminal/administracion/personal` | Ver diseño bajo esta tabla; tabla/formulario Nordic, roles de contrato y contraseña nueva sólo en alta API | Aprobado explícitamente por el responsable (2026-11-26) antes de implementar HYB-17 | Aprobado como entrada, no resultado |
 | ADAPT-* | Adaptación previa (resto de bloques) | caja/cobro/ticket, reimpresión, cuenta, registro y transversales | Por proponer por bloque; nunca sustituir fuente original por UI nueva | No solicitada | Pendiente |
+
+### Adaptación HYB-09 — `ADAPT-CASH-SESSION` (aprobada como entrada, 2026-11-26)
+
+Fuente visual: `frontend/empleados/src/components/ShiftWorkspace.jsx` y `frontend/empleados/src/styles/index.css`; destino: `frontend/unified/src/features/terminal/cash/CashSessionsPage.tsx`. El responsable autorizó la adaptación de presentación descrita a continuación, **no cambios de lógica ni la aceptación anticipada del resultado**.
+
+- Retener identidad `theme-nordic`: superficie gris claro, tarjetas blancas/borde pizarra claro, monto destacado, secciones de apertura/cierre y resumen. Mostrar sólo valores de `getCurrentCashSession` y sus respuestas verificadas; no portar métricas demo de IndexedDB, total local, exportación JSON ni medios de pago simulados.
+- Caja cerrada: fondo inicial escrito por el cajero, sin valor prellenado de `500` ni apertura automática. Caja abierta: resumen API, responsable real, efectivo contado editable sólo por rol permitido; administrador que cierra caja ajena ve campo de motivo obligatorio ya existente. No añadir controles para CAJERO sobre caja ajena.
+- Estado incierto: mantener el bloqueo tras respuesta no verificable y reintento únicamente de la misma operación idempotente donde ya está permitido; error de consulta no significa caja cerrada; no declarar apertura/cierre confirmado antes de respuesta API.
+- Evidencia pendiente: capturas original/adaptación a `1024×768` y `1280×800`, estados propia/ajena, abierta/cerrada, error e incertidumbre; pruebas de permisos, teclado, axe, Electron y aceptación separada del resultado.
+
+### Adaptación HYB-10 — `ADAPT-CASH-PAYMENT` (aprobada como entrada, 2026-11-26)
+
+Fuente visual: `frontend/empleados/src/components/CheckoutModal.jsx`; destino: `frontend/unified/src/features/terminal/payment/CashPaymentPage.tsx`. El responsable autorizó la presentación bajo estos límites, no el resultado anticipadamente:
+
+- Portar la jerarquía Nordic de total prominente, campo de efectivo recibido y acción principal; no ofrecer tarjeta/transferencia simuladas, billetes rápidos ni prellenado automático. Conservar la página/ruta protegida en lugar de convertirla en modal que se cierre perdiendo estado.
+- Mostrar cambio sólo si lo confirma la respuesta API de pago (si el contrato lo proporciona); cualquier estimación previa debe etiquetarse como estimación, nunca como pago confirmado. El importe total y la elegibilidad de caja provienen exclusivamente de la API y las reglas existentes.
+- Mantener idempotencia y reintento de la misma operación ante fallo incierto permitido, bloqueo por resultado no verificable, y conciliación manual D-20 tras recarga. Tras pago confirmado y ticket fallido, permitir únicamente reintento GET de ticket, nunca otro POST de cobro.
+- Evidencia prevista: estados dueño/ajeno, pendiente/timeout/no verificable, éxito con ticket y éxito con ticket fallido a `1024×768`/`1280×800`; pruebas de accesibilidad, teclado y Electron. La aprobación de esta adaptación no equivale a aceptación del resultado.
+
+### Adaptación HYB-11 — `ADAPT-PROTECTED-TICKET` (aprobada como entrada, 2026-11-26)
+
+Fuente: `frontend/empleados/src/components/ReceiptModal.jsx`; destino compartido: `frontend/unified/src/features/terminal/payment/ProtectedTicket.tsx` y estilos de impresión. El responsable autorizó esta adaptación, no la aceptación anticipada del resultado:
+
+- Portar chasis térmico, tipografía, separadores y jerarquía de total como presentación del ticket verificado de API; conservar tabla semántica y botón de impresión. No inventar comercio, RFC, IVA, descuentos, propinas, medio de pago o pie configurado en `localStorage` que el contrato de ticket no provea.
+- Evitar imprimir navegación o acciones; elegir ancho térmico estable como estilo, sin leer preferencias locales ni afirmar compatibilidad con impresora física. Vista previa no navega ni reabre cobro.
+- QR únicamente si `registration` API es válida y no vencida; no mostrar ni hacer copiable texto del token o `qrPayload`. CASH muestra recibido/cambio sólo cuando existen; STRIPE los omite. Conservar estados vencido/ausente y alternativa accesible.
+- Evidencia y pruebas antes de darlo por terminado: capturas a 1024×768/1280×800, efectivo/STRIPE, QR sintético válido/vencido/ausente, impresión a PDF simulada, teclado, axe y Electron; revisión independiente por separado.
+
+### Adaptación HYB-13 — `ADAPT-HISTORY-REPRINT` (aprobada como entrada, 2026-11-26)
+
+Fuente: `frontend/empleados/src/components/HistoryWorkspace.jsx`; destino: `frontend/unified/src/features/terminal/history/HistoryPage.tsx`, con `ProtectedTicket.tsx` HYB-11. El responsable autorizó la presentación bajo estos límites, no el resultado anticipadamente:
+
+- Portar jerarquía Nordic de filtros disponibles (fecha, método, cantidad), resumen y tabla, más acción claramente nombrada «Ver ticket»; no copiar búsqueda local por mesa/nombre, tipos «comer aquí/para llevar», cajero ficticio, fallback IndexedDB, ni contador de todas las ventas calculado desde la página.
+- Mantener consulta de ventas y resumen API con paginación por cursor; la reimpresión consulta únicamente GET del ticket protegido ya emitido para venta autorizada. No crear cobro, emitir acceso/QR nuevo ni inferir QR vigente desde la lista; mantener estados de denegación, ausente, carga y foco que vuelve al botón.
+- Capturas 1024×768 y 1280×800 de lista, vacía/error, filtros, lectura CASH/STRIPE; comprobar teclado, axe, Electron y que ningún POST sale al reimprimir. Aprobación de esta adaptación no equivale a aceptación del resultado.
+
+### Adaptación HYB-17 — `ADAPT-STAFF-ADMIN` (aprobada como entrada, 2026-11-26)
+
+Fuente: `frontend/empleados/src/components/UserManagementWorkspace.jsx`; destino: `frontend/unified/src/features/terminal/admin/AdminPage.tsx` sólo colección `employees`. La fuente original mezcla cuenta API con respaldo local que guarda `pin: formPassword` y ofrece rol `GERENTE`; **no copiar esas operaciones**. El responsable autorizó la adaptación visual limitada, no la aceptación anticipada:
+
+- Portar tarjetas/listado/encabezado y formulario Nordic con nombre, usuario, rol, estado, alta y motivo de edición, usando sólo la API protegida para ADMINISTRADOR. Mostrar únicamente roles asignables reales `CAJERO`, `PREPARACION`, `ADMINISTRADOR`; si llega un `GERENTE` legado, sólo lectura/deshabilitado como ya exige la lógica actual.
+- Contraseña nueva exclusivamente en alta conforme al contrato; nunca mostrar ni precargar secreto en edición ni ponerlo en capturas o almacenamiento local. Sin restablecer NIP/contraseña, alta/reactivación automática, baja local o autoasignación de permisos.
+- Mantener validación, reconsulta/bloqueo tras respuesta incierta, motivo obligatorio para modificaciones y ausencia de acceso CAJERO/PREPARACION. Capturas con actor/datos sintéticos a 1024×768 y 1280×800, estados de alta/edición/denegación/error; axe, teclado y Electron. Aprobar adaptación no acepta resultado final.
 
 ## Lote visual de terminal — `REF-T` (HYB-03, Aprobado 2026-11-25)
 
@@ -136,3 +184,28 @@ Para cliente se proponen 390×844 y 1280×800; comprobar además reflow a 320 px
 - **Resets y restricciones heredadas excluidas del destino unificado:** `select-none` global en `body` / contenedores (`index.html`, `MenuPage.tsx`), `maximum-scale=1.0, user-scalable=no` en `<meta name="viewport">` (`index.html`), y `focus:outline-none` sin anillo de foco accesible en inputs (`AuthPage.tsx`, reemplazado por foco visible `:focus-visible` en `unified`).
 
 **Decisiones abiertas:** verificación de licencia/empaquetado local de `Outfit`/`Inter` antes de cerrar `HYB-05…HYB-08` y de `Plus Jakarta Sans`/`Material Symbols Outlined` (o SVG locales equivalentes) antes de cerrar `HYB-18…HYB-20`.
+
+## Propuesta de adaptación — `ADAPT-CLIENT-ORDER-SEND` (HYB-21, aprobada como entrada, 2026-11-26)
+
+Fuente: `frontend/clientes/src/components/OrderConfirmationModal.tsx`; destino: `frontend/unified/src/features/terminal/cart/ClientCart.tsx` solo la acción de envío/confirmación y su feedback de estado. **Bloque sensible: requiere tu aprobación explícita antes de cambiar el envío de orden.** El responsable autorizaría la presentación bajo estos límites, no el resultado anticipadamente:
+
+- Portar la acción de crear orden pendiente y su feedback (envío, éxito con folio, fallo, reintento explícito del usuario) sobre `ClientCart.tsx`, manteniendo el borrador de carrito y la validación de catálogo ya existentes. No crear cobro, no iniciar checkout Stripe, no solicitar QR ni token de pago.
+- Distinguir claramente «orden pendiente creada» (esperando pago en caja/terminal) de «pago confirmado». Nunca mostrar éxito falso ni afirmar pago antes de la respuesta verificable del servidor.
+- Red incierta: si la respuesta no es verificable o hay conflicto (409), mantener el borrador y exigir reintento explícito del usuario; no reintentar automáticamente, no regenerar clave de idempotencia, no reclamar éxito.
+- Revalidación de carrito antes del envío (ya existente en `ClientCart`): mantener bloqueo si el catálogo cambió o hay líneas con problemas.
+- No duplicar la orden: si ya hay un intento pendiente/enviado, ofrecer reintento del mismo intento en lugar de crear uno nuevo.
+- Capturas 390×844 y 1280×800 de carrito con ítems, envío en curso, éxito con folio, fallo y reintento explícito; comprobar teclado, axe y que ningún POST de pago/checkout se ejecute. Aprobar adaptación no acepta resultado final.
+
+**Estado:** Aprobado explícitamente por el responsable (2026-11-26) como entrada para HYB-21 (no aprueba el resultado implementado hasta cerrar HYB-21).
+
+## Propuesta de adaptación — `ADAPT-CLIENT-ACCOUNT` (HYB-22, NO aprobada — pendiente de tu decisión)
+
+Fuente: `frontend/clientes/src/components/ProfileModal.tsx` y `frontend/clientes/src/components/OrderHistoryModal.tsx`; destino: `frontend/unified/src/features/clientes/account/ClientAccountPage.tsx`. **Bloque sensible: requiere tu aprobación explícita antes de cambiar la composición de cuenta.** El responsable autorizaría la presentación bajo estos límites, no el resultado anticipadamente:
+
+- Portar la composición de cuenta cliente en `/cliente/cuenta`: perfil (teléfono/número de cliente, nombre), favoritos y historial de pedidos como vistas separadas dentro de la página (no convertir la ruta en modal), usando solo la API cliente protegida. No mostrar datos de otros clientes ni credenciales.
+- Historial: lista de pedidos propios con folio, fecha, total y estado; acción "repetir" solo como preview de artículos en el carrito borrador, **sin cobro** y sin crear orden automáticamente. No mostrar QR, token de pago ni importes de otros usuarios.
+- Favoritos: lista de productos favoritos con acción de añadir al carrito borrador (personalizar), sin modificar catálogo ni precios.
+- No inventar sesiones, cuentas demo ni datos locales operativos; la cuenta requiere sesión de cliente autenticada activa.
+- Capturas 390×844 y 1280×800 de perfil vacío/llenado, favoritos vacío/llenado y historial vacío/con pedidos; comprobar teclado, axe y que ningún POST de cobro se ejecute desde la cuenta. Aprobar adaptación no acepta resultado final.
+
+**Estado:** Aprobado explícitamente por el responsable (2026-11-26) como entrada para HYB-22 (no aprueba el resultado implementado hasta cerrar HYB-22).

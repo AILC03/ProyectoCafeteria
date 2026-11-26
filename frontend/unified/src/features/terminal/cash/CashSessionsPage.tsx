@@ -173,18 +173,23 @@ export function CashSessionsPage() {
 
   return (
     <section className="terminal-cash" aria-labelledby="cash-title">
-      <h1 id="cash-title">Caja</h1>
-      <p className="field-hint">Sólo se registra la sesión de efectivo. Aquí no se cobra ni se emite QR.</p>
+      <header className="cash-page-header">
+        <div>
+          <h1 id="cash-title">Corte y Sesión de Caja</h1>
+          <p className="field-hint">Sesión de efectivo confirmada por el servidor. Aquí no se cobra ni se emite QR.</p>
+        </div>
+      </header>
 
-      {loading && <p role="status">Consultando estado de caja…</p>}
+      {loading && <p className="cash-notice" role="status">Consultando estado de caja…</p>}
       {loadError !== null && (
-        <div className="form-alert" role="alert">
+        <div className="form-alert cash-notice" role="alert">
           <p>{loadError}</p>
           <button type="button" className="secondary-button" onClick={() => { void load(); }}>Reintentar consulta</button>
         </div>
       )}
       {!loading && loadError === null && session === null && (
         <section className="auth-card" aria-labelledby="cash-open-title">
+          <p className="cash-eyebrow">Estado de caja del turno · API</p>
           <h2 id="cash-open-title">Caja cerrada</h2>
           <p>No hay una sesión abierta. Registra el fondo inicial para abrirla.</p>
           <div className="form-field">
@@ -207,13 +212,14 @@ export function CashSessionsPage() {
 
       {session !== null && (
         <section className="auth-card" aria-labelledby="cash-summary-title">
+          <p className="cash-eyebrow">Estado de caja del turno · API</p>
           <h2 id="cash-summary-title">{isOpen ? 'Caja abierta' : 'Última sesión cerrada'}</h2>
           <dl className="cash-summary">
             <div><dt>Sesión</dt><dd>{session.id}</dd></div>
             <div><dt>Responsable</dt><dd>{session.employeeId}</dd></div>
             <div><dt>Fondo</dt><dd>{formatMxnCents(session.openingAmountCents)}</dd></div>
             <div><dt>Ventas en efectivo</dt><dd>{formatMxnCents(session.cashSalesCents)}</dd></div>
-            <div><dt>Esperado calculado</dt><dd>{formatMxnCents(session.computedExpectedCashCents)}</dd></div>
+            <div className="cash-metric-primary"><dt>Esperado calculado</dt><dd>{formatMxnCents(session.computedExpectedCashCents)}</dd></div>
             <div><dt>Contado</dt><dd>{session.countedCashCents === null ? '—' : formatMxnCents(session.countedCashCents)}</dd></div>
             <div><dt>Diferencia</dt><dd>{session.differenceCents === null ? '—' : formatMxnCents(session.differenceCents)}</dd></div>
             <div><dt>Pagos exitosos</dt><dd>{session.successfulPayments}</dd></div>
@@ -222,7 +228,7 @@ export function CashSessionsPage() {
           </dl>
 
           {isOpen && !mayCloseCashSession(session, actor) && (
-            <p role="status">Sólo el responsable de la caja puede cerrarla. Tu perfil no puede cerrar una caja ajena.</p>
+            <p className="cash-notice" role="status">Sólo el responsable de la caja puede cerrarla. Tu perfil no puede cerrar una caja ajena.</p>
           )}
 
           {isOpen && mayCloseCashSession(session, actor) && (
@@ -262,15 +268,15 @@ export function CashSessionsPage() {
       )}
 
       {canRetry && (
-        <button type="button" className="secondary-button" onClick={() => {
+        <button type="button" className="secondary-button cash-retry" onClick={() => {
           if (pending.kind === 'open') void openSession(pending.operation);
           else if (session !== null) void closeSession(session.id, pending.operation);
         }}>
           Reintentar la misma operación de caja
         </button>
       )}
-      {actionError !== null && <p role="alert">{actionError}</p>}
-      {message !== null && <p role="status">{message}</p>}
+      {actionError !== null && <p className="cash-notice cash-notice-error" role="alert">{actionError}</p>}
+      {message !== null && <p className="cash-notice cash-notice-success" role="status">{message}</p>}
     </section>
   );
 }

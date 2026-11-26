@@ -223,6 +223,7 @@ export function ClientCatalogPage() {
                       loading="lazy"
                     />
                   )}
+                  {!isSafeImageUrl(product.imageUrl) && <div className="client-product-placeholder" aria-label="Producto sin imagen">Sin imagen</div>}
                   <div className="product-card-header">
                     <h2>{product.name}</h2>
                     <span className={product.isAvailable ? 'availability-badge' : 'availability-badge availability-badge-soldout'}>

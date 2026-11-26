@@ -143,8 +143,8 @@ export function HistoryPage() {
 
   return (
     <section className="terminal-history" aria-labelledby="history-title">
-      <h1 id="history-title">Historial y ventas</h1>
-      <p>Consulta operativa de ventas. No se muestra ni consulta el historial personal de clientes.</p>
+      <header className="history-page-header"><h1 id="history-title">Historial y ventas</h1>
+        <p>Consulta operativa de ventas. No se muestra ni consulta el historial personal de clientes.</p></header>
       <form className="history-filters" onSubmit={applyFilters}>
         <div className="form-field">
           <label htmlFor="history-from">Desde</label>
@@ -203,7 +203,7 @@ export function HistoryPage() {
                   <td>{soldAtLabel(sale.soldAt)}</td>
                   <td>{sale.method === 'CASH' ? 'Efectivo' : 'Tarjeta'}</td>
                   <td>{formatMxnCents(sale.totalCents)}</td>
-                  <td><button type="button" className="secondary-button" aria-label={`Reimprimir ticket ${sale.saleNumber}`} onClick={(event) => { void reprint(sale, event.currentTarget); }}>Ver ticket</button></td>
+                  <td><button type="button" className="secondary-button" onClick={(event) => { void reprint(sale, event.currentTarget); }}>Ver ticket {sale.saleNumber}</button></td>
                 </tr>
               ))}
             </tbody>
