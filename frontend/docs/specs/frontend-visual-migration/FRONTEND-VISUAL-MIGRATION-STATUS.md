@@ -52,6 +52,18 @@
 
 **HYB-24…HYB-25:** pendientes. Siguen requiriendo adaptación específica aprobada por el responsable antes de cualquier cambio.
 
+## Revisión independiente HYB-11…22 (2026-11-26)
+
+`frontend-reviewer` no encontró bloqueantes de contrato, sesión, permisos, CSRF ni idempotencia; aprobó HYB-12, 14, 15, 16 y 17 sin observaciones y el resto con observaciones no bloqueantes. `frontend-visual-reviewer` confirmó identidad/estados con diferencias registradas; la fidelidad píxel a píxel no es evaluable para HYB-11, 12, 13, 14, 15, 17, 21 y 22 por no existir captura original aprobada de esas superficies.
+
+Correcciones aplicadas a partir de esas revisiones: impresión aislada verificada en cobro e historial; cabecera del cliente sin solapar el enlace de salto; catálogo cliente en columna centrada con rejilla de 2 columnas y reflow a 320 px; diálogo cliente como panel inferior con asa y cabecera/acciones fijas; mensajes CASH/STRIPE y de envío incierto corregidos; aviso de «producto añadido» retirado al confirmar; capturas de denegación en HYB-14/17; controls administrativos y paginación coherentes; PIN cliente tipo píldora; botón primario deshabilitado distinguible. Se añadió `e2e/visual/hyb21-client-order-send.visual.spec.ts` (envío, incertidumbre y confirmación CASH/STRIPE). La atenuación del backdrop móvil se comprobó por píxel (RGB 138,137,135 sobre 252,249,246) y por hit-testing.
+
+Evidencia vigente: capturas en `frontend/unified/test-results/visual/` (no aprobadas) y originales en `evidence/HYB-03`, `HYB-04` y `HYB-05`. **Ninguna tarea de HYB-11…22 se declara terminada**: siguen pendientes la aceptación visual del responsable y, en HYB-18/20, la aprobación de las diferencias de composición (héroe con imagen y tarjetas del batch REF-C, navegación con iconos y carrito como drawer) antes de continuar.
+
+## Regeneración de evidencia aprobada
+
+Corrección autorizada por el responsable (2026-11-26): las capturas de `HYB-03`, `HYB-04` y `HYB-05` escriben por defecto en `frontend/unified/test-results/visual-evidence/<task>/…`, ignorado por Git. Una ejecución ordinaria de las suites visuales ya no sobrescribe `evidence/` versionada. Regenerar esa evidencia aprobada requiere `VISUAL_EVIDENCE_OVERWRITE=1` de forma explícita. `harness.visual.spec.ts` comprueba que esos escenarios no construyan rutas directas a `evidence/`.
+
 ## Cómo cerrar una task
 
 1. Comprobar estado Git, fuentes/decisiones vigentes y autorización individual; conservar cambios ajenos.

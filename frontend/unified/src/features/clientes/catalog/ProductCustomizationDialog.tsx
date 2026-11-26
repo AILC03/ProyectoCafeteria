@@ -184,6 +184,7 @@ export function ProductCustomizationDialog({
         aria-labelledby="customizer-title"
         aria-describedby="customizer-description"
       >
+        {presentation !== 'pos' && <div className="client-sheet-handle" aria-hidden="true" />}
         <div className="catalog-dialog-header">
           <div>
             <h2 id="customizer-title">{product.name}</h2>

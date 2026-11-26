@@ -7,9 +7,7 @@
 .client-layout .client-account p { margin: 0 0 .75rem; color: #5e493e; line-height: 1.5; }
 .client-layout .client-account form { display: grid; gap: .75rem; max-width: 34rem; margin: 1rem 0; }
 .client-layout .client-account form label { display: grid; gap: .35rem; font-weight: 800; color: #713419; font-size: .95rem; }
-.client-layout .client-account form input[type='text'],
-.client-layout .client-account form input[type='tel'],
-.client-layout .client-account form input[type='password'] { width: 100%; min-height: 44px; border: 1px solid #c8aa96; border-radius: .75rem; padding: .6rem .75rem; font: inherit; background: #fff; }
+.client-layout .client-account form input:not([type='checkbox']):not([type='radio']) { width: 100%; min-height: 44px; border: 1px solid #c8aa96; border-radius: .75rem; padding: .6rem .75rem; font: inherit; background: #fff; }
 .client-layout .client-account form input:focus-visible,
 .client-layout .client-account button:focus-visible { outline: 3px solid #713419; outline-offset: 2px; }
 .client-layout .client-account button { min-height: 44px; border-radius: .75rem; border: 1px solid #713419; background: #713419; color: #fff; font-weight: 800; padding: 0 1.25rem; cursor: pointer; }

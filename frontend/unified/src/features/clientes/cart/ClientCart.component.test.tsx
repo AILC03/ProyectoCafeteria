@@ -438,10 +438,14 @@ describe('Mobile cart and order (TASK-11)', () => {
     fireEvent.click(screen.getByRole('radio', { name: /STRIPE/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Crear orden pendiente' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('No sabemos si se creó');
+    expect(screen.getByText(/El envío anterior quedó sin confirmar/)).toBeInTheDocument();
+    expect(screen.queryByText(/no se envió completamente/)).not.toBeInTheDocument();
     expect(screen.queryByText('Orden creada')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Crear orden pendiente' })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Reintentar la misma orden' }));
     expect(await screen.findByText('Orden creada')).toBeInTheDocument();
+    expect(screen.getByText(/no se inició ningún cobro con tarjeta/)).toBeInTheDocument();
+    expect(screen.queryByText(/Paga en caja para completar/)).not.toBeInTheDocument();
     expect(requests).toHaveLength(2);
     expect(requests[0]).toEqual(requests[1]);
     expect(requests[0].body).toEqual({ paymentMethod: 'STRIPE', items: [{ productId: '10', quantity: 1, optionValueIds: ['large'] }] });
@@ -478,6 +482,7 @@ describe('Mobile cart and order (TASK-11)', () => {
     expect(screen.queryByRole('button', { name: 'Reintentar la misma orden' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Crear orden pendiente' }));
     expect(await screen.findByText('Orden creada')).toBeInTheDocument();
+    expect(screen.getByText(/Paga en caja para completar/)).toBeInTheDocument();
     expect(keys).toHaveLength(2);
     expect(keys[0]).not.toBe(keys[1]);
   });

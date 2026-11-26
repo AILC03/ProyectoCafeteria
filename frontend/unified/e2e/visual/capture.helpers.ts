@@ -19,6 +19,33 @@ import {
 const helperDir = path.dirname(fileURLToPath(import.meta.url));
 export const UNIFIED_ROOT = path.resolve(helperDir, '../..');
 export const SMOKE_CAPTURE_DIR = path.resolve(UNIFIED_ROOT, 'test-results/visual-smoke');
+export const APPROVED_EVIDENCE_ROOT = path.resolve(
+  UNIFIED_ROOT,
+  '../docs/specs/frontend-visual-migration/evidence',
+);
+export const DRAFT_EVIDENCE_ROOT = path.resolve(UNIFIED_ROOT, 'test-results/visual-evidence');
+
+/**
+ * Approved evidence is versioned and reviewed, so visual specs must not rebuild
+ * it as a side effect of a normal test run. Without explicit authorization they
+ * write a drafts mirror under test-results, which Git ignores.
+ */
+export function evidenceDir(task: string, ...segments: string[]): string {
+  const approved = process.env.VISUAL_EVIDENCE_OVERWRITE === '1';
+  const root = approved ? APPROVED_EVIDENCE_ROOT : DRAFT_EVIDENCE_ROOT;
+  if (!approved) warnDraftEvidenceOnce(root);
+  return path.join(root, task, ...segments);
+}
+
+let draftEvidenceWarningShown = false;
+function warnDraftEvidenceOnce(root: string): void {
+  if (draftEvidenceWarningShown) return;
+  draftEvidenceWarningShown = true;
+  console.warn(
+    `[visual] Evidencia en borrador: ${root}. ` +
+      'No se sobrescribe evidence/ aprobada; usa VISUAL_EVIDENCE_OVERWRITE=1 sólo con autorización explícita.',
+  );
+}
 
 export const ORIGINS = {
   unified: 'http://localhost:5173',

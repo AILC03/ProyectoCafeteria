@@ -49,6 +49,11 @@ for (const viewport of [{ width: 1024, height: 768 }, { width: 1280, height: 800
         await receipt.screenshot({ path: info.outputPath(`hyb11-${viewport.width}x${viewport.height}-${mode}-receipt-unapproved.png`) });
         expect((await new AxeBuilder({ page: context.page }).include('.protected-ticket').analyze()).violations).toEqual([]);
         await context.page.emulateMedia({ media: 'print' });
+        await expect(context.page.locator('.pos-top-nav')).toBeHidden();
+        await expect(context.page.locator('.history-page-header')).toBeHidden();
+        await expect(context.page.locator('.history-filters')).toBeHidden();
+        await expect(context.page.locator('.history-table-wrap')).toBeHidden();
+        await expect(context.page.getByRole('button', { name: 'Cerrar ticket', includeHidden: true })).toBeHidden();
         await expect(receipt.getByRole('button', { name: 'Imprimir ticket', includeHidden: true })).toBeHidden();
         const pdf = await context.page.pdf({ format: 'A4', printBackground: true });
         expect(pdf.byteLength).toBeGreaterThan(1000);

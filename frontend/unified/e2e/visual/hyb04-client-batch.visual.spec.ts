@@ -6,6 +6,7 @@ import { expect, test } from '@playwright/test';
 import {
   assertHealthyPage,
   createIsolatedContext,
+  evidenceDir,
   ORIGINS,
   UNIFIED_ROOT,
   waitForVisualStability,
@@ -17,11 +18,6 @@ const CLIENT_PALETTE = {
   primary: '#0f0301',
   secondary: '#974818',
 } as const;
-
-const EVIDENCE_HYB04_DIR = path.resolve(
-  UNIFIED_ROOT,
-  '../docs/specs/frontend-visual-migration/evidence/HYB-04',
-);
 
 const CLIENT_VIEWPORTS = [
   { label: '390x844', width: 390, height: 844 },
@@ -156,7 +152,7 @@ test.describe('HYB-04 Client visual batch capture (REF-C)', () => {
 
       // 1. Acceso (/iniciar-sesion vs /cliente/iniciar-sesion)
       {
-        const targetDir = path.join(EVIDENCE_HYB04_DIR, 'acceso', viewport.label);
+        const targetDir = evidenceDir('HYB-04', 'acceso', viewport.label);
         const records: CaptureRecord[] = [];
 
         const origSession = await createIsolatedContext(browser, {
@@ -212,7 +208,7 @@ test.describe('HYB-04 Client visual batch capture (REF-C)', () => {
 
       // 2. Menu (/menu vs /cliente/menu)
       {
-        const targetDir = path.join(EVIDENCE_HYB04_DIR, 'menu', viewport.label);
+        const targetDir = evidenceDir('HYB-04', 'menu', viewport.label);
         const records: CaptureRecord[] = [];
 
         const origSession = await createIsolatedContext(browser, {
@@ -269,7 +265,7 @@ test.describe('HYB-04 Client visual batch capture (REF-C)', () => {
 
       // 3. Personalizacion (ProductModal vs ProductCustomizationDialog)
       {
-        const targetDir = path.join(EVIDENCE_HYB04_DIR, 'personalizacion', viewport.label);
+        const targetDir = evidenceDir('HYB-04', 'personalizacion', viewport.label);
         const records: CaptureRecord[] = [];
 
         const origSession = await createIsolatedContext(browser, {

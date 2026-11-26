@@ -1,12 +1,12 @@
 /* HYB-19: client catalog presentation; never invents product photos or local products. */
-.client-layout .catalog-page { width: 100%; max-width: 80rem; margin: 0 auto; align-content: start; }
+.client-layout .catalog-page { width: 100%; max-width: 30rem; margin: 0 auto; align-content: start; }
 .client-layout .catalog-header { gap: .4rem; }
 .client-layout .catalog-header h1 { font-size: clamp(1.75rem, 3vw, 2.5rem); color: var(--client-ink); }
 .client-layout .catalog-header p { margin: 0; color: #5e493e; }
 .client-layout .catalog-categories { gap: .6rem; padding: .25rem 0; }
 .client-layout .catalog-categories button { min-height: 44px; padding: .6rem 1.2rem; border-radius: 999px; background: #fff; border: 1px solid #c8aa96; color: #713419; }
 .client-layout .catalog-categories button[aria-pressed='true'] { background: #713419; color: #fff; border-color: #713419; }
-.client-layout .catalog-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr)); gap: 1rem; }
+.client-layout .catalog-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
 .client-layout .catalog-grid .product-card { overflow: hidden; gap: 0; padding: 0; border: 1px solid #e8dcd2; border-radius: 1rem; box-shadow: 0 2px 10px rgb(45 26 18 / 7%); background: #fff; }
 .client-layout .catalog-grid .product-card-unavailable { background: #f6f2ef; }
 .client-layout .catalog-grid .product-image,

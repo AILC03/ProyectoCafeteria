@@ -1,8 +1,16 @@
 /* HYB-20: client customization dialog and draft cart presentation. No logic changes. */
 /* Dialog (rendered via portal to document.body; client-specific classes) */
-.auth-dialog-backdrop.client-customization-backdrop { align-items: center; justify-content: center; background: rgb(0 0 0 / 45%); inset: 0; padding: 1rem; position: fixed; z-index: 50; display: flex; }
-.auth-dialog.catalog-dialog-client { background: #fff; border-radius: 1rem; box-shadow: 0 10px 30px rgb(45 26 18 / 20%); border: 1px solid #e8dcd2; display: flex; flex-direction: column; max-height: 92vh; width: 100%; max-width: 42rem; }
-.auth-dialog.catalog-dialog-client .catalog-dialog-header { display: flex; justify-content: space-between; align-items: start; gap: 1rem; padding: 1rem 1.25rem; background: #4b2418; color: #fff; }
+.auth-dialog-backdrop.client-customization-backdrop { align-items: flex-end; justify-content: center; background: rgb(0 0 0 / 45%); inset: 0; padding: 0; position: fixed; z-index: 50; display: flex; }
+.auth-dialog.catalog-dialog-client { background: #fff; border-radius: 1.5rem 1.5rem 0 0; box-shadow: 0 -10px 30px rgb(45 26 18 / 20%); border: 1px solid #e8dcd2; border-bottom: 0; display: flex; flex-direction: column; max-height: 92vh; width: 100%; max-width: 32rem; padding: 0; }
+.auth-dialog.catalog-dialog-client > :not(.catalog-dialog-header):not(.catalog-dialog-footer):not(.auth-dialog-actions):not(.client-sheet-handle) { padding-inline: 1.25rem; }
+.auth-dialog.catalog-dialog-client > :last-child:not(.catalog-dialog-footer):not(.auth-dialog-actions) { padding-bottom: 1rem; }
+.client-sheet-handle { width: 3rem; height: .375rem; margin: .75rem auto .25rem; border-radius: 999px; background: #e5e2df; flex: 0 0 auto; }
+@media (min-width: 640px) {
+  .auth-dialog-backdrop.client-customization-backdrop { align-items: center; padding: 1rem; }
+  .auth-dialog.catalog-dialog-client { border-radius: 1.5rem; border-bottom: 1px solid #e8dcd2; box-shadow: 0 10px 30px rgb(45 26 18 / 20%); }
+  .client-sheet-handle { display: none; }
+}
+.auth-dialog.catalog-dialog-client .catalog-dialog-header { position: sticky; top: 0; z-index: 1; display: flex; justify-content: space-between; align-items: start; gap: 1rem; padding: 1rem 1.25rem; background: #4b2418; color: #fff; }
 .auth-dialog.catalog-dialog-client .catalog-dialog-header h2 { margin: 0; font-size: 1.25rem; line-height: 1.3; }
 .auth-dialog.catalog-dialog-client .catalog-dialog-header p { margin: 0; color: #ffe5cd; font-size: .9rem; line-height: 1.4; }
 .auth-dialog.catalog-dialog-client .catalog-dialog-header button { min-height: 40px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.5); background: rgba(255,255,255,0.15); color: #fff; font-weight: 700; padding: 0 1rem; }
@@ -26,7 +34,7 @@
 .auth-dialog.catalog-dialog-client .catalog-estimate { display: flex; flex-direction: column; gap: .25rem; }
 .auth-dialog.catalog-dialog-client .catalog-estimate p { margin: 0; color: #5e493e; }
 .auth-dialog.catalog-dialog-client .catalog-estimate strong { color: #713419; font-size: 1.1rem; }
-.auth-dialog.catalog-dialog-client .auth-dialog-actions { display: flex; justify-content: flex-end; gap: .75rem; padding: 1rem 1.25rem; border-top: 1px solid #e8dcd2; background: #faf7f3; }
+.auth-dialog.catalog-dialog-client .auth-dialog-actions { position: sticky; bottom: 0; z-index: 1; display: flex; justify-content: flex-end; gap: .75rem; padding: 1rem 1.25rem; border-top: 1px solid #e8dcd2; background: #faf7f3; }
 .auth-dialog.catalog-dialog-client .auth-dialog-actions button { min-height: 44px; border-radius: .75rem; font-weight: 800; padding: 0 1.25rem; }
 .auth-dialog.catalog-dialog-client .auth-dialog-actions button.secondary-button { color: #713419; border-color: #713419; background: #fff; }
 .auth-dialog.catalog-dialog-client .auth-dialog-actions button:not(.secondary-button) { background: #713419; border-color: #713419; color: #fff; }
@@ -49,6 +57,12 @@
 .client-layout .client-cart [role='status'] { color: #5e493e; font-size: .9rem; margin: .5rem 0 0; }
 .client-layout .client-cart button:not(.secondary-button) { min-height: 44px; border-radius: .75rem; background: #713419; border-color: #713419; color: #fff; font-weight: 800; padding: 0 1.25rem; }
 .client-layout .client-cart button:disabled { opacity: .6; cursor: not-allowed; }
+.client-layout .client-cart button:not(.secondary-button):disabled {
+  background: #d9cfc7;
+  border-color: #c9b9ac;
+  color: #6d5b50;
+  opacity: 1;
+}
 
 /* Order send and confirmation states (HYB-21) */
 .client-layout .order-retry { border: 1px solid #d7c3b4; border-radius: .75rem; background: #faf7f3; padding: 1rem; margin: .75rem 0 0; display: flex; flex-direction: column; gap: .75rem; }

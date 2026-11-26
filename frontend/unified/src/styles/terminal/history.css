@@ -21,6 +21,7 @@
 .terminal-layout .history-table-wrap td:first-child { font-weight: 800; }
 .terminal-layout .history-table-wrap td button { min-height: 44px; border-radius: 10px; white-space: nowrap; }
 .terminal-layout .history-pagination { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; justify-content: center; }
+.terminal-layout .history-pagination button:disabled { background: #f1f5f9; border: 1px solid #cbd5e1; color: #94a3b8; opacity: 1; }
 .terminal-layout .history-ticket { background: #fff; border: 1px solid var(--term-border-light); border-radius: 16px; padding: 1.25rem; width: fit-content; max-width: 100%; }
 .terminal-layout .history-ticket h2 { margin: 0; font-size: 1.1rem; }
 .terminal-layout .history-ticket > p { margin: 0; color: var(--term-text-muted); }

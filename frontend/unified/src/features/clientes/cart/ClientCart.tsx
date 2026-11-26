@@ -143,7 +143,7 @@ export function ClientCart({ items, onChange, catalogRevision, onLockChange }: {
     </>}
     {attempt.pending !== null && !attempt.sending && !attempt.confirmed && (
       <div className="order-retry" role="status">
-        <p>La orden anterior no se envió completamente. Revisa el catálogo y vuelve a intentar.</p>
+        <p>El envío anterior quedó sin confirmar. Reintenta la misma orden; no crees una nueva.</p>
         <button type="button" disabled={attempt.paused} onClick={() => { void store.send(); }}>Reintentar la misma orden</button>
       </div>
     )}
@@ -161,7 +161,12 @@ export function ClientCart({ items, onChange, catalogRevision, onLockChange }: {
         <p><strong>Folio:</strong> {attempt.confirmed.folio}</p>
         <p><strong>Estado:</strong> pendiente de pago</p>
         <p><strong>Total confirmado por el servidor:</strong> {formatMxnCents(attempt.confirmed.totalCents)}.</p>
-        <p className="field-hint">Crear la orden no confirma el pago. Paga en caja para completar.</p>
+        <p className="field-hint">
+          Crear la orden no confirma el pago.{' '}
+          {attempt.confirmed.paymentMethod === 'CASH'
+            ? 'Paga en caja para completar.'
+            : 'La orden queda pendiente de pago; no se inició ningún cobro con tarjeta.'}
+        </p>
       </section>
     )}
   </section>;

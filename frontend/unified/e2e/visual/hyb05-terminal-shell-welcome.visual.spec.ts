@@ -7,6 +7,7 @@ import { expect, test } from '@playwright/test';
 import {
   assertHealthyPage,
   createIsolatedContext,
+  evidenceDir,
   launchIsolatedElectron,
   ORIGINS,
   UNIFIED_ROOT,
@@ -15,10 +16,6 @@ import {
 import { SYNTHETIC_ACTORS, VISITOR_ACTOR, type ApiRouteHandler } from './fixtures.ts';
 
 const SELECTED_THEME = 'theme-nordic' as const;
-const EVIDENCE_HYB05_DIR = path.resolve(
-  UNIFIED_ROOT,
-  '../docs/specs/frontend-visual-migration/evidence/HYB-05',
-);
 
 const TERMINAL_VIEWPORTS = [
   { label: '1024x768', width: 1024, height: 768 },
@@ -136,7 +133,7 @@ test.describe('HYB-05 Terminal shell & welcome visual verification', () => {
     }) => {
       test.setTimeout(90_000);
       const viewportSize = { width: viewport.width, height: viewport.height };
-      const targetDir = path.join(EVIDENCE_HYB05_DIR, 'bienvenida', viewport.label);
+      const targetDir = evidenceDir('HYB-05', 'bienvenida', viewport.label);
       const records: CaptureRecord[] = [];
 
       // 1. Original (5184) con theme-nordic
@@ -314,7 +311,7 @@ test.describe('HYB-05 Terminal shell & welcome visual verification', () => {
 
   test('captures real Electron evidence in 1280x800 and maximized without Cliente link', async () => {
     test.setTimeout(90_000);
-    const electronDir = path.join(EVIDENCE_HYB05_DIR, 'electron');
+    const electronDir = evidenceDir('HYB-05', 'electron');
     const records: CaptureRecord[] = [];
 
     const session = await launchIsolatedElectron({

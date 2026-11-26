@@ -6,6 +6,7 @@ import { expect, test } from '@playwright/test';
 import {
   assertHealthyPage,
   createIsolatedContext,
+  evidenceDir,
   ORIGINS,
   UNIFIED_ROOT,
   waitForVisualStability,
@@ -19,10 +20,6 @@ import {
 } from './fixtures.ts';
 
 const SELECTED_THEME = 'theme-nordic' as const;
-const EVIDENCE_HYB03_DIR = path.resolve(
-  UNIFIED_ROOT,
-  '../docs/specs/frontend-visual-migration/evidence/HYB-03',
-);
 
 const TERMINAL_VIEWPORTS = [
   { label: '1024x768', width: 1024, height: 768 },
@@ -195,7 +192,7 @@ test.describe('HYB-03 Terminal visual batch capture (theme-nordic)', () => {
 
       // 1. Bienvenida
       {
-        const targetDir = path.join(EVIDENCE_HYB03_DIR, 'bienvenida', viewport.label);
+        const targetDir = evidenceDir('HYB-03', 'bienvenida', viewport.label);
         const records: CaptureRecord[] = [];
 
         const origSession = await createIsolatedContext(browser, {
@@ -252,7 +249,7 @@ test.describe('HYB-03 Terminal visual batch capture (theme-nordic)', () => {
 
       // 2. Acceso (original ID + original PIN + unified current)
       {
-        const targetDir = path.join(EVIDENCE_HYB03_DIR, 'acceso', viewport.label);
+        const targetDir = evidenceDir('HYB-03', 'acceso', viewport.label);
         const records: CaptureRecord[] = [];
 
         const origSession = await createIsolatedContext(browser, {
@@ -323,7 +320,7 @@ test.describe('HYB-03 Terminal visual batch capture (theme-nordic)', () => {
 
       // 3. POS (original PosHeader + OrderingWorkspace con líneas sintéticas + unified current)
       {
-        const targetDir = path.join(EVIDENCE_HYB03_DIR, 'pos', viewport.label);
+        const targetDir = evidenceDir('HYB-03', 'pos', viewport.label);
         const records: CaptureRecord[] = [];
 
         const origSession = await createIsolatedContext(browser, {

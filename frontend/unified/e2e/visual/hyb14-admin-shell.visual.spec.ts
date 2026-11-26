@@ -26,12 +26,14 @@ for (const viewport of [{ width: 1024, height: 768 }, { width: 1280, height: 800
     } finally { await context.close(); }
   });
 
-  test(`HYB-14 cashier denied administration ${viewport.width}x${viewport.height}`, async ({ browser }) => {
+  test(`HYB-14 cashier denied administration ${viewport.width}x${viewport.height}`, async ({ browser }, info) => {
     const context = await createIsolatedContext(browser, { viewport, actor: { ...SYNTHETIC_ACTORS.CAJERO, id: '2' } });
     try {
       await context.page.goto(`${ORIGINS.unified}/terminal/administracion`);
       await expect(context.page.getByRole('heading', { name: 'Dashboard y corte' })).toHaveCount(0);
       await expect(context.page.getByRole('navigation', { name: 'Secciones administrativas' })).toHaveCount(0);
+      await waitForVisualStability(context.page);
+      await context.page.screenshot({ path: info.outputPath(`hyb14-${viewport.width}x${viewport.height}-denied-unapproved.png`) });
       await assertHealthyPage(context.page, context.monitor, context.apiMock);
     } finally { await context.close(); }
   });

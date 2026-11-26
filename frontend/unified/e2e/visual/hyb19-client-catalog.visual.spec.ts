@@ -18,6 +18,14 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 800 
       await expect(context.page.getByRole('heading', { name: 'Menú', exact: true })).toBeVisible();
       await expect(context.page.getByRole('button', { name: 'Todas', exact: true })).toHaveAttribute('aria-pressed', 'true');
       await expect(context.page.locator('.catalog-grid article')).toHaveCount(2);
+      const [firstCard, secondCard] = await Promise.all([
+        context.page.locator('.catalog-grid article').nth(0).boundingBox(),
+        context.page.locator('.catalog-grid article').nth(1).boundingBox(),
+      ]);
+      expect(firstCard).not.toBeNull();
+      expect(secondCard).not.toBeNull();
+      expect(Math.abs((firstCard!.y) - (secondCard!.y))).toBeLessThan(2);
+      expect(firstCard!.x + firstCard!.width).toBeLessThanOrEqual(secondCard!.x + 1);
       await expect(context.page.getByText('Americano Clásico')).toBeVisible();
       await expect(context.page.getByText('Disponible', { exact: true })).toBeVisible();
       await expect(context.page.getByText('Sin imagen')).toHaveCount(2);
@@ -29,6 +37,8 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 800 
       await context.page.screenshot({ path: info.outputPath(`hyb19-${viewport.width}x${viewport.height}-catalog-unapproved.png`) });
       expect((await new AxeBuilder({ page: context.page }).include('.client-layout').analyze()).violations).toEqual([]);
       expect(await context.page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
+      await context.page.setViewportSize({ width: 320, height: 640 });
+      expect(await context.page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
       await assertHealthyPage(context.page, context.monitor, context.apiMock);
     } finally { await context.close(); }
   });

@@ -35,6 +35,9 @@
 .terminal-layout .protected-ticket > button { display: block; width: 100%; min-height: 44px; margin-top: 1rem; border-radius: 10px; background: #0f172a; border-color: #0f172a; }
 @media print {
   @page { margin: 4mm; }
+  .terminal-layout header.pos-top-nav { display: none; }
+  .terminal-layout .skip-link { display: none; }
+  .terminal-layout > main { padding: 0; }
   .terminal-layout .protected-ticket { width: 72mm; max-width: 100%; padding: 2mm; border: 0; border-radius: 0; box-shadow: none; color: #000; break-inside: avoid; print-color-adjust: exact; }
   .terminal-layout .protected-ticket > button { display: none; }
   .terminal-layout .ticket-registration svg { max-width: 44mm; }

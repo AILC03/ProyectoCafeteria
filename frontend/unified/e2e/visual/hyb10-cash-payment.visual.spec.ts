@@ -68,6 +68,10 @@ for (const viewport of [{ width: 1024, height: 768 }, { width: 1280, height: 800
       await expect(context.page.getByRole('heading', { name: 'Ticket V000009' })).toBeVisible();
       expect(charges).toBe(1);
       expect(tickets).toBe(2);
+      await context.page.emulateMedia({ media: 'print' });
+      await expect(context.page.locator('.payment-header')).toBeHidden();
+      await expect(context.page.locator('.payment-checkout-card')).toBeHidden();
+      await context.page.emulateMedia({ media: 'screen' });
       expect((await new AxeBuilder({ page: context.page }).include('.terminal-payment').analyze()).violations).toEqual([]);
       expect(await context.page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
       await assertHealthyPage(context.page, context.monitor, context.apiMock);

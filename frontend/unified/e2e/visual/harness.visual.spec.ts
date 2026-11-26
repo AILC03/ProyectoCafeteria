@@ -5,6 +5,7 @@ import {
   assertHealthyPage,
   captureSmokeScreenshot,
   createIsolatedContext,
+  evidenceDir,
   launchIsolatedElectron,
   ORIGINS,
   SMOKE_CAPTURE_DIR,
@@ -101,6 +102,22 @@ test.describe('HYB-02 Isolated visual harness', () => {
         .filter((entry) => entry.isFile() && entry.name.startsWith('smoke-'))
         .map((entry) => entry.name);
       expect(leakedSmokeFiles).toEqual([]);
+    }
+  });
+
+  test('keeps approved evidence read-only unless regeneration is explicitly authorized', () => {
+    const specs = ['hyb03-terminal-batch.visual.spec.ts', 'hyb04-client-batch.visual.spec.ts', 'hyb05-terminal-shell-welcome.visual.spec.ts'];
+    for (const spec of specs) {
+      const source = fs.readFileSync(path.resolve(UNIFIED_ROOT, 'e2e/visual', spec), 'utf-8');
+      expect(source).not.toContain('../docs/specs/frontend-visual-migration/evidence');
+      expect(source).toContain('evidenceDir(');
+    }
+
+    if (process.env.VISUAL_EVIDENCE_OVERWRITE === '1') {
+      expect(evidenceDir('HYB-GUARD')).toContain(path.join('docs', 'specs', 'frontend-visual-migration', 'evidence'));
+    } else {
+      expect(evidenceDir('HYB-GUARD')).toContain(path.join('test-results', 'visual-evidence'));
+      expect(evidenceDir('HYB-GUARD')).not.toContain(path.join('docs', 'specs'));
     }
   });
 

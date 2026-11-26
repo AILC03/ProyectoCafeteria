@@ -8,7 +8,6 @@ import '../styles/client/catalog.css';
 import '../styles/client/cart-customization.css';
 import '../styles/client/account.css';
 import '../styles/client/registration.css';
-import '../styles/client/account.css';
 
 export function ClientLayout() {
   const session = useSession();

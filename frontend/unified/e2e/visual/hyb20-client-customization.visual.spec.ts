@@ -18,6 +18,17 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 800 
       await expect(context.page.getByRole('button', { name: 'Personalizar Americano Clásico' })).toBeVisible();
       await context.page.getByRole('button', { name: 'Personalizar Americano Clásico' }).click();
       await expect(context.page.getByRole('dialog')).toBeVisible();
+      const dialogBox = await context.page.getByRole('dialog').boundingBox();
+      expect(dialogBox).not.toBeNull();
+      if (viewport.width < 640) {
+        expect(dialogBox!.y + dialogBox!.height).toBeGreaterThanOrEqual(viewport.height - 2);
+        await expect(context.page.locator('.client-sheet-handle')).toBeVisible();
+        expect(await context.page.evaluate(() => document.elementFromPoint(10, 10)?.closest('.client-customization-backdrop') !== null)).toBe(true);
+      } else {
+        expect(dialogBox!.y).toBeGreaterThan(0);
+        expect(dialogBox!.y + dialogBox!.height).toBeLessThan(viewport.height);
+        await expect(context.page.locator('.client-sheet-handle')).toBeHidden();
+      }
       await expect(context.page.getByRole('heading', { name: 'Americano Clásico' })).toBeVisible();
       await expect(context.page.getByRole('button', { name: 'Cerrar' })).toBeVisible();
       await expect(context.page.getByRole('button', { name: 'Disminuir cantidad' })).toBeVisible();

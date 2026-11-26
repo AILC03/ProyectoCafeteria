@@ -198,7 +198,7 @@ Fuente: `frontend/clientes/src/components/OrderConfirmationModal.tsx`; destino: 
 
 **Estado:** Aprobado explícitamente por el responsable (2026-11-26) como entrada para HYB-21 (no aprueba el resultado implementado hasta cerrar HYB-21).
 
-## Propuesta de adaptación — `ADAPT-CLIENT-ACCOUNT` (HYB-22, NO aprobada — pendiente de tu decisión)
+## Propuesta de adaptación — `ADAPT-CLIENT-ACCOUNT` (HYB-22, aprobada como entrada, 2026-11-26)
 
 Fuente: `frontend/clientes/src/components/ProfileModal.tsx` y `frontend/clientes/src/components/OrderHistoryModal.tsx`; destino: `frontend/unified/src/features/clientes/account/ClientAccountPage.tsx`. **Bloque sensible: requiere tu aprobación explícita antes de cambiar la composición de cuenta.** El responsable autorizaría la presentación bajo estos límites, no el resultado anticipadamente:
 

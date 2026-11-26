@@ -43,3 +43,39 @@
   .terminal-layout .terminal-admin .admin-tabs { flex-direction: row; flex-wrap: wrap; align-self: start; }
   .terminal-layout .terminal-admin .admin-tabs button { width: auto; flex: 1 1 8rem; text-align: center; }
 }
+
+/* Consistent administrative form controls and pagination. */
+.terminal-layout .terminal-admin .admin-form label:has(> input[type='checkbox']) {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: .5rem;
+}
+.terminal-layout .terminal-admin .admin-form input[type='checkbox'] { justify-self: start; margin: 0; }
+.terminal-layout .terminal-admin :is(.admin-form, .admin-config-editor form) button[type='submit'] {
+  justify-self: start;
+  min-height: 44px;
+  padding: .6rem 1.2rem;
+  border-radius: 999px;
+  background: #0f172a;
+  border: 1px solid #0f172a;
+  color: #fff;
+  font-weight: 700;
+}
+.terminal-layout .terminal-admin :is(.admin-form, .admin-config-editor form) button[type='submit']:disabled { opacity: .65; }
+.terminal-layout .terminal-admin .admin-form button:not([type='submit']) {
+  justify-self: start;
+  min-height: 44px;
+  padding: .6rem 1.2rem;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  font-weight: 700;
+}
+.terminal-layout .terminal-admin .kitchen-pagination button:disabled {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #94a3b8;
+  opacity: 1;
+}

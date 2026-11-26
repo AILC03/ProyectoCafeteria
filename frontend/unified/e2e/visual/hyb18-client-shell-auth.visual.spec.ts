@@ -11,6 +11,16 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 800 
       await expect(context.page.getByRole('heading', { name: 'Iniciar sesión', exact: true })).toBeVisible();
       await expect(context.page.getByLabel('Teléfono o número de cliente')).toBeVisible();
       await expect(context.page.getByRole('group', { name: 'NIP de 4 dígitos' })).toBeVisible();
+      await context.page.keyboard.press('Tab');
+      const skipLink = context.page.getByRole('link', { name: 'Saltar al contenido principal' });
+      await expect(skipLink).toBeFocused();
+      expect(await skipLink.evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+        return hit !== null && (hit === element || element.contains(hit));
+      })).toBe(true);
+      // Release focus so the skip link does not cover the brand in the evidence capture.
+      await skipLink.evaluate((element) => (element as HTMLElement).blur());
       expect(await context.page.locator('.client-brand img').evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
       await waitForVisualStability(context.page);
       await context.page.screenshot({ path: info.outputPath(`hyb18-${viewport.width}x${viewport.height}-login-unapproved.png`) });
