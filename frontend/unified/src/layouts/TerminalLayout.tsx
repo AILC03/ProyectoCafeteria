@@ -1,8 +1,14 @@
 import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
+import { isDesktopTerminalOnly } from '../app/desktop';
 import { ActorAreaLink } from '../shared/auth/ActorAreaLink';
 import { useSession, useSessionManager } from '../shared/auth/SessionProvider';
-import { isDesktopTerminalOnly } from '../app/desktop';
+import '../styles/terminal/tokens.css';
+import '../styles/terminal/shell-welcome.css';
+
+function navTabClass({ isActive }: { isActive: boolean }): string {
+  return isActive ? 'pos-view-tab active' : 'pos-view-tab';
+}
 
 export function TerminalLayout() {
   const session = useSession();
@@ -28,18 +34,41 @@ export function TerminalLayout() {
   return (
     <div className="terminal-layout">
       <a className="skip-link" href="#main-content">Saltar al contenido principal</a>
-      <header>
-        <p>Terminal</p>
-        <nav aria-label="Navegación de terminal"><NavLink end to="/terminal">Inicio</NavLink><NavLink to="/terminal/pos">POS</NavLink>{canSeeKitchen && <NavLink to="/terminal/cocina">Cocina</NavLink>}<NavLink to="/terminal/caja">Caja</NavLink>{canSeeAvailability && <NavLink to="/terminal/disponibilidad">Disponibilidad</NavLink>}{canSeeHistory && <NavLink to="/terminal/historial">Historial</NavLink>}{canSeeAdmin && <NavLink to="/terminal/administracion">Administración</NavLink>}{!isDesktopTerminalOnly() && <ActorAreaLink destination="client" to="/cliente/iniciar-sesion">Cliente</ActorAreaLink>}</nav>
-        {session.status === 'authenticated' && (
-          <div className="terminal-session">
-            <span>Sesión: {session.actor.name}</span>
-            <button type="button" onClick={() => { void handleLogout(); }} disabled={busy}>
-              {busy ? 'Cerrando sesión…' : 'Cerrar sesión'}
-            </button>
-            {error !== null && <p role="alert">{error}</p>}
-          </div>
-        )}
+      <header className="pos-top-nav">
+        <div className="pos-nav-left">
+          <p className="pos-logo-text">Terminal</p>
+          <nav className="pos-view-tabs" aria-label="Navegación de terminal">
+            <NavLink className={navTabClass} end to="/terminal">Inicio</NavLink>
+            <NavLink className={navTabClass} to="/terminal/pos">POS</NavLink>
+            {canSeeKitchen && <NavLink className={navTabClass} to="/terminal/cocina">Cocina</NavLink>}
+            <NavLink className={navTabClass} to="/terminal/caja">Caja</NavLink>
+            {canSeeAvailability && <NavLink className={navTabClass} to="/terminal/disponibilidad">Disponibilidad</NavLink>}
+            {canSeeHistory && <NavLink className={navTabClass} to="/terminal/historial">Historial</NavLink>}
+            {canSeeAdmin && <NavLink className={navTabClass} to="/terminal/administracion">Administración</NavLink>}
+            {!isDesktopTerminalOnly() && (
+              <ActorAreaLink className="pos-view-tab" destination="client" to="/cliente/iniciar-sesion">
+                Cliente
+              </ActorAreaLink>
+            )}
+          </nav>
+        </div>
+
+        <div className="pos-nav-right">
+          {session.status === 'authenticated' && (
+            <div className="terminal-session">
+              <span className="pos-cashier-badge">Sesión: {session.actor.name}</span>
+              <button
+                type="button"
+                className="btn-pos-logout"
+                onClick={() => { void handleLogout(); }}
+                disabled={busy}
+              >
+                {busy ? 'Cerrando sesión…' : 'Cerrar sesión'}
+              </button>
+              {error !== null && <p role="alert" className="terminal-session-error">{error}</p>}
+            </div>
+          )}
+        </div>
       </header>
       <main id="main-content" tabIndex={-1}><Outlet /></main>
     </div>

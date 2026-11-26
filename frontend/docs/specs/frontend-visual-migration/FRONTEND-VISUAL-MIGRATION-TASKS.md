@@ -64,7 +64,7 @@ Cada task cerrada incluye fila STATUS con evidencia real, decisiones, revisores,
 
 ## 3. Terminal
 
-- [ ] **HYB-05 — Portar base, shell y bienvenida de terminal** (U).
+- [x] **HYB-05 — Portar base, shell y bienvenida de terminal** (U).
   - Requisitos adicionales: RV-07, CA-03, CA-06. Dependencia: HYB-03.
   - Archivos: `SRC/styles/terminal/tokens.css`, assets verificados, `SRC/layouts/TerminalLayout.tsx`, `SRC/features/terminal/auth/TerminalWelcomePage.tsx`, `base.css` sólo globales transferidas.
   - Referencia: lote terminal; shell por CAJERO/PREPARACION/ADMINISTRADOR y bienvenida anónima/sesión activa.
