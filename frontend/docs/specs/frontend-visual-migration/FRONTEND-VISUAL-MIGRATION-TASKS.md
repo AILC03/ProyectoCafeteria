@@ -1,6 +1,6 @@
 # TASKS-FE-VIS-001 — Entregas híbridas de migración visual
 
-- **Estado:** listado revisado a petición del responsable; HYB-01…HYB-23 terminadas; HYB-24 terminada; HYB-25 pendiente de auditoría integral.
+- **Estado:** listado revisado a petición del responsable; HYB-01…HYB-25 terminadas; auditoría integral aceptada por el responsable el 2026-11-26.
 - **Fuente:** [plan híbrido](./FRONTEND-VISUAL-MIGRATION-PLAN.md) y [spec vigente](./FRONTEND-VISUAL-MIGRATION-SPEC.md).
 - **Sustituye:** listado anterior de 69 tasks R/U, todavía no ejecutadas. Los IDs pasan a `HYB-XX` para no confundir las dos descomposiciones.
 - **Reglas armonizadas:** el responsable autorizó ajustar spec/plan y proceso al enfoque híbrido. Esa edición documental no inicia ninguna task ni aprueba lote, tema, adaptación o resultado visual.
@@ -180,7 +180,7 @@ Cada task cerrada incluye fila STATUS con evidencia real, decisiones, revisores,
   - Pausa previa: adaptaciones sin original directo y diálogo por área; separar por superficie si es necesario para revisión segura.
   - Hecho cuando adicional: error/denegación legibles y fieles a patrones acordados, mismos roles/guardas/destinos/confirmación/logout y foco; no añadir cambio de NIP funcional ni acceso cliente en Electron.
 
-- [ ] **HYB-25 — Auditar reproducción integral y aceptar resultados** (D, H).
+- [x] **HYB-25 — Auditar reproducción integral y aceptar resultados** (D, H).
   - Requisitos: RV-01…RV-08, CA-01…CA-12. Dependencias: HYB-05…HYB-24 cerradas.
   - Archivos: DOC/VALIDATION con nombre completo, REFERENCES y STATUS; no cambios UI en esta task.
   - Verificación: suites completas, matriz por pantalla/estado/rol, recursos/colores, reflow/zoom, teclado/foco, contraste/reduced-motion, Electron e impresión. Distinguir pruebas ejecutadas/omitidas/bloqueadas y capturas realmente vistas.
@@ -204,4 +204,4 @@ No implementar una task genérica de «mejorar todo». Tras la reproducción, ca
 | CA-08 | Revisiones/aceptación al final de cada bloque y HYB-25 |
 | CA-09 | Todos los contratos, revisión final de diff/originales |
 
-**Próxima task:** HYB-25 (auditoría integral), una vez cerrada HYB-24. Hay 25 tasks en total; completar el inventario no aprueba herramientas, capturas, temas ni los bloques siguientes. El ajuste documental del enfoque no es una task de implementación ni una aprobación de capturas.
+**Estado final:** las 25 tasks están terminadas y la auditoría integral fue aceptada. Cualquier cambio posterior de superficies, diferencias o límites requiere nueva verificación y aceptación. El ajuste documental del enfoque no es una task de implementación ni una aprobación de capturas.

@@ -52,7 +52,7 @@
 
 **Regresión visual acumulada:** **84/84** Playwright visuales tras HYB-23, incluidos HYB-06…21, Electron y los 6 casos nuevos de HYB-22/23. No son baselines aprobados ni revisión independiente.
 
-**HYB-25:** pendiente de auditoría integral.
+**HYB-25:** terminada. Auditoría integral en [VALIDATION](./FRONTEND-VISUAL-MIGRATION-VALIDATION.md) con aceptación explícita del responsable (2026-11-26).
 
 ## Cierres del bloque terminal/cliente (aceptación 2026-11-26)
 
@@ -80,6 +80,8 @@ El responsable aprobó las diferencias presentadas y autorizó continuar. Cierre
 | HYB-23 registro por ticket | Terminada | `mismo commit` | `TicketRegistrationPage.tsx` y `registration.css`; formulario a 390×844 y 1280×800, token sólo en memoria y login explícito. Sin pantalla original directa. D-31. |
 
 | HYB-24 superficies transversales | Terminada | `mismo commit` | `router.tsx`, `guards.tsx`, `ActorChangeDialog.tsx`, `SessionProvider.tsx` (sólo captura de foco de retorno), `status-pages.css` y `hyb24-status-surfaces.visual.spec.ts`; landing, 404 global y por área, denegación terminal visitante/rol, denegación cliente, sesión restringida y diálogo por destino con Cancelar/Escape y foco devuelto. Aviso de error diferenciado, CTA de sesión restringida alineado y capturas de 404 global, diálogo terminal y ambas medidas. D-33. Revisiones técnica y visual: aprobadas con observaciones resueltas. |
+
+| HYB-25 auditoría integral | Terminada | `mismo commit` | `FRONTEND-VISUAL-MIGRATION-VALIDATION.md` con matriz CA-01…CA-12, RV-01…RV-08 y por superficie; comandos reales (295 unitarias, 59 E2E, 108 visuales, build, lint, typecheck, `git diff --check`), originales/backend sin cambios y límites declarados. Aceptación integral explícita del responsable (2026-11-26) sobre HYB-01…24 y D-28…D-33. |
 
 Verificación del bloque: `npm run lint` 0 errores, typecheck 0 diagnósticos, `npm run test` **295/295**, `npm run test:e2e` **59/59**, suite visual **108/108** y `npm run build` correcto. `git diff --check` sin errores. Evidencia aprobada intacta.
 
