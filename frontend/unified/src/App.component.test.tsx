@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { HttpResponse, http } from 'msw';
 import { RouterProvider } from 'react-router-dom';
 import { beforeEach, describe, expect, test } from 'vitest';
@@ -10,6 +10,11 @@ beforeEach(() => {
   server.use(
     http.get('/api/v1/categories', () => HttpResponse.json({ data: [], page: { limit: 100, nextCursor: null } })),
     http.get('/api/v1/products', () => HttpResponse.json({ data: [], page: { limit: 100, nextCursor: null } })),
+    http.get('/api/v1/cash-sessions/current', () => HttpResponse.json({ data: null })),
+    http.get('/api/v1/sales', () => HttpResponse.json({ data: [], page: { limit: 20, nextCursor: null } })),
+    http.get('/api/v1/sales/summary', () => HttpResponse.json({ data: { count: '0', totalCents: '0', cashCents: '0', stripeCents: '0' } })),
+    http.get('/api/v1/preparation/orders', () => HttpResponse.json({ data: [], page: { limit: 20, nextCursor: null } })),
+    http.get('/api/v1/admin/products', () => HttpResponse.json({ data: [], page: { limit: 20, nextCursor: null } })),
   );
 });
 
@@ -32,8 +37,10 @@ describe('application routes', () => {
     ['/cliente/cuenta', 'Cuenta'],
     ['/terminal', 'Terminal'],
     ['/terminal/pos', 'Punto de venta'],
-    ['/terminal/cocina', 'Cocina'],
+    ['/terminal/cocina', 'Cola de cocina'],
+    ['/terminal/disponibilidad', 'Disponibilidad de productos'],
     ['/terminal/caja', 'Caja'],
+    ['/terminal/historial', 'Historial y ventas'],
     ['/terminal/administracion/catalogo', 'Administración'],
   ])('renders %s', async (path, heading) => {
     renderRoute(path);
@@ -47,6 +54,15 @@ describe('application routes', () => {
     unmount();
     renderRoute('/terminal/pos');
     expect(await screen.findByRole('navigation', { name: 'Navegación de terminal' })).toBeInTheDocument();
+  });
+
+  test('links operational history in the terminal without linking customer history', async () => {
+    renderRoute('/terminal/historial');
+    const nav = await screen.findByRole('navigation', { name: 'Navegación de terminal' });
+    expect(within(nav).getByRole('link', { name: 'Historial' })).toHaveAttribute('href', '/terminal/historial');
+    expect(within(nav).queryByRole('link', { name: /cuenta|historial personal/i })).not.toBeInTheDocument();
+    expect(nav.querySelector('a[href^="/cliente/cuenta"]')).toBeNull();
+    expect(nav.querySelector('a[href*="/customers/me/"]')).toBeNull();
   });
 
   test('requires actor replacement confirmation before crossing from client to terminal', async () => {
@@ -93,14 +109,46 @@ describe('application routes', () => {
     expect(document.querySelector('main')).toHaveAttribute('tabindex', '-1');
   });
 
+  test('links kitchen and availability only for authorised terminal roles', async () => {
+    const preparacion = { id: '3', name: 'Cocina', role: 'PREPARACION', accountType: 'STAFF', mustChangePin: false };
+    server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ data: preparacion })));
+    const first = render(<SessionProvider><RouterProvider router={createTestRouter(['/terminal/cocina'])} /></SessionProvider>);
+    const prepNav = await screen.findByRole('navigation', { name: 'Navegación de terminal' });
+    expect(within(prepNav).getByRole('link', { name: 'Cocina' })).toHaveAttribute('href', '/terminal/cocina');
+    expect(within(prepNav).queryByRole('link', { name: 'Disponibilidad' })).not.toBeInTheDocument();
+    first.unmount();
+
+    renderRoute('/terminal/disponibilidad');
+    const cashierNav = await screen.findByRole('navigation', { name: 'Navegación de terminal' });
+    expect(within(cashierNav).getByRole('link', { name: 'Cocina' })).toHaveAttribute('href', '/terminal/cocina');
+    expect(within(cashierNav).getByRole('link', { name: 'Disponibilidad' })).toHaveAttribute('href', '/terminal/disponibilidad');
+  });
+
   test.each([
     ['/cliente/cuenta', { id: 'staff-1', name: 'Caja', role: 'CAJERO', accountType: 'STAFF', mustChangePin: false }],
     ['/terminal/pos', { id: 'customer-1', name: 'Cliente', role: 'CLIENTE', accountType: 'CUSTOMER', mustChangePin: false }],
     ['/terminal/administracion/catalogo', { id: 'staff-1', name: 'Caja', role: 'CAJERO', accountType: 'STAFF', mustChangePin: false }],
+    ['/terminal/historial', { id: 'staff-2', name: 'Cocina', role: 'PREPARACION', accountType: 'STAFF', mustChangePin: false }],
+    ['/terminal/historial', { id: 'customer-1', name: 'Cliente', role: 'CLIENTE', accountType: 'CUSTOMER', mustChangePin: false }],
+    ['/terminal/historial', { id: 'legacy-1', name: 'Gerente', role: 'GERENTE', accountType: 'STAFF', mustChangePin: false }],
+    ['/terminal/pos', { id: 'legacy-1', name: 'Gerente', role: 'GERENTE', accountType: 'STAFF', mustChangePin: false }],
+    ['/terminal/cocina', { id: 'legacy-1', name: 'Gerente', role: 'GERENTE', accountType: 'STAFF', mustChangePin: false }],
+    ['/terminal/cocina', { id: 'customer-1', name: 'Cliente', role: 'CLIENTE', accountType: 'CUSTOMER', mustChangePin: false }],
+    ['/terminal/disponibilidad', { id: 'staff-2', name: 'Cocina', role: 'PREPARACION', accountType: 'STAFF', mustChangePin: false }],
+    ['/terminal/disponibilidad', { id: 'customer-1', name: 'Cliente', role: 'CLIENTE', accountType: 'CUSTOMER', mustChangePin: false }],
+    ['/terminal/administracion/catalogo', { id: 'staff-2', name: 'Cocina', role: 'PREPARACION', accountType: 'STAFF', mustChangePin: false }],
   ])('blocks an actor with an unsuitable role from %s', async (path, actor) => {
-    server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ data: actor })));
+    const privateRequests: string[] = [];
+    server.use(
+      http.get('/api/v1/auth/me', () => HttpResponse.json({ data: actor })),
+      http.get('/api/v1/sales', () => { privateRequests.push('sales'); return HttpResponse.json({ data: [], page: { limit: 20, nextCursor: null } }); }),
+      http.get('/api/v1/sales/summary', () => { privateRequests.push('summary'); return HttpResponse.json({ data: { count: '0', totalCents: '0', cashCents: '0', stripeCents: '0' } }); }),
+      http.get('/api/v1/preparation/orders', () => { privateRequests.push('kitchen'); return HttpResponse.json({ data: [], page: { limit: 20, nextCursor: null } }); }),
+      http.get('/api/v1/products', () => { privateRequests.push('products'); return HttpResponse.json({ data: [], page: { limit: 100, nextCursor: null } }); }),
+    );
     render(<SessionProvider><RouterProvider router={createTestRouter([path])} /></SessionProvider>);
     expect(await screen.findByRole('heading', { name: 'Acceso no disponible' })).toBeInTheDocument();
+    expect(privateRequests).toEqual([]);
   });
 
   test('blocks an anonymous session without rendering protected content', async () => {
@@ -115,6 +163,7 @@ describe('application routes', () => {
     ['/cliente/iniciar-sesion', 'Iniciar sesión'],
     ['/cliente/menu', 'Menú'],
     ['/terminal', 'Terminal'],
+    ['/terminal/acceso', 'Acceso a terminal'],
   ])('keeps %s public while session bootstrap is anonymous', async (path, heading) => {
     server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ code: 'UNAUTHENTICATED' }, { status: 401 })));
     render(<SessionProvider><RouterProvider router={createTestRouter([path])} /></SessionProvider>);

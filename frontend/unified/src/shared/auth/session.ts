@@ -1,4 +1,4 @@
-import { ApiError, fetchSessionActor, invalidateCsrfToken, loginCustomerSession, logoutSession, refreshSession, setCsrfToken, subscribeToApiAuthEvents } from '../api/client';
+import { ApiError, fetchSessionActor, invalidateCsrfToken, loginCustomerSession, loginStaffSession, logoutSession, refreshSession, setCsrfToken, subscribeToApiAuthEvents } from '../api/client';
 
 export type Actor = {
   id: string;
@@ -17,6 +17,9 @@ export type SessionState =
 
 export type ActorDestination = 'client' | 'terminal';
 export type PrivateStateCleaner = () => void;
+
+/** Legacy GERENTE and CUSTOMER actors must never enter the unified terminal. */
+const TERMINAL_STAFF_ROLES = new Set(['CAJERO', 'PREPARACION', 'ADMINISTRADOR']);
 
 type ApiEnvelope<T> = { data: T };
 type RefreshPayload = { user: Actor; csrfToken: string };
@@ -138,14 +141,14 @@ export class SessionManager {
     return true;
   }
 
-  async logout(): Promise<boolean> {
+  async logout(options: { preserveLocation?: boolean } = {}): Promise<boolean> {
     const actor = this.state.actor;
     try {
       await logoutSession();
     } catch {
       return false;
     }
-    this.clearSession(this.entryFor(actor), true);
+    this.clearSession(this.entryFor(actor), true, options.preserveLocation === true);
     return true;
   }
 
@@ -166,6 +169,32 @@ export class SessionManager {
         return this.restrictToPinChange(true);
       }
       const next = this.set({ status: 'authenticated', actor: response.data.user });
+      this.coordinator.complete();
+      return next;
+    } catch (error) {
+      if (isPinChange(error)) return this.restrictToPinChange(true);
+      throw error;
+    }
+  }
+
+  /** Authenticates terminal staff without allowing an active actor session to be mixed. */
+  async loginStaff(credentials: { username: string; password: string }): Promise<SessionState> {
+    if (this.state.status === 'loading' || this.state.status === 'authenticated' || this.state.status === 'pin-change-required') {
+      throw new ApiError(409, 'Debe cerrarse la sesión activa antes de iniciar otra.');
+    }
+    try {
+      const response = await loginStaffSession<ApiEnvelope<RefreshPayload>>(credentials);
+      const actor = response.data.user;
+      if (!actor || actor.accountType !== 'STAFF' || !TERMINAL_STAFF_ROLES.has(actor.role)) {
+        this.clearSession('/terminal/acceso', true);
+        throw new ApiError(403, 'El actor autenticado no pertenece al área de terminal.');
+      }
+      this.clearPrivateState();
+      setCsrfToken(response.data.csrfToken);
+      if (actor.mustChangePin) {
+        return this.restrictToPinChange(true);
+      }
+      const next = this.set({ status: 'authenticated', actor });
       this.coordinator.complete();
       return next;
     } catch (error) {
@@ -283,11 +312,11 @@ export class SessionManager {
     return next;
   }
 
-  private clearSession(entry: string, broadcast: boolean): SessionState {
+  private clearSession(entry: string, broadcast: boolean, preserveLocation = false): SessionState {
     this.clearPrivateState();
     invalidateCsrfToken();
     const next = this.set({ status: 'anonymous', actor: null });
-    this.navigateTo(entry);
+    if (!preserveLocation) this.navigateTo(entry);
     if (broadcast) this.coordinator.publish('session-cleared');
     return next;
   }

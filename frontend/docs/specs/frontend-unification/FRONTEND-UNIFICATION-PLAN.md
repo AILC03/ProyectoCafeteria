@@ -82,7 +82,7 @@ La consolidación visual no es una reescritura global: inicialmente coexistirán
 **Propósito:** sustituir clientes HTTP duplicados por una infraestructura única, sin bypasses locales.
 
 - Implementar `apiFetch` tipado para `/api/v1`, `credentials: 'include'`, CSRF, RFC 7807 y trazabilidad de errores.
-- Implementar un único refresh por perfil, no uno por pestaña: elegir un líder mediante Web Locks y documentar un mecanismo alterno para navegadores sin esa API. Los demás contextos esperarán el resultado difundido; un `409 REFRESH_ALREADY_ROTATED` reintentará una sola vez con la cookie actual, sin cerrar sesión de inmediato.
+- Implementar un único refresh por perfil, no uno por pestaña: conforme a D-03 del [registro de decisiones](./FRONTEND-UNIFICATION-DECISIONS.md), Web Locks es obligatorio; sin `navigator.locks`, no se intenta refresh automático y se expone un estado recuperable, sin mecanismo alterno local. Los demás contextos esperarán el resultado difundido; un `409 REFRESH_ALREADY_ROTATED` reintentará una sola vez con la cookie actual, sin cerrar sesión de inmediato.
 - Implementar resolución de actor y guardas por ruta desde respuestas de API, no desde `localStorage`.
 - Implementar reemplazo confirmado de sesión cliente/invitado/personal: logout, limpieza de memoria, invalidación CSRF y posterior login. Logout, 401 definitivo o reemplazo descartarán además el borrador de carrito, nombre de invitado y toda preferencia/estado local asociado al actor; sólo permanecerán preferencias visuales no sensibles.
 - Difundir logout, reemplazo, 401 definitivo y revocación mediante canal entre contextos del mismo perfil.

@@ -2,7 +2,8 @@
 
 API del Sistema Web de Gestión de Órdenes para Cafetería, equipo ESMAOS.
 Las aplicaciones frontend de clientes y empleados están en `../frontend/clientes`
-y `../frontend/empleados`, respectivamente.
+y `../frontend/empleados`, respectivamente; el paquete unificado en migración está en
+`../frontend/unified`.
 
 ## Desarrollo con IA y contribuciones
 
@@ -85,6 +86,32 @@ solo sobre una base local vacía o con historial de este proyecto, nunca reset.
 `npm run api:validate` comprueba contrato y ejemplos; `npm run db:diagram` regenera
 ER desde Prisma. `npm run db:verify:docker` crea bases desechables propias para
 regresión solo cuando Docker esté disponible. Ver guía de verificación.
+
+## Arranque local
+
+Desde la raíz del repositorio:
+
+```powershell
+cd backend
+npm.cmd install
+```
+
+**Con Docker:** `npm.cmd run db:up` genera `.env.docker` con PostgreSQL en `127.0.0.1:55432` y
+base `cafeteria`. Crea `.env` desde `.env.example` y copia allí `DATABASE_URL`,
+`SHADOW_DATABASE_URL` y `TEST_DATABASE_URL` desde `.env.docker`. Después ejecuta
+`npm.cmd run db:prepare`, `npm.cmd run db:seed` (opcional), `npm.cmd run auth:setup` (si faltan
+claves) y `npm.cmd run dev`.
+
+**Con PostgreSQL ya instalado:** no ejecutes `db:up`; crea `.env` desde `.env.example` y ajusta
+`DATABASE_URL` a una base local llamada `cafeteria` o `ProyectoCafeteria`. Después ejecuta
+`db:prepare`, `db:seed` (opcional), `auth:setup` (si faltan claves) y `dev`.
+
+`db:prepare` y `auth:setup` leen `.env`, no `.env.docker`. `db:prepare` aplica migraciones
+versionadas sin `reset` **solo en la base local**; no equivale a aprobación para bases del
+proyecto. `auth:setup` genera claves locales sin imprimirlas ni versionarlas. La API queda en
+`http://localhost:3000`. Para el arranque conjunto con el frontend (dos terminales, proxy de Vite
+y URLs), consulta
+[frontend/unified/README.md](../frontend/unified/README.md#arranque-local-con-backend).
 
 ## Equipo
 

@@ -8,18 +8,26 @@ import {
   type RouteObject,
 } from 'react-router-dom';
 import { ClientAccessGuard, ClientPublicGuard, TerminalAccessGuard } from './guards';
+import { isDesktopTerminalOnly } from './desktop';
 import { ClientAuthPage } from '../features/clientes/auth/ClientAuthPage';
+import { TicketRegistrationPage } from '../features/clientes/registration/TicketRegistrationPage';
 import { exitGuestMode, useGuestSession } from '../features/clientes/auth/guestSession';
 import { ClientCatalogPage } from '../features/clientes/catalog/ClientCatalogPage';
+import { ClientAccountPage } from '../features/clientes/account/ClientAccountPage';
 import { ClientLayout } from '../layouts/ClientLayout';
 import { TerminalLayout } from '../layouts/TerminalLayout';
+import { TerminalAuthPage } from '../features/terminal/auth/TerminalAuthPage';
+import { TerminalWelcomePage } from '../features/terminal/auth/TerminalWelcomePage';
+import { PosPage } from '../features/terminal/pos/PosPage';
+import { CashSessionsPage } from '../features/terminal/cash/CashSessionsPage';
+import { CashPaymentPage } from '../features/terminal/payment/CashPaymentPage';
+import { HistoryPage } from '../features/terminal/history/HistoryPage';
+import { KitchenPage } from '../features/terminal/kitchen/KitchenPage';
+import { AvailabilityPage } from '../features/terminal/kitchen/AvailabilityPage';
+import { AdminPage } from '../features/terminal/admin/AdminPage';
 import { ActorAreaLink } from '../shared/auth/ActorAreaLink';
 import { useSession, useSessionManager } from '../shared/auth/SessionProvider';
 import { useState } from 'react';
-
-function PlaceholderPage({ title }: { title: string }) {
-  return <section aria-labelledby="page-title"><h1 id="page-title">{title}</h1><p>Esta pantalla estará disponible próximamente.</p></section>;
-}
 
 function LandingPage() {
   const guest = useGuestSession();
@@ -79,33 +87,45 @@ function NotFoundPage() {
   return <main id="main-content" tabIndex={-1}><NotFoundContent /></main>;
 }
 
+function ClientAreaRoute() {
+  if (isDesktopTerminalOnly()) return <Navigate to="/terminal" replace />;
+  return <ClientLayout />;
+}
+
 export const appRoutes: RouteObject[] = [
   { element: <PinChangeGate />, children: [
     { path: '/', element: <LandingPage /> },
     { path: '/cambiar-nip', element: <PinChangeRequiredPage /> },
     {
       path: '/cliente',
-      element: <ClientLayout />, children: [
+      element: <ClientAreaRoute />, children: [
       { index: true, element: <Navigate to="menu" replace /> },
-      { path: 'iniciar-sesion', element: <ClientAuthPage /> },
+       { path: 'iniciar-sesion', element: <ClientAuthPage /> },
+       { path: 'registro-ticket', element: <TicketRegistrationPage /> },
       { element: <ClientPublicGuard />, children: [{ path: 'menu', element: <ClientCatalogPage /> }] },
-      { element: <ClientAccessGuard />, children: [{ path: 'cuenta', element: <PlaceholderPage title="Cuenta" /> }] },
+       { element: <ClientAccessGuard />, children: [{ path: 'cuenta', element: <ClientAccountPage /> }] },
       { path: '*', element: <section aria-labelledby="page-title"><NotFoundContent /></section> },
       ],
     },
     {
       path: '/terminal',
       element: <TerminalLayout />, children: [
-      { index: true, element: <PlaceholderPage title="Terminal" /> },
+      { index: true, element: <TerminalWelcomePage /> },
+      { path: 'acceso', element: <TerminalAuthPage /> },
       { element: <TerminalAccessGuard allowedRoles={['CAJERO', 'ADMINISTRADOR']} />, children: [
-        { path: 'pos', element: <PlaceholderPage title="Punto de venta" /> },
-        { path: 'caja', element: <PlaceholderPage title="Caja" /> },
+        { path: 'pos', element: <PosPage /> },
+         { path: 'caja', element: <CashSessionsPage /> },
+         { path: 'cobro', element: <CashPaymentPage /> },
+         { path: 'historial', element: <HistoryPage /> },
       ] },
       { element: <TerminalAccessGuard allowedRoles={['PREPARACION', 'CAJERO', 'ADMINISTRADOR']} />, children: [
-        { path: 'cocina', element: <PlaceholderPage title="Cocina" /> },
+        { path: 'cocina', element: <KitchenPage /> },
+      ] },
+      { element: <TerminalAccessGuard allowedRoles={['CAJERO', 'ADMINISTRADOR']} />, children: [
+        { path: 'disponibilidad', element: <AvailabilityPage /> },
       ] },
       { element: <TerminalAccessGuard allowedRoles={['ADMINISTRADOR']} />, children: [
-        { path: 'administracion/*', element: <PlaceholderPage title="Administración" /> },
+        { path: 'administracion/*', element: <AdminPage /> },
       ] },
       { path: '*', element: <section aria-labelledby="page-title"><NotFoundContent /></section> },
       ],

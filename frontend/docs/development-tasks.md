@@ -1,5 +1,19 @@
 # Backlog de desarrollo del frontend
 
+## Unificación en curso — estado tras TASK-21 (2026-11-23)
+
+En `frontend/unified/`, TASK-21 documenta la matriz de validación de sustitución:
+rutas, roles, sesión, CSRF, idempotencia, QR de registro, accesibilidad y Electron,
+con evidencia ejecutada, omitida y bloqueada. El registro QR se validó de extremo
+a extremo contra backend local y la accesibilidad se cubre con axe; quedan
+bloqueados el origen HTTPS de distribución con fallback SPA y el empaquetado en
+`release/`, y macOS queda fuera de alcance por decisión del responsable. La retirada
+de `clientes/` y `empleados/` requiere aceptación funcional y un plan separado. Los renglones
+inferiores son la auditoría histórica de
+`frontend/clientes/` y `frontend/empleados/`, no el estado del paquete
+unificado; el avance verificable está en el
+[registro de cierres](specs/frontend-unification/FRONTEND-UNIFICATION-STATUS.md).
+
 Estado de las tareas funcionales y técnicas del frontend al **2026-11-18**, tomando como referencia
 el contrato [OpenAPI 0.11.0](../../backend/docs/api/openapi.yaml) y las auditorías realizadas en
 [FE-GAP-01](tasks/FE-GAP-01-integration-audit.md).
