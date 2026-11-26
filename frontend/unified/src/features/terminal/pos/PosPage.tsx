@@ -296,7 +296,7 @@ export function PosPage() {
                 </span>
                 <span className="product-price-row">
                   <span className="product-price-val">{formatMxnCents(product.basePriceCents)}</span>
-                  <span className="product-add-badge" aria-hidden="true">{product.isAvailable ? '+' : 'Agotado'}</span>
+                  <span className="product-add-badge" aria-hidden={product.isAvailable ? true : undefined}>{product.isAvailable ? '+' : 'Agotado'}</span>
                 </span>
               </button>
             ))}

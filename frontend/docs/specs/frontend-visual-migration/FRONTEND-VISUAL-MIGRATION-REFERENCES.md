@@ -209,3 +209,28 @@ Fuente: `frontend/clientes/src/components/ProfileModal.tsx` y `frontend/clientes
 - Capturas 390×844 y 1280×800 de perfil vacío/llenado, favoritos vacío/llenado y historial vacío/con pedidos; comprobar teclado, axe y que ningún POST de cobro se ejecute desde la cuenta. Aprobar adaptación no acepta resultado final.
 
 **Estado:** Aprobado explícitamente por el responsable (2026-11-26) como entrada para HYB-22 (no aprueba el resultado implementado hasta cerrar HYB-22).
+
+## Diferencias aceptadas — revisiones HYB-06…23 (2026-11-26)
+
+| Decisión | Superficies | Diferencia aceptada |
+| --- | --- | --- |
+| D-28 | HYB-18 | Acceso cliente sin fotografía de héroe, sin tarjetas promocionales ni iconos Material; logo local, PIN tipo píldora y navegación textual con «Terminal». Sin cambios de login, invitado, actor o guardas. |
+| D-29 | HYB-19 | Tarjetas con chips «Disponible»/«Agotado», acción «Personalizar» y sin corazón/favorito en la tarjeta; columna centrada a dos columnas y placeholder sin inventar imágenes. |
+| D-30 | HYB-20 | Carrito inline (no drawer) y diálogo bottom-sheet/modal centrado sin cabecera fotográfica; mismas opciones, estimado, borrador y foco. |
+| D-31 | HYB-11…17, 21, 22 | Evidencia de identidad/estados/contratos aceptada donde no existe captura original aprobada; sin declarar equivalencia píxel a píxel. HYB-16 derivada. |
+| D-32 | HYB-06…10 | Composición terminal aceptada: H1 accesible y panel de catálogo en POS, dos columnas a 1024 px, metadatos sin SKU, panel de cliente por búsqueda, caja alineada arriba con fechas localizadas y login sin emoji. Guardas, permisos e idempotencia intactos. |
+
+## Propuesta de adaptación — `ADAPT-CROSS-SURFACES` (HYB-24, NO aprobada)
+
+Fuente: patrones de `WelcomeScreen.jsx`, `AuthPage.tsx`, `AdminDashboardWorkspace.jsx` (denegación) y diálogos ya migrados; **no existe pantalla original directa** de estas superficies. Destino: `src/app/router.tsx` (solo markup), `src/app/guards.tsx`, `src/shared/auth/ActorChangeDialog.tsx` y estilos de estado por área. Requiere aprobación explícita antes de escribir código.
+
+- **Landing `/`:** composición neutra con identidad Coffee's POS y dos tarjetas de área (Cliente / Terminal) con descripción y acción; sin datos de sesión, roles ni accesos operativos.
+- **404:** página con lenguaje del área que la contiene; enlace al inicio del área (menú de cliente o terminal) y `Volver al inicio` en la global. Sin exponer rutas internas.
+- **Denegación terminal:** distinguir visitante («Inicia sesión en la terminal» → `/terminal/acceso`) de personal autenticado sin rol («Tu perfil {rol} no tiene acceso a esta sección») con enlace a su inicio autorizado mediante `staffDestination`. Mismas guardas y destinos; sin ampliar permisos.
+- **Denegación cliente:** tarjeta café/crema para visitante con enlace a login; sesión de personal activa conserva «Cambiar a área de cliente» y abre el diálogo existente.
+- **Sesión restringida (`/cambiar-nip`):** tarjeta neutra que explica la restricción y ofrece cierre de sesión; **no** se añade funcionalidad de cambio de NIP.
+- **Diálogo de cambio de actor:** mismo foco atrapado, Escape, cancelar y confirmar; presentación según destino (café/crema para cliente, Nordic para terminal), error de cierre visible y sin pasos nuevos.
+- **Límites:** sin roles nuevos, sin cambio de contraseña/NIP, sin acceso cliente en Electron, sin datos ficticios, sin tocar cookies/CSRF/refresh ni destinos de guarda.
+- **Evidencia prevista:** cliente 390×844 y 1280×800; terminal 1024×768 y 1280×800 más Electron; estados visitante/autenticado denegado/restringido, diálogo abierto/cancelado/error; axe, teclado y foco devuelto. Adaptación derivada de REF-T/REF-C, sin inventar captura original.
+
+**Estado:** Pendiente de aprobación del responsable. No implementar hasta aceptación explícita.

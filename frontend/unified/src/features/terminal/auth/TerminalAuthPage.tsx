@@ -99,7 +99,6 @@ export function TerminalAuthPage() {
         <Link className="terminal-staff-login-back" to="/terminal">← Volver al inicio de terminal</Link>
         <div className="kiosk-chassis auth-card">
           <div className="terminal-staff-login-heading">
-            <span className="terminal-staff-login-icon" aria-hidden="true">👤</span>
             <h1 id="page-title">Acceso a terminal</h1>
             <h2>Acceso con cuenta de personal</h2>
             <p>Ingresa con tu usuario y contraseña asignados por la cafetería.</p>

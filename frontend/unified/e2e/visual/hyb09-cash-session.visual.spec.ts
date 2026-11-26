@@ -14,7 +14,9 @@ function respond(route: Route, data: unknown, status = 200) {
   return route.fulfill({ status, contentType: 'application/json', body: JSON.stringify({ data }) });
 }
 
-test('HYB-09 Electron shows API-backed cash without automatic opening', async () => {
+test('HYB-09 Electron shows API-backed cash without automatic opening', async ({ browser }) => {
+  void browser;
+  const info = test.info();
   const session = await launchIsolatedElectron({ actor: { ...SYNTHETIC_ACTORS.CAJERO, id: '2' } });
   try {
     await session.page.goto(`${ORIGINS.unified}/terminal/caja`);
@@ -23,6 +25,8 @@ test('HYB-09 Electron shows API-backed cash without automatic opening', async ()
     expect(await session.page.evaluate(() => window.cafeteriaDesktop?.terminalOnly)).toBe(true);
     expect(session.apiMock.handledRequests.some((request) => request.pathname === '/api/v1/cash-sessions/current')).toBe(true);
     await assertHealthyPage(session.page, session.monitor, session.apiMock);
+    await waitForVisualStability(session.page);
+    await session.page.screenshot({ path: info.outputPath('hyb09-electron-cash-closed-unapproved.png') });
   } finally { await session.close(); }
 });
 
@@ -116,7 +120,9 @@ for (const viewport of [{ width: 1024, height: 768 }, { width: 1280, height: 800
       await session.page.getByLabel('Fondo inicial (MXN)').fill('500');
       await session.page.getByRole('button', { name: 'Abrir caja' }).click();
       await expect(session.page.getByRole('alert')).toContainText('No repitas la operación');
-      await expect(session.page.getByRole('button', { name: 'Abrir caja' })).toBeDisabled();
+      await expect(session.page.getByRole('heading', { name: 'Estado no verificable' })).toBeVisible();
+      await expect(session.page.getByRole('heading', { name: 'Caja cerrada' })).toHaveCount(0);
+      await expect(session.page.getByRole('button', { name: 'Abrir caja' })).toHaveCount(0);
       await expect(session.page.getByRole('button', { name: 'Reintentar la misma operación de caja' })).toHaveCount(0);
       await session.page.screenshot({ path: info.outputPath(`hyb09-${viewport.width}x${viewport.height}-uncertain-unapproved.png`) });
       expect((await new AxeBuilder({ page: session.page }).include('.terminal-cash').analyze()).violations).toEqual([]);

@@ -1,6 +1,6 @@
 # TASKS-FE-VIS-001 — Entregas híbridas de migración visual
 
-- **Estado:** listado revisado a petición del responsable; HYB-01 terminada, HYB-02…HYB-25 pendientes de autorización individual.
+- **Estado:** listado revisado a petición del responsable; HYB-01…HYB-23 terminadas; HYB-24 pendiente de aprobación de su adaptación y HYB-25 pendiente de auditoría integral.
 - **Fuente:** [plan híbrido](./FRONTEND-VISUAL-MIGRATION-PLAN.md) y [spec vigente](./FRONTEND-VISUAL-MIGRATION-SPEC.md).
 - **Sustituye:** listado anterior de 69 tasks R/U, todavía no ejecutadas. Los IDs pasan a `HYB-XX` para no confundir las dos descomposiciones.
 - **Reglas armonizadas:** el responsable autorizó ajustar spec/plan y proceso al enfoque híbrido. Esa edición documental no inicia ninguna task ni aprueba lote, tema, adaptación o resultado visual.
@@ -70,70 +70,70 @@ Cada task cerrada incluye fila STATUS con evidencia real, decisiones, revisores,
   - Referencia: lote terminal; shell por CAJERO/PREPARACION/ADMINISTRADOR y bienvenida anónima/sesión activa.
   - Hecho cuando adicional: shell/bienvenida fieles, rutas por rol intactas, cliente oculto en Electron y CSS no contamina cliente; interiores no se declaran migrados por aplicar tokens.
 
-- [ ] **HYB-06 — Portar login staff adaptado** (U, sensible).
+- [x] **HYB-06 — Portar login staff adaptado** (U, sensible).
   - Requisitos adicionales: CA-03, CA-06. Dependencia: HYB-05 y adaptación login aprobada en HYB-03.
   - Archivo: `SRC/features/terminal/auth/TerminalAuthPage.tsx`.
   - Estados: formulario/enviando, credenciales inválidas, sesión activa y logout fallido.
   - Hecho cuando adicional: apariencia original adaptada fielmente sin ID/PIN demo, selector de rol, cambios de contraseña o alteración de sesión.
 
-- [ ] **HYB-07 — Portar catálogo/categorías del POS** (U).
+- [x] **HYB-07 — Portar catálogo/categorías del POS** (U).
   - Requisitos adicionales: CA-03. Dependencia: HYB-06.
   - Archivo: `SRC/features/terminal/pos/PosPage.tsx`, sólo catálogo/categorías; referencia heredada del lote y fuentes `OrderingWorkspace.jsx`.
   - Estados: normal, agotado, sin imagen/nombre largo, carga/error/vacío.
   - Hecho cuando adicional: rejilla/categorías/tarjetas fieles y precios/disponibilidad siguen API; se conserva nombre accesible con precio.
 
-- [ ] **HYB-08 — Portar personalización y panel de orden POS** (U).
+- [x] **HYB-08 — Portar personalización y panel de orden POS** (U).
   - Dependencia: HYB-07. Archivos: `PosPage.tsx` sólo panel/feedback y `SRC/features/clientes/catalog/ProductCustomizationDialog.tsx` compartido.
   - Referencia: patrones del lote y fuentes originales; asociación/confirmación de cliente requieren propuesta previa si difieren de lo ya aprobado.
   - Tests primero: selección mínima/máxima, teclado/foco, cantidades, asociación y orden pendiente/incierta; regresión del consumidor cliente.
   - Hecho cuando adicional: panel y personalización fieles con estado/idempotencia intactos; no se declara pago confirmado ni cambia la apariencia cliente accidentalmente.
 
-- [ ] **HYB-09 — Portar pantalla de caja** (U, sensible).
+- [x] **HYB-09 — Portar pantalla de caja** (U, sensible).
   - Requisitos adicionales: CA-03. Dependencia: HYB-08.
   - Archivo: `SRC/features/terminal/cash/CashSessionsPage.tsx`; fuente `ShiftWorkspace.jsx`.
   - Pausa previa: aprobar adaptación propia/ajena, apertura/cierre, motivo excepcional e incertidumbre; capturar sólo lo necesario para resolver diferencias.
   - Hecho cuando adicional: importes/acciones fieles con autoridad API, sin cálculo/cierre local ni apertura por montaje; adaptación y resultado aceptados separadamente.
 
-- [ ] **HYB-10 — Portar cobro y recuperación de ticket** (U, sensible).
+- [x] **HYB-10 — Portar cobro y recuperación de ticket** (U, sensible).
   - Dependencia: HYB-09. Archivo: `SRC/features/terminal/payment/CashPaymentPage.tsx`; fuente `CheckoutModal.jsx`.
   - Pausa previa: efectivo únicamente, recibido/cambio, timeout, confirmado/ticket fallido y reintento sólo de ticket.
   - Hecho cuando adicional: controles originales adaptados sin medios de pago simulados, idempotencia/conciliación conservadas y ningún fallo de ticket produce nuevo cobro.
 
-- [ ] **HYB-11 — Portar ticket e impresión** (U, sensible).
+- [x] **HYB-11 — Portar ticket e impresión** (U, sensible).
   - Requisitos adicionales: RV-06, CA-07. Dependencia: HYB-10.
   - Archivo: `SRC/features/terminal/payment/ProtectedTicket.tsx`, estilos de impresión; fuente `ReceiptModal.jsx`.
   - Pausa previa: ancho/formato y QR sintético válido/vencido/ausente; CASH y STRIPE con efectivo nulo.
   - Hecho cuando adicional: preview legible sin navegación, importes/QR y vencimiento intactos; sin secretos reales ni texto copiable del token; no afirmar prueba de impresora física.
 
-- [ ] **HYB-12 — Portar cocina y disponibilidad** (U).
+- [x] **HYB-12 — Portar cocina y disponibilidad** (U).
   - Requisitos adicionales: CA-03. Dependencia: HYB-11.
   - Archivos: `SRC/features/terminal/kitchen/KitchenPage.tsx`, `AvailabilityPage.tsx`; fuentes `KitchenWorkspace.jsx` y disponibilidad de `MenuManagementWorkspace.jsx`.
   - Referencias heredadas del shell/patrones y fuentes específicas; revisión previa si cambian controles/transiciones.
   - Hecho cuando adicional: cola/detalle/feedback y disponibilidad fieles, sólo estados y roles existentes, sin conceder CRUD al CAJERO.
 
-- [ ] **HYB-13 — Portar historial y reimpresión** (U, sensible en reimpresión).
+- [x] **HYB-13 — Portar historial y reimpresión** (U, sensible en reimpresión).
   - Requisitos adicionales: CA-03, CA-07. Dependencia: HYB-12.
   - Archivo: `SRC/features/terminal/history/HistoryPage.tsx`; fuente `HistoryWorkspace.jsx`; reutiliza ticket HYB-11.
   - Pausa previa para aprobar específicamente la adaptación de recuperación/reimpresión y sus estados/comportamiento. Se puede enlazar una aprobación anterior sólo si los cubre explícitamente; historial estándar hereda tabla/filtros y fuentes originales.
   - Hecho cuando adicional: filtros/paginación/resumen/foco fieles, reimpresión de lectura sin cobro ni emisión de token nuevo.
 
-- [ ] **HYB-14 — Portar shell/dashboard administrativo** (U).
+- [x] **HYB-14 — Portar shell/dashboard administrativo** (U).
   - Requisitos adicionales: CA-03. Dependencia: HYB-13.
   - Archivo: `SRC/features/terminal/admin/AdminPage.tsx` sólo shell/dashboard; fuente `AdminDashboardWorkspace.jsx`.
   - Hecho cuando adicional: navegación/indicadores reales fieles, sin estadísticas/proveedores demo y sólo ADMINISTRADOR accede.
 
-- [ ] **HYB-15 — Portar categorías y productos administrativos** (U).
+- [x] **HYB-15 — Portar categorías y productos administrativos** (U).
   - Requisitos adicionales: CA-03. Dependencia: HYB-14.
   - Archivo: `AdminPage.tsx` sólo categorías/productos; fuente `MenuManagementWorkspace.jsx`.
   - Tests primero: listado/formulario, validación/error/pendiente incierto, producto sin imagen y campos modificados.
   - Hecho cuando adicional: listado/edición fieles sin cambiar PATCH, validación ni bloqueo tras éxito no verificable; no añadir proveedor de imágenes.
 
-- [ ] **HYB-16 — Portar opciones y configuración de producto** (U).
+- [x] **HYB-16 — Portar opciones y configuración de producto** (U).
   - Requisitos adicionales: CA-03. Dependencia: HYB-15.
   - Archivo: `AdminPage.tsx` sólo grupos/valores/asociación; fuentes específicas de `MenuManagementWorkspace.jsx`.
   - Hecho cuando adicional: subformularios fieles, límites/pricingScope/respuestas inciertas y asociaciones conservados; dividir grupos/valores si el bloque deja de ser revisable.
 
-- [ ] **HYB-17 — Portar gestión de personal** (U).
+- [x] **HYB-17 — Portar gestión de personal** (U).
   - Requisitos adicionales: CA-03. Dependencia: HYB-16.
   - Archivo: `AdminPage.tsx` sólo personal; fuente `UserManagementWorkspace.jsx`.
   - Pausa previa si el original presenta roles/PIN o acciones no soportadas; no restaurarlas.
@@ -141,32 +141,32 @@ Cada task cerrada incluye fila STATUS con evidencia real, decisiones, revisores,
 
 ## 4. Cliente
 
-- [ ] **HYB-18 — Portar base, shell y acceso cliente** (U).
+- [x] **HYB-18 — Portar base, shell y acceso cliente** (U).
   - Requisitos adicionales: RV-07, CA-03, CA-06. Dependencias: HYB-04, HYB-17.
   - Archivos: tokens/assets cliente, `SRC/layouts/ClientLayout.tsx`, `SRC/features/clientes/auth/{ClientAuthPage,PinInput}.tsx`; fuentes `Header.tsx`, `AuthPage.tsx` y `PinInput.tsx` originales.
   - Hecho cuando adicional: identidad/entrada fieles, teléfono/número/NIP/invitado y logout al sustituir actor intactos; estilos cliente no alteran terminal.
 
-- [ ] **HYB-19 — Portar catálogo y tarjetas cliente** (U).
+- [x] **HYB-19 — Portar catálogo y tarjetas cliente** (U).
   - Dependencia: HYB-18. Archivo: `SRC/features/clientes/catalog/ClientCatalogPage.tsx`; fuentes `MenuPage.tsx`, `ProductCard.tsx`.
   - Estados: categorías/paginación, sin imagen/agotado, carga/error/vacío y nombre largo.
   - Hecho cuando adicional: menú fiel en móvil/escritorio, API sigue única fuente sin respaldo local operativo.
 
-- [ ] **HYB-20 — Portar personalización y carrito cliente** (U).
+- [x] **HYB-20 — Portar personalización y carrito cliente** (U).
   - Dependencia: HYB-19. Archivos: `ProductCustomizationDialog.tsx` compartido y `SRC/features/clientes/cart/ClientCart.tsx` sólo líneas/controles/contenedor; fuentes `ProductModal.tsx`, `CartDrawer.tsx`.
   - Hecho cuando adicional: overlays/panel fieles y accesibles, opciones/importes/borrador permitido intactos; consumidor POS comparado sin regresión. No cambiar creación/confirmación aún.
 
-- [ ] **HYB-21 — Portar envío y confirmación de pedido** (U, sensible).
+- [x] **HYB-21 — Portar envío y confirmación de pedido** (U, sensible).
   - Dependencia: HYB-20. Archivo: `ClientCart.tsx` sólo acción/feedback de envío; fuente `OrderConfirmationModal.tsx`.
   - Pausa previa: orden pendiente vs pago, red incierta y reintento explícito; no checkout Stripe ni QR CASH.
   - Hecho cuando adicional: confirmación fiel sin éxito falso ni reintento automático/regeneración de clave tras incertidumbre.
 
-- [ ] **HYB-22 — Portar cuenta, favoritos e historial** (U, sensible).
+- [x] **HYB-22 — Portar cuenta, favoritos e historial** (U, sensible).
   - Requisitos adicionales: CA-03. Dependencia: HYB-21.
   - Archivo: `SRC/features/clientes/account/ClientAccountPage.tsx`; fuentes `ProfileModal.tsx`, `OrderHistoryModal.tsx` y favoritos originales.
   - Pausa previa: composición en `/cliente/cuenta`, preview de repetir sin cobro y patrones de formularios/listas. Si es demasiado amplio, dividir perfil/favoritos e historial antes del código.
   - Hecho cuando adicional: cuenta fiel a adaptación aceptada, propiedad/rollback/limpieza intactos, sin convertir la ruta en modal ni cobrar al repetir.
 
-- [ ] **HYB-23 — Portar registro por ticket** (U, sensible).
+- [x] **HYB-23 — Portar registro por ticket** (U, sensible).
   - Requisitos adicionales: CA-03. Dependencia: HYB-22.
   - Archivo: `SRC/features/clientes/registration/TicketRegistrationPage.tsx`; patrones de AuthPage, sin original directo.
   - Pausa previa: formulario, sesión activa/logout, usado/vencido, cuenta creada y login explícito.

@@ -22,7 +22,7 @@
   padding: 0;
 }
 
-.terminal-layout > main > :not(#screen-welcome) {
+.terminal-layout > main > :not(#screen-welcome):not(.terminal-staff-login):not(.terminal-cash):not(.terminal-payment):not(.terminal-history):not(.terminal-kitchen):not(.terminal-availability):not(.terminal-admin) {
   padding: 1rem 1.5rem;
 }
 

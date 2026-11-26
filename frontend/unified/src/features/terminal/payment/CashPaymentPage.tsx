@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import type { IdempotentOperation } from '../../../shared/api/idempotency';
 import { useSession } from '../../../shared/auth/SessionProvider';
@@ -12,18 +12,27 @@ import { ProtectedTicket } from './ProtectedTicket';
 function usableOrder(value: unknown): value is PosOrder { return value !== null && typeof value === 'object' && (value as PosOrder).source === 'CASHIER' && (value as PosOrder).paymentMethod === 'CASH' && (value as PosOrder).status === 'PENDIENTE_PAGO' && (value as PosOrder).paidAt === null; }
 export function CashPaymentPage() {
   const location = useLocation(); const actorState = useSession(); const order = usableOrder(location.state) ? location.state : null;
-  const [session, setSession] = useState<CashSession | null>(null); const [received, setReceived] = useState(''); const [operation, setOperation] = useState<IdempotentOperation | null>(null); const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null); const [confirmed, setConfirmed] = useState(false); const [confirmedChange, setConfirmedChange] = useState<string | null>(null); const [saleId, setSaleId] = useState<string | null>(null); const [ticket, setTicket] = useState<Ticket | null>(null); const [ticketError, setTicketError] = useState<string | null>(null); const [blocked, setBlocked] = useState(false);
-  useEffect(() => { void getCurrentCashSession().then(setSession).catch((e: unknown) => setError(formatPaymentError(e))); }, []);
+  const [session, setSession] = useState<CashSession | null>(null); const [sessionLoading, setSessionLoading] = useState(true); const [sessionError, setSessionError] = useState<string | null>(null); const [received, setReceived] = useState(''); const [operation, setOperation] = useState<IdempotentOperation | null>(null); const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null); const [confirmed, setConfirmed] = useState(false); const [confirmedChange, setConfirmedChange] = useState<string | null>(null); const [saleId, setSaleId] = useState<string | null>(null); const [ticket, setTicket] = useState<Ticket | null>(null); const [ticketError, setTicketError] = useState<string | null>(null); const [blocked, setBlocked] = useState(false);
+  const loadSession = useCallback(async (): Promise<void> => {
+    setSessionLoading(true);
+    setSessionError(null);
+    try { setSession(await getCurrentCashSession()); }
+    catch { setSessionError('No se pudo consultar la caja abierta. Reintenta la consulta.'); }
+    finally { setSessionLoading(false); }
+  }, []);
+  useEffect(() => { void loadSession(); }, [loadSession]);
   if (actorState.status !== 'authenticated' || order === null) return <section aria-labelledby="payment-title"><h1 id="payment-title">Cobro en efectivo</h1><p role="status">No hay una orden recién creada o seleccionada desde POS para cobrar. D-20: este cobro no se persiste ni se reintenta tras una recarga; concilia el estado con caja o la cafetería.</p><Link to="/terminal/pos">Volver a POS</Link></section>;
   const activeOrder = order;
-  const owner = session !== null && session.closedAt === null && isCashSessionOwner(session, actorState.actor);
+  const owner = session !== null && session.closedAt === null && !sessionLoading && sessionError === null && isCashSessionOwner(session, actorState.actor);
   async function loadTicket(saleId: string): Promise<void> { setTicketError(null); try { setTicket(await getProtectedTicket(saleId)); } catch { setTicketError('Pago confirmado; el ticket está pendiente. Reintenta sólo obtener el ticket.'); } }
   async function charge(existing?: IdempotentOperation): Promise<void> { if (!owner || busy || blocked) return; let next = existing; if (!next) { try { next = prepareCashPayment(session.id, activeOrder.id, parseMxnAmountToCents(received)); } catch (e) { setError(formatPaymentError(e)); return; } setOperation(next); } setBusy(true); setError(null); try { const paid = await sendCashPayment(next); setOperation(null); setSaleId(paid.saleId); setConfirmedChange(paid.changeCents); setConfirmed(true); await loadTicket(paid.saleId); } catch (e) { if (e instanceof UnverifiableCashPaymentResponseError) { setBlocked(true); setOperation(null); } else if (!shouldRetryCashPayment(e)) setOperation(null); setError(formatPaymentError(e)); } finally { setBusy(false); } }
   return <section className="terminal-payment" aria-labelledby="payment-title">
     <header className="payment-header"><h1 id="payment-title">Cobro en efectivo</h1><p>Orden {activeOrder.folio}</p></header>
     <div className="payment-checkout-card">
       <div className="payment-total"><span>TOTAL A COBRAR</span><strong>{formatMxnCents(activeOrder.totalCents)}</strong></div>
-      {!owner && <p className="payment-notice" role="status">Sólo el responsable de la caja abierta puede cobrar. La API confirmará esta regla.</p>}
+      {sessionLoading && <p className="payment-notice" role="status">Consultando la caja abierta…</p>}
+      {sessionError !== null && <div className="payment-notice payment-notice-error" role="alert"><p>{sessionError}</p><button type="button" className="secondary-button" onClick={() => { void loadSession(); }}>Reintentar consulta</button></div>}
+      {!sessionLoading && sessionError === null && !owner && <p className="payment-notice" role="status">Sólo el responsable de la caja abierta puede cobrar. La API confirmará esta regla.</p>}
       {!confirmed && <div className="payment-cash-form"><p className="payment-method">Efectivo</p><label className="field-label" htmlFor="cash-payment-received">Efectivo recibido (MXN)</label><input id="cash-payment-received" inputMode="decimal" value={received} disabled={!owner || busy || blocked} onChange={(e) => setReceived(e.target.value)} /><button type="button" disabled={!owner || busy || blocked} onClick={() => { void charge(); }}>{busy ? 'Cobrando…' : 'Confirmar cobro'}</button>{operation !== null && !busy && !blocked && <button type="button" className="secondary-button" onClick={() => { void charge(operation); }}>Reintentar el mismo cobro</button>}</div>}
       {error !== null && <p className="payment-notice payment-notice-error" role="alert">{error}</p>}
       {confirmed && <div className="payment-notice payment-notice-success" role="status"><p>Pago confirmado por la API.</p>{confirmedChange !== null && <p>Cambio confirmado: {formatMxnCents(confirmedChange)}</p>}</div>}

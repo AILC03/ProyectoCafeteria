@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { IdempotentOperation } from '../../../shared/api/idempotency';
 import { useSession } from '../../../shared/auth/SessionProvider';
 import { formatMxnCents } from '../../../shared/utils/money';
@@ -36,6 +36,12 @@ export function CashSessionsPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [blocked, setBlocked] = useState(false);
   const [pending, setPending] = useState<PendingAction | null>(null);
+  const feedbackRef = useRef<HTMLParagraphElement>(null);
+
+  function showActionError(text: string): void {
+    setActionError(text);
+    requestAnimationFrame(() => feedbackRef.current?.focus());
+  }
 
   const load = useCallback(async (signal?: AbortSignal): Promise<void> => {
     setLoading(true);
@@ -97,7 +103,7 @@ export function CashSessionsPage() {
     try {
       cents = parseMxnAmountToCents(openingAmount);
     } catch (error) {
-      setActionError(formatCashError(error));
+      showActionError(formatCashError(error));
       return;
     }
     let operation = pending?.operation;
@@ -105,7 +111,7 @@ export function CashSessionsPage() {
       try {
         operation = prepareCashOpen(cents);
       } catch (error) {
-        setActionError(formatCashError(error));
+        showActionError(formatCashError(error));
         return;
       }
       setPending({ operation, kind: 'open' });
@@ -123,7 +129,9 @@ export function CashSessionsPage() {
       setPending(null);
       setCountedAmount('');
       setCloseReason('');
-      setMessage(`Caja cerrada. Diferencia calculada por el servidor: ${formatMxnCents(closed.differenceCents)}.`);
+      setMessage(`Caja cerrada. ${closed.differenceCents === null
+        ? 'El servidor no informó una diferencia verificable.'
+        : `Diferencia calculada por el servidor: ${formatMxnCents(closed.differenceCents)}.`}`);
     } catch (error) {
       handleActionFailure(error);
       if (error !== null && typeof error === 'object' && 'status' in error && error.status === 409) {
@@ -141,12 +149,12 @@ export function CashSessionsPage() {
     try {
       cents = parseMxnAmountToCents(countedAmount);
     } catch (error) {
-      setActionError(formatCashError(error));
+      showActionError(formatCashError(error));
       return;
     }
     const reason = requiresExceptionalCloseReason(session, actor) ? closeReason.trim() : '';
     if (requiresExceptionalCloseReason(session, actor) && reason.length < 1) {
-      setActionError('Indica el motivo para cerrar una caja ajena.');
+      showActionError('Indica el motivo para cerrar una caja ajena.');
       return;
     }
     let operation = pending?.operation;
@@ -157,7 +165,7 @@ export function CashSessionsPage() {
           ...(reason.length > 0 ? { exceptionalCloseReason: reason } : {}),
         });
       } catch (error) {
-        setActionError(formatCashError(error));
+        showActionError(formatCashError(error));
         return;
       }
       setPending({ operation, kind: 'close', sessionId: session.id });
@@ -187,7 +195,7 @@ export function CashSessionsPage() {
           <button type="button" className="secondary-button" onClick={() => { void load(); }}>Reintentar consulta</button>
         </div>
       )}
-      {!loading && loadError === null && session === null && (
+      {!loading && loadError === null && session === null && !blocked && (
         <section className="auth-card" aria-labelledby="cash-open-title">
           <p className="cash-eyebrow">Estado de caja del turno · API</p>
           <h2 id="cash-open-title">Caja cerrada</h2>
@@ -210,6 +218,17 @@ export function CashSessionsPage() {
         </section>
       )}
 
+      {!loading && loadError === null && session === null && blocked && (
+        <section className="auth-card" aria-labelledby="cash-uncertain-title">
+          <p className="cash-eyebrow">Estado de caja del turno · sin confirmar</p>
+          <h2 id="cash-uncertain-title">Estado no verificable</h2>
+          <p role="status">
+            La respuesta de la API no permite confirmar si la caja quedó abierta. No repitas la operación ni abras una caja nueva;
+            concilia el estado con la cafetería.
+          </p>
+        </section>
+      )}
+
       {session !== null && (
         <section className="auth-card" aria-labelledby="cash-summary-title">
           <p className="cash-eyebrow">Estado de caja del turno · API</p>
@@ -223,7 +242,7 @@ export function CashSessionsPage() {
             <div><dt>Contado</dt><dd>{session.countedCashCents === null ? '—' : formatMxnCents(session.countedCashCents)}</dd></div>
             <div><dt>Diferencia</dt><dd>{session.differenceCents === null ? '—' : formatMxnCents(session.differenceCents)}</dd></div>
             <div><dt>Pagos exitosos</dt><dd>{session.successfulPayments}</dd></div>
-            {session.closedAt !== null && <div><dt>Cerrada</dt><dd>{session.closedAt}</dd></div>}
+            {session.closedAt !== null && <div><dt>Cerrada</dt><dd>{new Date(session.closedAt).toLocaleString('es-MX')}</dd></div>}
             {session.exceptionalCloseReason !== null && <div><dt>Motivo excepcional</dt><dd>{session.exceptionalCloseReason}</dd></div>}
           </dl>
 
@@ -275,7 +294,7 @@ export function CashSessionsPage() {
           Reintentar la misma operación de caja
         </button>
       )}
-      {actionError !== null && <p className="cash-notice cash-notice-error" role="alert">{actionError}</p>}
+      {actionError !== null && <p ref={feedbackRef} tabIndex={-1} className="cash-notice cash-notice-error" role="alert">{actionError}</p>}
       {message !== null && <p className="cash-notice cash-notice-success" role="status">{message}</p>}
     </section>
   );

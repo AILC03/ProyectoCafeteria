@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
-import { assertHealthyPage, createIsolatedContext, ORIGINS, waitForVisualStability } from './capture.helpers.ts';
+import { assertHealthyPage, createIsolatedContext, launchIsolatedElectron, ORIGINS, waitForVisualStability } from './capture.helpers.ts';
 import { SYNTHETIC_ACTORS } from './fixtures.ts';
 
 for (const viewport of [{ width: 1024, height: 768 }, { width: 1280, height: 800 }]) {
@@ -23,6 +23,8 @@ for (const viewport of [{ width: 1024, height: 768 }, { width: 1280, height: 800
       await session.page.screenshot({ path: info.outputPath(`hyb08-${viewport.width}x${viewport.height}-dialog-unapproved.png`) });
       await dialog.getByRole('button', { name: 'Confirmar personalización' }).click();
       await expect(session.page.getByRole('region', { name: 'Líneas de la orden' }).getByText(/Americano/)).toBeVisible();
+      await session.page.getByRole('region', { name: 'Líneas de la orden' }).scrollIntoViewIfNeeded();
+      await session.page.screenshot({ path: info.outputPath(`hyb08-${viewport.width}x${viewport.height}-panel-filled-unapproved.png`) });
       await expect(session.page.getByRole('button', { name: 'Crear orden pendiente' })).toBeEnabled();
       expect(await session.page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
     } finally {
@@ -30,3 +32,17 @@ for (const viewport of [{ width: 1024, height: 768 }, { width: 1280, height: 800
     }
   });
 }
+
+test('HYB-08 Electron POS keeps the shared customization dialog isolated', async ({ browser }) => {
+  void browser;
+  const info = test.info();
+  const session = await launchIsolatedElectron({ actor: { ...SYNTHETIC_ACTORS.CAJERO, id: '2' } });
+  try {
+    await session.page.goto(`${ORIGINS.unified}/terminal/pos`);
+    await session.page.getByRole('button', { name: /Personalizar.*Americano/ }).click();
+    await expect(session.page.getByRole('dialog')).toHaveClass(/catalog-dialog-pos/);
+    await assertHealthyPage(session.page, session.monitor, session.apiMock);
+    await waitForVisualStability(session.page);
+    await session.page.screenshot({ path: info.outputPath('hyb08-electron-pos-dialog-unapproved.png') });
+  } finally { await session.close(); }
+});

@@ -52,6 +52,33 @@
 
 **HYB-24…HYB-25:** pendientes. Siguen requiriendo adaptación específica aprobada por el responsable antes de cualquier cambio.
 
+## Cierres del bloque terminal/cliente (aceptación 2026-11-26)
+
+El responsable aprobó las diferencias presentadas y autorizó continuar. Cierres registrados con evidencia ejecutada, revisiones técnica y visual independientes y decisiones aplicadas. Los PNG de verificación viven en `frontend/unified/test-results/visual/` (no aprobados como baseline); las referencias aprobadas siguen en `evidence/HYB-03…05`.
+
+| Task | Estado | Commit | Evidencia, decisiones y aceptación |
+| --- | --- | --- | --- |
+| HYB-06 login staff | Terminada | `mismo commit` | `TerminalAuthPage.tsx` y `staff-login.css`; estados anónimo, inválido, sesión activa, enviando, logout fallido y sesión recuperable, más captura Electron. Retirado emoji sin trazabilidad y corregida la especificidad del padding del shell. Revisión técnica: aprobada con observaciones (resueltas); visual: adaptación fiel a `ADAPT-LOGIN-STAFF`. Decisión D-32. |
+| HYB-07 catálogo POS | Terminada | `mismo commit` | `PosPage.tsx` (catálogo/categorías/búsqueda) y `pos-catalog.css`; estados normal, agotado, error de productos, vacío y captura Electron. «Agotado» accesible para lectores de pantalla. Precios/disponibilidad/categorías de API. Revisión técnica y visual con diferencias aceptadas en D-32 (H1 accesible, panel de catálogo, dos columnas a 1024, metadatos). |
+| HYB-08 panel y personalización POS | Terminada | `mismo commit` | `PosPage.tsx` (panel), `ProductCustomizationDialog.tsx` con `presentation="pos"`, `pos-order.css`; capturas de panel vacío, panel con línea, diálogo y Electron. Idempotencia/estado intactos y aislamiento del consumidor cliente comprobado. Diferencias aceptadas en D-32. |
+| HYB-09 caja | Terminada | `mismo commit` | `CashSessionsPage.tsx` y `cash-session.css`; cerrada, abierta, resultado, ajena CAJERO/ADMINISTRADOR, incertidumbre, error de consulta y Electron. La respuesta no verificable ya no muestra «Caja cerrada» sino «Estado no verificable»; diferencia nula no se presenta como `$0.00`; fecha localizada; contenido alineado arriba; foco al mensaje de validación. `ADAPT-CASH-SESSION` y D-32. |
+| HYB-10 cobro | Terminada | `mismo commit` | `CashPaymentPage.tsx` y `cash-payment.css`; pendiente, ticket fallido, impresión aislada y guarda D-20 en Electron. Consulta de caja separada de los errores de cobro, con reintento propio; cambio sólo desde API; reintento exclusivo de ticket. `ADAPT-CASH-PAYMENT`. |
+| HYB-11 ticket e impresión | Terminada | `mismo commit` | `ProtectedTicket.tsx` y `protected-ticket.css`; CASH/STRIPE, QR válido/vencido, impresión sin navegación, filtros ni botones. `ADAPT-PROTECTED-TICKET`, D-31. |
+| HYB-12 cocina y disponibilidad | Terminada | `mismo commit` | `KitchenPage.tsx`, `AvailabilityPage.tsx` y `kitchen-availability.css`; cola, vacío, disponible, agotado y axe. Sin CRUD al CAJERO ni sondeo local. D-31. |
+| HYB-13 historial | Terminada | `mismo commit` | `HistoryPage.tsx` y `history.css`; lista, vacío, reimpresión GET, foco devuelto y paginación deshabilitada distinguible. `ADAPT-HISTORY-REPRINT`, D-31. |
+| HYB-14 shell/dashboard admin | Terminada | `mismo commit` | `AdminPage.tsx` (shell/dashboard), `admin-shell.css`; dashboard API, denegación CAJERO capturada. Sólo ADMINISTRADOR. D-31. |
+| HYB-15 categorías/productos | Terminada | `mismo commit` | `AdminPage.tsx` y `admin-catalog.css`; listado, sin imagen, agotado, formulario coherente, checkbox junto a etiqueta, botones navy y paginación deshabilitada. PATCH/validación/bloqueo incierto intactos. D-31. |
+| HYB-16 opciones/configuración | Terminada | `mismo commit` | `AdminPage.tsx` y `admin-options.css`; grupos, valores y JSON de reemplazo legibles y conservados. Derivada sin pantalla original directa. D-31. |
+| HYB-17 personal | Terminada | `mismo commit` | `AdminPage.tsx` y `admin-staff.css`; alta/edición, contraseña sólo en alta, roles de contrato y denegación CAJERO capturadas. `ADAPT-STAFF-ADMIN`, D-31. |
+| HYB-18 base/shell/acceso cliente | Terminada | `mismo commit` | `ClientLayout.tsx`, `ClientAuthPage.tsx`, `shell-auth.css`; login, invitado, sesión activa, skip-link por encima de la cabecera, logo visible y NIP tipo píldora. Composición adaptada en D-28. |
+| HYB-19 catálogo cliente | Terminada | `mismo commit` | `ClientCatalogPage.tsx` y `catalog.css`; columna centrada, dos columnas en 390×844, reflow 320 px, vacío, sin imagen/agotado desde API. D-29. |
+| HYB-20 personalización/carrito | Terminada | `mismo commit` | `ProductCustomizationDialog.tsx`, `ClientCart.tsx` y `cart-customization.css`; panel inferior con asa en móvil, modal centrado, cabecera/acciones fijas, backdrop verificado por píxel y hit-testing. Carrito inline aceptado en D-30. |
+| HYB-21 envío/confirmación | Terminada | `mismo commit` | `ClientCart.tsx` y `hyb21-client-order-send.visual.spec.ts`; envío, incertidumbre con reintento explícito, confirmación CASH y STRIPE sin cobro, sin POST de pago ni aviso obsoleto. `ADAPT-CLIENT-ORDER-SEND`, D-31. |
+| HYB-22 cuenta cliente | Terminada | `mismo commit` | `ClientAccountPage.tsx` y `account.css`; perfil, favoritos, historial y detalle, lleno/vacío, estilos de campos completos. Ruta, propiedad, cursor y repetición sin cobro intactos. `ADAPT-CLIENT-ACCOUNT`, D-31. |
+| HYB-23 registro por ticket | Terminada | `mismo commit` | `TicketRegistrationPage.tsx` y `registration.css`; formulario a 390×844 y 1280×800, token sólo en memoria y login explícito. Sin pantalla original directa. D-31. |
+
+Verificación del bloque: `npm run lint` 0 errores, typecheck 0 diagnósticos, `npm run test` **295/295**, `npm run test:e2e` **59/59**, suite visual **100/100** y `npm run build` correcto. `git diff --check` sin errores. Evidencia aprobada intacta.
+
 ## Revisión independiente HYB-11…22 (2026-11-26)
 
 `frontend-reviewer` no encontró bloqueantes de contrato, sesión, permisos, CSRF ni idempotencia; aprobó HYB-12, 14, 15, 16 y 17 sin observaciones y el resto con observaciones no bloqueantes. `frontend-visual-reviewer` confirmó identidad/estados con diferencias registradas; la fidelidad píxel a píxel no es evaluable para HYB-11, 12, 13, 14, 15, 17, 21 y 22 por no existir captura original aprobada de esas superficies.

@@ -7,6 +7,7 @@
   color: var(--term-text-main);
   background: var(--term-bg-secondary);
   min-height: calc(100vh - 5rem);
+  align-content: start;
   box-sizing: border-box;
 }
 .terminal-layout .cash-page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }

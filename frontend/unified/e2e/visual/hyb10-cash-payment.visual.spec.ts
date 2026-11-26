@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Route } from '@playwright/test';
-import { assertHealthyPage, createIsolatedContext, ORIGINS, waitForVisualStability } from './capture.helpers.ts';
+import { assertHealthyPage, createIsolatedContext, launchIsolatedElectron, ORIGINS, waitForVisualStability } from './capture.helpers.ts';
 import { SYNTHETIC_ACTORS, SYNTHETIC_PRODUCTS } from './fixtures.ts';
 
 const order = {
@@ -78,3 +78,18 @@ for (const viewport of [{ width: 1024, height: 768 }, { width: 1280, height: 800
     } finally { await context.close(); }
   });
 }
+
+test('HYB-10 Electron keeps the D-20 guard without an order', async ({ browser }) => {
+  void browser;
+  const info = test.info();
+  const session = await launchIsolatedElectron({ actor: { ...SYNTHETIC_ACTORS.CAJERO, id: '2' } });
+  try {
+    await session.page.goto(`${ORIGINS.unified}/terminal/cobro`);
+    await expect(session.page.getByRole('heading', { name: 'Cobro en efectivo' })).toBeVisible();
+    await expect(session.page.getByText(/No hay una orden recién creada/)).toBeVisible();
+    expect(await session.page.evaluate(() => window.cafeteriaDesktop?.terminalOnly)).toBe(true);
+    await assertHealthyPage(session.page, session.monitor, session.apiMock);
+    await waitForVisualStability(session.page);
+    await session.page.screenshot({ path: info.outputPath('hyb10-electron-payment-guard-unapproved.png') });
+  } finally { await session.close(); }
+});
