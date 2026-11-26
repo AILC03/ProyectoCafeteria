@@ -22,7 +22,7 @@ Formato SDD inspirado en [habits-cli, spec 001](https://github.com/mouredev/hell
 1. El frontend **ya está en este repositorio**. Existe `frontend/unified/` con React, TypeScript, Vite, React Router, Vitest, Testing Library, MSW, Playwright y axe. No es necesario iniciar otro repositorio.
 2. `src/features/terminal/admin/AdminPage.tsx` ya tiene dashboard básico, catálogo, configuración y personal; el resumen usa `getSalesSummary({})` sin periodo explícito. Esta entrega amplía/reorganiza ese punto de entrada, no lo declara inexistente.
 3. Ya existen ventas/historial, caja, cobro, cocina, disponibilidad y ticket protegido. Deben reutilizarse sin perder permisos, validación de respuestas ni protección ante resultados inciertos.
-4. OpenAPI vigente: `backend/docs/api/openapi.yaml`, versión 0.11.0. No contiene los endpoints de agregación/listados administrativos de fase 2 del PDF.
+4. OpenAPI vigente en el momento de redactar esta spec: `backend/docs/api/openapi.yaml`, versión 0.11.0. **No contenía** los endpoints de agregación/listados administrativos de fase 2 del PDF. Estado actual (2026-11-26): OpenAPI ya incluye los contratos aceptados de E1 y E2 —`summary`, `sales-series`, `product-ranking`, `no-movement-products`, `category-participation` y las cinco exportaciones CSV—; los listados de E3/E4 siguen sin contrato.
 5. La imagen se autoriza con `POST /admin/products/{id}/image-upload` y se asocia con `PUT /admin/products/{id}/image`; el resumen del PDF no sustituye estas rutas exactas.
 6. El reset de NIP recibe `temporaryPin`, `reason`, `verificationSummary` y `recentSaleId`; responde 204. El servidor **no devuelve ni genera para la interfaz** el NIP temporal.
 7. La documentación de unificación registra pruebas locales y migraciones aplicadas en ese contexto. No se asume el estado de otras bases ni un despliegue HTTPS validado. No ejecutar migraciones en esta entrega.
@@ -65,6 +65,8 @@ El resumen requiere un contrato nuevo, candidato `GET /admin/dashboard/summary`,
 Series, rankings, categorías, listado global de órdenes y alertas sin fuente aprobada no son criterios de cierre de E1. Se omiten o identifican como capacidad pendiente sin datos ficticios. Una capacidad obligatoria de E1 no puede sustituirse por un placeholder para declarar terminado el MVP.
 
 ### E2 — Analítica prioritaria
+
+**Estado (2026-11-26): implementada y cerrada con CSV**, según [validation.md](./validation.md). Lo siguiente describe el alcance exigido, no trabajo pendiente.
 
 Series horarias/diarias, productos más y menos vendidos y activos sin movimiento, con selector de métrica y top N. Cada capacidad se entrega tras aprobar su contrato y verificar la agregación. Participación por categoría se incorpora como ampliación explícita de esta entrega, no como filtro implícito de endpoints existentes.
 
@@ -142,9 +144,11 @@ Todas las rutas siguientes tienen prefijo `/api/v1`. IDs, conteos e importes agr
 | Personal | GET/POST `/admin/employees`, PATCH `/admin/employees/{id}`; baja lógica, no DELETE |
 | Clientes | POST `/cashier/customers/search`, PATCH `/admin/customers/{id}`, POST `/admin/customers/{id}/pin-reset`; no listado administrativo actual |
 
-### Contratos candidatos por entrega — no aprobados ni disponibles
+### Contratos por entrega — estado actual
 
-GET `/admin/dashboard/summary`, `/admin/dashboard/sales-series`, `/admin/dashboard/product-ranking`, `/admin/dashboard/sales-by-category`, `/admin/orders`, `/admin/customers`, `/admin/cash-sessions`, `/admin/audit-events`, `/admin/payment-incidents`, `/admin/system/status` y `/admin/sales/export.csv` para cierre de E2. Las rutas de CSV analítico se definirán en su contrato; no se presupone que el exportador de ventas sirva para todos los datasets.
+**Implementados y aceptados (2026-11-26):** `GET /admin/dashboard/summary` (E1), `GET /admin/dashboard/sales-series`, `GET /admin/dashboard/product-ranking`, `GET /admin/dashboard/no-movement-products`, `GET /admin/dashboard/category-participation` (E2) y las cinco exportaciones `GET /api/v1/admin/dashboard/*-export.csv` (cierre E2). Sus DTO, rutas y decisiones están en los contratos de [contracts/](./contracts/) y en OpenAPI.
+
+**Pendientes de contrato (no disponibles):** `/admin/orders`, `/admin/customers`, `/admin/cash-sessions`, `/admin/audit-events`, `/admin/payment-incidents`, `/admin/system/status` y las capacidades de E4. La ruta candidata `/admin/dashboard/sales-by-category` de la spec original se materializó como `category-participation`. La ruta `/admin/sales/export.csv` de la spec original se materializó como `/admin/dashboard/sales-export.csv`; no se presupone que el exportador de ventas sirva para otros datasets.
 
 Prioridad: summary en E1; series/ranking y ampliación de categorías en E2; orders en E3; clientes/caja histórica/auditoría/incidencias/estado en E4. La ruta definitiva y distribución de datos entre consultas se acuerdan al cerrar cada contrato; el resumen no debe hacer fallar todos los indicadores si la caja no está disponible.
 

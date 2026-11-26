@@ -646,6 +646,14 @@ Estado: **implementada y verificada localmente; NO aceptada/cerrada; commit `mis
 - **V-REAL de E2-02 no acreditado por sí mismo:** su evidencia era MSW/E2E simulado. La corrida live posterior de **E2-03** es independiente: acredita series reales y no hereda ni concede aceptación a E2-02.
 - No se declara E2 cerrada ni CSV iniciado.
 
+### Decisión de cierre de E2-02 — 2026-11-26
+
+El responsable autorizó corregir la incoherencia de que E2 estuviera cerrada mientras E2-02 seguía «no aceptada». Decisión registrada:
+
+- **No se exige una V-VIS separada de E2-02.** La aceptación visual de la capacidad de series es la registrada en E2-03, con sus capturas 1280/768/390 y Electron aprobadas, porque ambas tareas cubren la misma capacidad y E2-03 acreditó la integración real que E2-02 no podía acreditar por sí misma.
+- **Salvedades que se conservan:** E2-02 nunca tuvo capturas propias; su evidencia de ejecución fue del coordinador porque el verificador independiente tuvo shell denegado; y esta decisión **no** reabre E2-03 ni el resto de E2.
+- **No se atribuye** a E2-02 una prueba que no se ejecutó: se trata de una dispensa explícita de evidencia visual propia, no de una aceptación retroactiva de capturas inexistentes.
+
 ## TASK-DA-E2-03 — Aceptación real de series
 
 Estado actual: **cerrada y aceptada por el responsable el 2026-11-25; re-revisión final sin bloqueantes técnicos tras corregir B-3/B-4; commit pendiente de autorización. NO cierra E2.** CSV-03 sigue siendo el cierre. Autor de la suite: `frontend-implementer`; verificación: `dashboard-verifier`; revisión independiente: `dashboard-reviewer` (B-1 corregido; B-2 aceptado por el responsable).
@@ -2170,3 +2178,24 @@ El responsable respondió **«Acepto CSV-03 y el cierre de E2»** a la solicitud
 - **Alcance del cierre:** no aprueba imágenes/PNG/XLSX/PDF, histórico global, nuevas capacidades, cambios de negocio ni despliegue. HTTPS de distribución, instalador y paridad de producción siguen no acreditados.
 
 **Estado: TASK-DA-E2-CSV-03 CERRADA Y ACEPTADA; E2 CERRADA Y ACEPTADA por el responsable el 2026-11-25 con las limitaciones registradas.** E3, E4 y las capacidades opcionales no se inician por este cierre. Sin commit autorizado en este registro hasta la autorización expresa de commit.
+
+## Correcciones de revisión autorizadas — 2026-11-26
+
+El responsable autorizó dos correcciones de frontend (sin backend, sin dependencias y sin commit). Las incidencias 2, 6 y 7 se omitieron por decisión del responsable.
+
+- **Incidencia 1 (alta): rangos anteriores a 2000 en las descargas.** El filtro de Inicio seguía aceptando periodos previos a 2000, pero los constructores de solicitud CSV de series, ranking, sin movimiento, categorías y ventas lanzaban `TypeError` al renderizar. Se añadió el helper compartido `canExportRange(from, to)` en `downloads/csvDownload.ts` (mínimo exacto `2000-01-01T08:00:00.000Z`, rechazo de 1 ms anterior, formato UTC, `from < to` y máximo 366 días) y los cinco consumidores lo usan antes de construir la solicitud. `CsvDownloadButton` acepta `request: null`, muestra el mensaje accesible «La exportación no está disponible para rangos anteriores al 1 de enero de 2000.» y deja el botón deshabilitado; el panel sigue renderizando su estado normal de datos/error. No se modificó `periods.ts`, el filtro de E1 ni los rangos aceptados por los endpoints E1/E2. La exportación de ventas aplica el mismo criterio porque su contrato CSV también exige mínimo 2000.
+- **Incidencia 3 (baja): revocación de object URL.** `saveCsvToBrowser` mantiene la revocación diferida en `setTimeout(0)` y ahora la agenda exactamente una vez aunque `click()` o `remove()` lancen, conservando el primer fallo (click antes que remove) sin tragarlo.
+- **Pruebas añadidas:** unitarias de `canExportRange` (límite exacto, 1 ms antes, rangos inválidos y >366 días), del caso `remove()` que lanza y del caso click+remove, pruebas de componente de los cinco paneles con rango 1999 (render sin excepción, botón deshabilitado y mensaje accesible) y E2E `dashboard-csv-download.spec.ts` con el rango 31/12/1999, que verifica que los cinco paneles siguen visibles, ninguna descarga se inicia y el mensaje anunciado aparece.
+
+Comandos ejecutados desde `frontend/unified` y raíz:
+
+| Comando | Resultado real |
+| --- | --- |
+| `npm.cmd run lint` (frontend/unified) | Correcto. |
+| `npm.cmd run typecheck` (frontend/unified) | Correcto. |
+| `npm.cmd test` (frontend/unified) | **760/760** en 47 archivos. |
+| `npm.cmd run test:e2e` (frontend/unified) | **93/93** en Chromium. |
+| `npm.cmd run build` (frontend/unified) | Correcto; aviso preexistente de chunk >500 kB. |
+| `git diff --check` (raíz) | Correcto, solo avisos de normalización LF→CRLF. |
+
+Sin `git add` ni commit; el cambio queda para verificación y revisión independientes del coordinador.
