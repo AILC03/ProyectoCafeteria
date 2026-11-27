@@ -141,8 +141,10 @@ test.describe('Client catalog and customization', () => {
     await dialog.getByRole('button', { name: /Avena/i }).click();
     await expect(dialog.getByText('$87.00')).toBeVisible();
 
-    await dialog.getByRole('button', { name: 'Confirmar personalización' }).click();
+    await dialog.getByRole('button', { name: 'Añadir al carrito' }).click();
     await expect(dialog).toHaveCount(0);
-    await expect(page.getByText(/1 × Latte.*\$87\.00/)).toBeVisible();
+    await page.getByRole('button', { name: /Abrir carrito, 1 producto/ }).click();
+    const cart = page.getByRole('dialog', { name: 'Tu carrito' });
+    await expect(cart.getByText(/1 × Latte.*\$87\.00/)).toBeVisible();
   });
 });

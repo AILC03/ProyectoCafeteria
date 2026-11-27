@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import type { IdempotentOperation } from '../../../shared/api/idempotency';
 import { useSession } from '../../../shared/auth/SessionProvider';
 import { formatMxnCents } from '../../../shared/utils/money';
@@ -184,7 +185,8 @@ export function CashSessionsPage() {
       <header className="cash-page-header">
         <div>
           <h1 id="cash-title">Corte y Sesión de Caja</h1>
-          <p className="field-hint">Sesión de efectivo confirmada por el servidor. Aquí no se cobra ni se emite QR.</p>
+          <p className="field-hint">Sesión de efectivo confirmada por el servidor. El cobro de pedidos se realiza desde el cobro con QR.</p>
+          <p><Link className="status-action" to="/terminal/cobro">Cobrar pedido con QR</Link></p>
         </div>
       </header>
 

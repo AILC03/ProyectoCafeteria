@@ -1,11 +1,12 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { RouterProvider } from 'react-router-dom';
-import { afterEach, describe, expect, test } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { createTestRouter } from '../../../app/router';
 import { SessionProvider } from '../../../shared/auth/SessionProvider';
 import { idempotencyOperations } from '../../../shared/api/idempotency';
 import { server } from '../../../test/server';
+import { cashReceipts } from '../orders/cashReceipts';
 
 const actor = { id: '42', name: 'Ana', role: 'CLIENTE', accountType: 'CUSTOMER', mustChangePin: false };
 const profile = { customerNumber: 'C000105', name: 'Ana', phone: '+526641234567', recoveryEmail: null, recoveryEmailVerifiedAt: null, createdAt: '2026-11-09T12:00:00.000Z' };
@@ -24,7 +25,8 @@ function mockAccount() {
   );
 }
 function mount() { return render(<SessionProvider><RouterProvider router={createTestRouter(['/cliente/cuenta'])} /></SessionProvider>); }
-afterEach(() => { idempotencyOperations.clear(); });
+beforeEach(() => { localStorage.clear(); idempotencyOperations.clear(); cashReceipts.clear(); });
+afterEach(() => { localStorage.clear(); idempotencyOperations.clear(); cashReceipts.clear(); });
 
 describe('customer account', () => {
   test('guest and staff cannot request private account endpoints', async () => {
@@ -49,37 +51,29 @@ describe('customer account', () => {
     expect(screen.getByRole('button', { name: 'Quitar Agua' })).toBeInTheDocument();
   });
 
-  test('preview shows warnings and confirms a new pending order only on explicit click, with no retry on uncertain response', async () => {
+  test('repeat order clones the preview directly into the cart and opens it', async () => {
     mockAccount();
-    let posts = 0;
-    const keys: string[] = [];
-    server.use(http.post('/api/v1/orders', ({ request }) => {
-      posts++; keys.push(request.headers.get('Idempotency-Key') ?? '');
-      return posts === 1 ? HttpResponse.json({ code: 'DEPENDENCY_UNAVAILABLE' }, { status: 503 })
-        : HttpResponse.json({ data: { id: '13', folio: 'A000013', source: 'MOBILE', status: 'PENDIENTE_PAGO', paymentMethod: 'CASH', paidAt: null, totalCents: '2000', paymentExpiresAt: '2026-11-09T12:10:00.000Z' } }, { status: 201 });
-    }));
+    server.use(
+      http.get('/api/v1/categories', () => HttpResponse.json({ data: [], page: { limit: 100, nextCursor: null } })),
+      http.get('/api/v1/products', () => HttpResponse.json({ data: [{ id: '9', categoryId: '1', name: 'Agua', description: null, imageUrl: null, basePriceCents: '2000', isAvailable: true }], page: { limit: 100, nextCursor: null } })),
+      http.get('/api/v1/products/9', () => HttpResponse.json({ data: { id: '9', categoryId: '1', name: 'Agua', description: null, imageUrl: null, basePriceCents: '2000', isAvailable: true } })),
+      http.get('/api/v1/products/9/options', () => HttpResponse.json({ data: [] })),
+    );
     mount();
-    fireEvent.click(await screen.findByRole('button', { name: 'Ver orden A000012' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Preparar repetición' }));
-    expect(await screen.findByText(/PRICE_CHANGED/)).toBeInTheDocument();
-    expect(posts).toBe(0);
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar y crear nueva orden pendiente' }));
-    expect(await screen.findByText(/No sabemos si se creó/)).toBeInTheDocument();
-    expect(posts).toBe(1);
-    fireEvent.click(screen.getByRole('button', { name: 'Reintentar la misma orden' }));
-    await screen.findByText(/Nueva orden A000013 creada/);
-    expect(posts).toBe(2);
-    expect(keys[0]).toBe(keys[1]);
+    fireEvent.click(await screen.findByRole('button', { name: 'Repetir pedido A000012' }));
+    const cart = await screen.findByRole('dialog', { name: 'Tu carrito' });
+    expect(await within(cart).findByText(/1 × Agua/)).toBeInTheDocument();
+    expect(JSON.parse(localStorage.getItem('cafeteria:cart-draft:v1') ?? '')).toEqual({ version: 1, items: [{ productId: '9', quantity: 1, optionValueIds: [] }] });
   });
 
-  test('blocking preview cannot create an order; foreign detail returns 404 without disclosure', async () => {
+  test('blocking repeat preview reports the reason and does not alter the cart', async () => {
     mockAccount();
     server.use(http.post('/api/v1/customers/me/orders/12/repeat-preview', () => HttpResponse.json({ data: { ...preview, canCreateOrder: false, totalCents: null, warnings: [{ line: 1, code: 'PRODUCT_UNAVAILABLE', blocking: true, optionValueId: null }] } })));
     mount();
-    fireEvent.click(await screen.findByRole('button', { name: 'Ver orden A000012' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Preparar repetición' }));
-    expect(await screen.findByText(/PRODUCT_UNAVAILABLE/)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Confirmar y crear nueva orden pendiente' })).not.toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: 'Repetir pedido A000012' }));
+    expect(await screen.findByText(/La selección no se puede confirmar/)).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Tu carrito' })).not.toBeInTheDocument();
+    expect(localStorage.getItem('cafeteria:cart-draft:v1')).toBeNull();
   });
 
   test('name-only PATCH excludes currentPin and phone', async () => {

@@ -29,7 +29,8 @@ export interface ProductCustomizationDialogProps {
   productId: string;
   fallbackProduct: CatalogProduct;
   onClose: () => void;
-  onConfirm: (summary: ConfirmedCustomization) => void;
+  onConfirm: (summary: ConfirmedCustomization) => boolean | void;
+  confirmLabel?: string;
   presentation?: 'pos';
 }
 
@@ -44,6 +45,7 @@ export function ProductCustomizationDialog({
   fallbackProduct,
   onClose,
   onConfirm,
+  confirmLabel = 'Confirmar personalización',
   presentation,
 }: ProductCustomizationDialogProps) {
   const dialogRef = useRef<HTMLElement>(null);
@@ -57,6 +59,7 @@ export function ProductCustomizationDialog({
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
@@ -151,7 +154,8 @@ export function ProductCustomizationDialog({
 
   function handleConfirm(): void {
     if (!canConfirm) return;
-    onConfirm({
+    setConfirmError(null);
+    const accepted = onConfirm({
       productId: product.id,
       productName: product.name,
       quantity,
@@ -159,6 +163,9 @@ export function ProductCustomizationDialog({
       selectedLabels: estimate.selectedLabels,
       estimatedTotalCents: estimate.totalPriceCents,
     });
+    if (accepted === false) {
+      setConfirmError('No se pudo añadir al carrito. Revisa el límite de líneas y vuelve a intentarlo.');
+    }
   }
 
   function handleRetry(): void {
@@ -312,12 +319,16 @@ export function ProductCustomizationDialog({
           </div>
         )}
 
+        {confirmError !== null && (
+          <p role="alert" className="form-alert">{confirmError}</p>
+        )}
+
         <div className="auth-dialog-actions">
           <button type="button" className="secondary-button" onClick={onClose}>
             Cancelar
           </button>
           <button type="button" disabled={!canConfirm} onClick={handleConfirm}>
-            Confirmar personalización
+            {confirmLabel}
           </button>
         </div>
       </section>

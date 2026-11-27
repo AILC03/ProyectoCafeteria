@@ -16,3 +16,11 @@
 .terminal-layout .payment-notice p + p { margin-top: .5rem; font-weight: 700; }
 .terminal-layout .payment-notice-error { border-color: #fecaca; background: #fef2f2; color: #991b1b; }
 .terminal-layout .payment-notice-success { border-color: #a7f3d0; background: #ecfdf5; color: #065f46; }
+.terminal-layout .cash-qr-scanner { display: grid; gap: 1rem; width: min(100%, 34rem); padding: clamp(1rem, 2vw, 1.5rem); background: #fff; border: 1px solid var(--term-border-light); border-radius: 18px; box-shadow: var(--term-shadow-sm); }
+.terminal-layout .cash-qr-scanner h2 { margin: 0; font-size: 1.2rem; }
+.terminal-layout .cash-qr-camera { display: grid; justify-items: start; gap: .75rem; }
+.terminal-layout .cash-qr-camera video { width: 100%; max-height: 22rem; border-radius: 12px; background: #0f172a; object-fit: cover; }
+.terminal-layout .cash-qr-manual { display: grid; gap: .6rem; }
+.terminal-layout .cash-qr-manual input { width: 100%; min-height: 48px; padding: .65rem .8rem; border: 1px solid #94a3b8; border-radius: 12px; font: inherit; }
+.terminal-layout .cash-qr-manual button:not(.secondary-button) { min-height: 48px; border-radius: 12px; background: #0f172a; border-color: #0f172a; font-weight: 700; }
+.terminal-layout .payment-items { display: grid; gap: .35rem; margin: 0; padding-left: 1.25rem; color: #334155; }
