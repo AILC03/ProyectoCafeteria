@@ -4,11 +4,24 @@ import { cashQrToken } from './cashQrApi';
 type ScannerControls = { stop: () => void };
 const TOKEN = /^[A-Za-z0-9_-]{43}$/;
 
-export function CashQrScanner({ onToken, busy }: { onToken: (token: string) => void; busy: boolean }) {
+export function CashQrScanner({
+  onToken,
+  busy,
+  variant = 'full',
+  mode = 'full',
+  autoStart = false,
+}: {
+  onToken: (token: string) => void;
+  busy: boolean;
+  variant?: 'full' | 'compact';
+  mode?: 'full' | 'camera' | 'manual';
+  autoStart?: boolean;
+}) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const controlsRef = useRef<ScannerControls | null>(null);
   const lastToken = useRef<string | null>(null);
   const mounted = useRef(true);
+  const startCameraRef = useRef<() => Promise<void>>(async () => {});
   const [camera, setCamera] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [manual, setManual] = useState('');
@@ -18,7 +31,7 @@ export function CashQrScanner({ onToken, busy }: { onToken: (token: string) => v
     controlsRef.current?.stop();
     controlsRef.current = null;
     const stream = videoRef.current?.srcObject;
-    if (stream instanceof MediaStream) stream.getTracks().forEach((track) => track.stop());
+    if (typeof MediaStream !== 'undefined' && stream instanceof MediaStream) stream.getTracks().forEach((track) => track.stop());
     if (videoRef.current) videoRef.current.srcObject = null;
     setCamera(false);
   }
@@ -29,7 +42,7 @@ export function CashQrScanner({ onToken, busy }: { onToken: (token: string) => v
       mounted.current = false;
       controlsRef.current?.stop();
       const stream = videoRef.current?.srcObject;
-      if (stream instanceof MediaStream) stream.getTracks().forEach((track) => track.stop());
+      if (typeof MediaStream !== 'undefined' && stream instanceof MediaStream) stream.getTracks().forEach((track) => track.stop());
     };
   }, []);
 
@@ -81,32 +94,47 @@ export function CashQrScanner({ onToken, busy }: { onToken: (token: string) => v
     onToken(token);
   }
 
+  startCameraRef.current = startCamera;
+
+  useEffect(() => {
+    if (autoStart) void startCameraRef.current();
+  }, [autoStart]);
+
+  const showHeading = mode === 'full';
+
   return (
-    <section className="cash-qr-scanner" aria-labelledby="cash-qr-scanner-title">
-      <h2 id="cash-qr-scanner-title">Cobrar pedido con QR</h2>
-      <p className="field-hint">Escanea el QR del cliente o pega el código. Escanear no cobra ni envía el pedido a preparación.</p>
-      <div className="cash-qr-camera">
-        <video ref={videoRef} muted playsInline aria-label="Vista de la cámara para leer el QR" />
-        {!camera
-          ? <button type="button" className="secondary-button" disabled={busy} onClick={() => { void startCamera(); }}>Abrir cámara</button>
-          : <button type="button" className="secondary-button" onClick={stopCamera}>Detener cámara</button>}
-      </div>
+    <section
+      className={`cash-qr-scanner${variant === 'compact' ? ' cash-qr-scanner-compact' : ''}`}
+      {...(showHeading ? { 'aria-labelledby': 'cash-qr-scanner-title' } : { 'aria-label': 'Lector de QR para cobrar pedido' })}
+    >
+      {showHeading && <h2 id="cash-qr-scanner-title">Cobrar pedido con QR</h2>}
+      {showHeading && <p className="field-hint">Escanea el QR del cliente o pega el código. Escanear no cobra ni envía el pedido a preparación.</p>}
+      {mode !== 'manual' && (
+        <div className="cash-qr-camera">
+          <video ref={videoRef} className={`cash-qr-video${camera ? ' is-active' : ''}`} muted playsInline aria-label="Vista de la cámara para leer el QR" />
+          {!camera
+            ? <button type="button" className="secondary-button" disabled={busy} onClick={() => { void startCamera(); }}>Abrir cámara</button>
+            : <button type="button" className="secondary-button" onClick={stopCamera}>Detener cámara</button>}
+        </div>
+      )}
       {cameraError !== null && <p role="alert" className="payment-notice payment-notice-error">{cameraError}</p>}
-      <div className="cash-qr-manual">
-        <label className="field-label" htmlFor="cash-qr-manual-input">Código QR o token</label>
-        <input
-          id="cash-qr-manual-input"
-          value={manual}
-          onChange={(event) => setManual(event.target.value)}
-          autoComplete="off"
-          spellCheck={false}
-          placeholder={`cafeteria:cash:${'A'.repeat(10)}…`}
-        />
-        <button type="button" disabled={busy || !TOKEN.test(cashQrToken(manual) ?? '')} onClick={submitManual}>
-          {busy ? 'Cargando…' : 'Cargar pedido'}
-        </button>
-        {manualError !== null && <p role="alert" className="payment-notice payment-notice-error">{manualError}</p>}
-      </div>
+      {mode !== 'camera' && (
+        <div className="cash-qr-manual">
+          <label className="field-label" htmlFor="cash-qr-manual-input">Código QR o token</label>
+          <input
+            id="cash-qr-manual-input"
+            value={manual}
+            onChange={(event) => setManual(event.target.value)}
+            autoComplete="off"
+            spellCheck={false}
+            placeholder={`cafeteria:cash:${'A'.repeat(10)}…`}
+          />
+          <button type="button" disabled={busy || !TOKEN.test(cashQrToken(manual) ?? '')} onClick={submitManual}>
+            {busy ? 'Cargando…' : 'Cargar pedido'}
+          </button>
+          {manualError !== null && <p role="alert" className="payment-notice payment-notice-error">{manualError}</p>}
+        </div>
+      )}
     </section>
   );
 }

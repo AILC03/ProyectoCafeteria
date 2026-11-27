@@ -24,3 +24,13 @@
 .terminal-layout .cash-qr-manual input { width: 100%; min-height: 48px; padding: .65rem .8rem; border: 1px solid #94a3b8; border-radius: 12px; font: inherit; }
 .terminal-layout .cash-qr-manual button:not(.secondary-button) { min-height: 48px; border-radius: 12px; background: #0f172a; border-color: #0f172a; font-weight: 700; }
 .terminal-layout .payment-items { display: grid; gap: .35rem; margin: 0; padding-left: 1.25rem; color: #334155; }
+
+/* Embedded panel inside POS: keep the same secure checkout without page-level chrome. */
+.terminal-layout .cash-payment-panel { display: grid; gap: 1rem; min-width: 0; }
+.terminal-layout .cash-payment-panel .payment-checkout-card { width: 100%; box-shadow: none; }
+.terminal-layout .cash-payment-panel .protected-ticket { width: 100%; max-width: 100%; }
+
+@media print {
+  .terminal-layout .terminal-payment > .cash-payment-panel { display: block !important; }
+  .terminal-layout .terminal-payment .cash-payment-panel > :not(.protected-ticket) { display: none !important; }
+}

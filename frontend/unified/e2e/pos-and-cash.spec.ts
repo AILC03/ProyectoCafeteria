@@ -160,11 +160,16 @@ test.describe('POS and cash sessions (TASK-14)', () => {
     await page.getByRole('button', { name: 'Confirmar personalización' }).click();
     await expect(page.getByText('1 × Latte')).toBeVisible();
 
-    await page.getByLabel('Teléfono o número de cliente').fill('C10');
     await page.getByRole('button', { name: 'Buscar cliente' }).click();
+    await page.getByLabel('Teléfono o número de cliente').fill('C10');
+    await page.getByRole('button', { name: 'Buscar', exact: true }).click();
     await expect(page.getByText(/Confirma el nombre antes de usarlo/)).toBeVisible();
-    await page.getByRole('button', { name: 'Confirmar cliente' }).click();
+    await page.getByRole('button', { name: 'Aceptar' }).click();
     await page.getByRole('button', { name: 'Crear orden pendiente' }).click();
+    await page.getByLabel('Efectivo recibido (MXN)').fill('70');
+    await page.getByRole('button', { name: 'Aceptar y cobrar' }).click();
+    await expect(page.getByRole('dialog', { name: 'Cobro en efectivo' }).getByText(/Sólo el responsable de la caja abierta puede cobrar/)).toBeVisible();
+    await page.getByRole('button', { name: 'Cancelar' }).click();
     await expect(page.getByText(/Orden A000007 creada/)).toBeVisible();
     await expect(page.getByText('Crear la orden no confirma el pago ni genera un QR.')).toBeVisible();
     await page.getByRole('button', { name: 'Asociar cliente' }).click();
@@ -219,9 +224,10 @@ test.describe('POS and cash sessions (TASK-14)', () => {
     await page.goto('/terminal/pos');
     await page.getByRole('button', { name: /Personalizar.*Latte.*\$65\.00/ }).click();
     await page.getByRole('button', { name: 'Confirmar personalización' }).click();
-    await page.getByLabel('Teléfono o número de cliente').fill('C10');
     await page.getByRole('button', { name: 'Buscar cliente' }).click();
-    await page.getByRole('button', { name: 'Confirmar cliente' }).click();
+    await page.getByLabel('Teléfono o número de cliente').fill('C10');
+    await page.getByRole('button', { name: 'Buscar', exact: true }).click();
+    await page.getByRole('button', { name: 'Aceptar' }).click();
     await page.getByLabel('ID de orden pendiente').fill('7');
     await page.getByRole('button', { name: 'Asociar cliente' }).click();
     await expect(page.getByText(/ya no permite asociar clientes/)).toBeVisible();

@@ -1,5 +1,171 @@
 /* HYB-08: POS-specific ticket and dialog presentation; customer variant stays unchanged. */
 .terminal-layout .terminal-pos .pos-layout { gap: 0; }
+
+/* POS header: title plus QR scanning in the previously empty top-right area. */
+.terminal-layout .terminal-pos .pos-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding: clamp(1rem, 2vw, 1.5rem);
+  background: #fff;
+  border: 1px solid var(--term-border-light);
+  border-radius: 16px;
+  box-shadow: var(--term-shadow-sm);
+}
+.terminal-layout .terminal-pos .pos-header-copy { flex: 1 1 20rem; min-width: 0; }
+.terminal-layout .terminal-pos .pos-header-copy h1 { margin: 0; }
+.terminal-layout .terminal-pos .pos-header-copy p { margin: .35rem 0 0; }
+
+.terminal-layout .terminal-pos .pos-top-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: stretch;
+}
+.terminal-layout .terminal-pos .pos-top-grid > section { height: 100%; }
+
+.terminal-layout .terminal-pos .pos-qr-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  background: #fff;
+  border: 1px solid var(--term-border-light);
+  border-radius: 16px;
+  box-shadow: var(--term-shadow-sm);
+}
+.terminal-layout .terminal-pos .pos-qr-copy h2 { margin: 0; font-size: 1.1rem; font-weight: 800; color: #0f172a; }
+.terminal-layout .terminal-pos .pos-qr-copy p { margin: .3rem 0 0; }
+.terminal-layout .terminal-pos .pos-qr-actions { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; }
+.terminal-layout .terminal-pos .pos-qr-actions button:not(.secondary-button) {
+  min-height: 44px;
+  background: #0f172a;
+  border-color: #0f172a;
+  border-radius: 12px;
+}
+.terminal-layout .terminal-pos .pos-qr-actions button { min-height: 44px; border-radius: 12px; }
+.terminal-layout .terminal-pos .pos-qr-card .payment-notice { margin: 0; }
+
+.terminal-layout .terminal-pos .pos-customer-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  background: #fff;
+  border: 1px solid var(--term-border-light);
+  border-radius: 16px;
+  box-shadow: var(--term-shadow-sm);
+}
+.terminal-layout .terminal-pos .pos-customer-summary { min-width: 0; }
+.terminal-layout .terminal-pos .pos-customer-summary h2 { margin: 0; font-size: 1.1rem; font-weight: 800; color: #0f172a; }
+.terminal-layout .terminal-pos .pos-customer-summary p { margin: .3rem 0 0; color: #475569; }
+.terminal-layout .terminal-pos .pos-customer-actions { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; }
+.terminal-layout .terminal-pos .pos-customer-actions .button,
+.terminal-layout .terminal-pos .pos-customer-actions button:not(.secondary-button) {
+  min-height: 44px;
+  background: #0f172a;
+  border-color: #0f172a;
+  border-radius: 12px;
+}
+
+/* Order lines: quantity stepper and delete icon. */
+.terminal-layout .terminal-pos .pos-order-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem 1rem;
+}
+.terminal-layout .terminal-pos .pos-line-copy { display: grid; flex: 1 1 12rem; gap: .2rem; min-width: 0; }
+.terminal-layout .terminal-pos .pos-line-copy strong { font-weight: 700; overflow-wrap: anywhere; }
+.terminal-layout .terminal-pos .pos-line-price { color: #475569; font-variant-numeric: tabular-nums; }
+.terminal-layout .terminal-pos .pos-line-controls { display: flex; align-items: center; gap: .5rem; }
+.terminal-layout .terminal-pos .pos-quantity-control {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .2rem .35rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #f8fafc;
+}
+.terminal-layout .terminal-pos .pos-quantity-control button {
+  min-width: 2.25rem;
+  min-height: 2.25rem;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+.terminal-layout .terminal-pos .pos-quantity-value {
+  min-width: 1.5rem;
+  text-align: center;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.terminal-layout .terminal-pos .pos-line-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  background: #fff;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  color: #b91c1c;
+}
+.terminal-layout .terminal-pos .pos-line-remove:not(:disabled):hover { background: #fef2f2; }
+
+/* Informative tax-inclusive totals. */
+.terminal-layout .terminal-pos .pos-totals { display: grid; gap: .45rem; padding-top: .75rem; border-top: 1px solid var(--term-border-light); }
+.terminal-layout .terminal-pos .pos-totals-list { display: grid; gap: .35rem; margin: 0; }
+.terminal-layout .terminal-pos .pos-totals-row { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+.terminal-layout .terminal-pos .pos-totals-row dt,
+.terminal-layout .terminal-pos .pos-totals-row dd { margin: 0; }
+.terminal-layout .terminal-pos .pos-totals-row dd { font-variant-numeric: tabular-nums; }
+.terminal-layout .terminal-pos .pos-totals-total { padding-top: .45rem; border-top: 1px dashed #cbd5e1; font-size: 1.1rem; font-weight: 800; }
+.terminal-layout .terminal-pos .pos-order-actions { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; }
+.terminal-layout .terminal-pos .pos-qr-order { gap: .85rem; }
+
+/* POS customer and guest dialogs (portaled outside the terminal layout). */
+.pos-dialog { max-width: 32rem; }
+.pos-dialog-search { display: grid; gap: .75rem; }
+.pos-dialog-result { gap: .75rem; }
+
+/* Cash checkout modal is portaled outside the terminal layout. */
+.pos-checkout-dialog { max-width: 30rem; }
+.pos-checkout-dialog .form-field input { font-size: 1.15rem; font-weight: 700; }
+.pos-checkout-total {
+  display: grid;
+  justify-items: center;
+  gap: .35rem;
+  padding: 1.1rem;
+  border-radius: 16px;
+  background: #f8fafc;
+  text-align: center;
+}
+.pos-checkout-total span { color: #475569; font-size: .8rem; font-weight: 700; letter-spacing: .05em; }
+.pos-checkout-total strong { color: #0f172a; font-size: clamp(1.9rem, 4vw, 2.4rem); line-height: 1.15; overflow-wrap: anywhere; }
+.pos-checkout-breakdown { display: grid; gap: .4rem; margin: 0; }
+.pos-checkout-breakdown > div { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+.pos-checkout-breakdown dt,
+.pos-checkout-breakdown dd { margin: 0; }
+.pos-checkout-breakdown dd { font-variant-numeric: tabular-nums; }
+.pos-checkout-breakdown-total { border-top: 1px dashed #cbd5e1; padding-top: .45rem; font-weight: 800; }
+.pos-checkout-change { margin: 0; font-weight: 700; color: #0f172a; }
+
+/* Compact QR scanner used in the POS header. */
+.terminal-layout .terminal-pos .cash-qr-scanner-compact { width: 100%; padding: 1rem; gap: .75rem; box-shadow: none; }
+.terminal-layout .terminal-pos .cash-qr-scanner-compact h2 { font-size: 1.05rem; }
+.terminal-layout .terminal-pos .cash-qr-scanner-compact .cash-qr-camera video { max-height: 12rem; }
+.terminal-layout .terminal-pos .cash-qr-scanner-compact .cash-qr-camera video:not(.is-active) { display: none; }
+
 .terminal-layout .terminal-pos .pos-layout > .auth-card:not(.pos-catalog-panel) {
   grid-column: 2;
   min-width: 0;
@@ -31,6 +197,18 @@
   min-height: 44px;
 }
 .terminal-layout .terminal-pos .pos-layout > .auth-card:not(.pos-catalog-panel) button:disabled { opacity: .65; }
+.terminal-layout .terminal-pos .pos-layout > .auth-card:not(.pos-catalog-panel) button.pos-line-remove {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  background: #fff;
+  border-color: #fecaca;
+  border-radius: 12px;
+  color: #b91c1c;
+}
+.terminal-layout .terminal-pos .pos-layout > .auth-card:not(.pos-catalog-panel) button.pos-line-remove:not(:disabled):hover {
+  background: #fef2f2;
+}
 .terminal-layout .terminal-pos .pos-layout > .auth-card:not(.pos-catalog-panel) input {
   min-width: 0;
   width: 100%;
@@ -65,4 +243,21 @@
 
 @media (max-width: 900px) {
   .terminal-layout .terminal-pos .pos-layout > .auth-card:not(.pos-catalog-panel) { grid-column: 1; }
+  .terminal-layout .terminal-pos .pos-top-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media print {
+  .terminal-layout .terminal-pos .pos-top-grid,
+  .terminal-layout .terminal-pos .pos-header,
+  .terminal-layout .terminal-pos .pos-customer-bar,
+  .terminal-layout .terminal-pos .pos-catalog-panel,
+  .terminal-layout .terminal-pos .pos-lines,
+  .terminal-layout .terminal-pos .pos-totals,
+  .terminal-layout .terminal-pos .payment-checkout-card,
+  .terminal-layout .terminal-pos .pos-order-actions,
+  .terminal-layout .terminal-pos .pos-association,
+  .terminal-layout .terminal-pos .pos-qr-order > h2,
+  .terminal-layout .terminal-pos .pos-qr-order > p,
+  .terminal-layout .terminal-pos .pos-qr-order > button { display: none !important; }
+  .terminal-layout .terminal-pos .auth-card { border: 0; padding: 0; }
 }

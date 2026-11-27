@@ -1,4 +1,4 @@
-import { ApiError, fetchSessionActor, invalidateCsrfToken, loginCustomerSession, loginStaffSession, logoutSession, refreshSession, setCsrfToken, subscribeToApiAuthEvents } from '../api/client';
+import { ApiError, fetchSessionActor, invalidateCsrfToken, loginCustomerSession, loginStaffSession, logoutSession, refreshSession, registerSessionRecoveryHandler, setCsrfToken, subscribeToApiAuthEvents } from '../api/client';
 
 export type Actor = {
   id: string;
@@ -98,6 +98,7 @@ export class SessionManager {
   private bootstrapRequest: Promise<SessionState> | null = null;
   private readonly unsubscribeRefresh: () => void;
   private readonly unsubscribeApiAuth: () => void;
+  private readonly unregisterRecovery: () => void;
   private readonly privateStateCleaners = new Set<PrivateStateCleaner>();
 
   constructor(private readonly coordinator = new RefreshCoordinator()) {
@@ -111,6 +112,17 @@ export class SessionManager {
       } else {
         this.clearSession(this.entryFor(this.state.actor), true);
       }
+    });
+    this.unregisterRecovery = registerSessionRecoveryHandler(async () => {
+      const previous = this.state;
+      const state = await this.refresh();
+      if (state.status === 'authenticated') return 'recovered';
+      if (state.status === 'recoverable-error') {
+        // A temporary outage must not evict a staff member mid-order.
+        if (previous.status === 'authenticated') this.set(previous);
+        return 'retry-later';
+      }
+      return 'expired';
     });
   }
 
@@ -232,6 +244,7 @@ export class SessionManager {
   }
 
   dispose(): void {
+    this.unregisterRecovery();
     this.unsubscribeRefresh();
     this.unsubscribeApiAuth();
     this.coordinator.close();

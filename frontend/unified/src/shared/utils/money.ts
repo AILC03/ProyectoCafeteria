@@ -28,6 +28,29 @@ export function multiplyCents(cents: string, quantity: number): string {
   return (parseCentsBigInt(cents) * BigInt(Math.trunc(quantity))).toString();
 }
 
+/**
+ * Splits a tax-inclusive total into subtotal and included IVA using integer math.
+ * Prices already include IVA, so `totalCents` never changes; subtotal + iva === total.
+ * Defaults to the standard Mexican IVA rate (16%).
+ */
+export function splitIncludedIva(totalCents: string, ratePercent = 16): {
+  subtotalCents: string;
+  ivaCents: string;
+  totalCents: string;
+} {
+  const total = parseCentsBigInt(totalCents);
+  const rate = Number.isInteger(ratePercent) && ratePercent >= 0 && ratePercent <= 100 ? BigInt(ratePercent) : 16n;
+  const divisor = 100n + rate;
+  const signedTotal = total < 0n ? -total : total;
+  const roundedSubtotal = (signedTotal * 100n + divisor / 2n) / divisor;
+  const subtotal = total < 0n ? -roundedSubtotal : roundedSubtotal;
+  return {
+    subtotalCents: subtotal.toString(),
+    ivaCents: (total - subtotal).toString(),
+    totalCents: total.toString(),
+  };
+}
+
 /** Formats decimal cents (e.g. "6500") as "$65.00" without floating-point conversion. */
 export function formatMxnCents(cents: string | null | undefined): string {
   const value = parseCentsBigInt(cents);
