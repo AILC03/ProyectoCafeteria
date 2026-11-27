@@ -47,15 +47,6 @@ export function ClientLayout() {
           <NavLink to="/cliente/menu">Menú</NavLink>
           <ActorAreaLink destination="client" to="/cliente/iniciar-sesion">Iniciar sesión</ActorAreaLink>
           <NavLink to="/cliente/cuenta">Cuenta</NavLink>
-          <ActorAreaLink
-            destination="terminal"
-            to="/terminal"
-            onClick={() => {
-              if (guest.isGuest) exitGuestMode();
-            }}
-          >
-            Terminal
-          </ActorAreaLink>
         </nav>
 
         {isCustomer && (
