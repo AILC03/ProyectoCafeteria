@@ -214,12 +214,11 @@ Fuente: `frontend/clientes/src/components/ProfileModal.tsx` y `frontend/clientes
 
 | Decisión | Superficies | Diferencia aceptada |
 | --- | --- | --- |
-| D-28 | HYB-18 | Acceso cliente sin fotografía de héroe, sin tarjetas promocionales ni iconos Material; logo local, PIN tipo píldora y navegación textual con «Terminal» (cláusula de navegación sustituida por D-34). Sin cambios de login, invitado, actor o guardas. |
+| D-28 | HYB-18 | Acceso cliente sin fotografía de héroe, sin tarjetas promocionales ni iconos Material; logo local, PIN tipo píldora y navegación textual con «Terminal». Sin cambios de login, invitado, actor o guardas. |
 | D-29 | HYB-19 | Tarjetas con chips «Disponible»/«Agotado», acción «Personalizar» y sin corazón/favorito en la tarjeta; columna centrada a dos columnas y placeholder sin inventar imágenes. |
 | D-30 | HYB-20 | Carrito inline (no drawer) y diálogo bottom-sheet/modal centrado sin cabecera fotográfica; mismas opciones, estimado, borrador y foco. |
 | D-31 | HYB-11…17, 21, 22 | Evidencia de identidad/estados/contratos aceptada donde no existe captura original aprobada; sin declarar equivalencia píxel a píxel. HYB-16 derivada. |
 | D-32 | HYB-06…10 | Composición terminal aceptada: H1 accesible y panel de catálogo en POS, dos columnas a 1024 px, metadatos sin SKU, panel de cliente por búsqueda, caja alineada arriba con fechas localizadas y login sin emoji. Guardas, permisos e idempotencia intactos. |
-| D-34 | HYB-18-FIX | Retirado el enlace «Terminal» del shell de cliente solicitado por el responsable para evitar ofrecer el login de personal en teléfonos de clientes. La landing mantiene sus dos tarjetas; `/terminal` sigue accesible por URL y Electron. Sin cambios de guardas, roles, sesión ni credenciales. |
 
 ## Propuesta de adaptación — `ADAPT-CROSS-SURFACES` (HYB-24, aprobada como entrada, 2026-11-26)
 
