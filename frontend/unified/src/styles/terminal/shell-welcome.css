@@ -254,15 +254,24 @@
 
 .terminal-layout .welcome-staff-links {
   list-style: none;
-  margin: 0;
+  margin: 0 auto;
   padding: 0;
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 0.75rem;
-  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+}
+
+.terminal-layout .welcome-staff-links li {
+  display: flex;
+  flex: 1 1 10rem;
+  max-width: 13rem;
+  min-width: 0;
 }
 
 .terminal-layout .welcome-staff-link {
   display: inline-flex;
+  width: 100%;
   align-items: center;
   justify-content: center;
   min-height: 48px;

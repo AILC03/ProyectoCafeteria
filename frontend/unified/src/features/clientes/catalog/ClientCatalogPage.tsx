@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent } from 'react';
 import { formatMxnCents } from '../../../shared/utils/money';
-import { getCartDraft, saveCartDraft, type CartDraftItem } from '../../../shared/storage';
-import { ClientCart } from '../cart/ClientCart';
-import { useSessionManager } from '../../../shared/auth/SessionProvider';
+import { clientCartStore, useClientCart } from '../cart/clientCartStore';
+import { useSession, useSessionManager } from '../../../shared/auth/SessionProvider';
 import { mobileOrderStoreFor } from '../orders/mobileOrders';
+import { changeFavorite, getFavorites } from '../account/accountApi';
 import {
   fetchCatalogCategories,
   fetchCatalogProducts,
@@ -13,7 +13,6 @@ import {
 } from './catalogApi';
 import {
   ProductCustomizationDialog,
-  type ConfirmedCustomization,
 } from './ProductCustomizationDialog';
 
 const ALL_CATEGORIES_ID = '__all__';
@@ -25,6 +24,9 @@ function isSafeImageUrl(url: string | null): url is string {
 /** Public and customer catalog browsing page backed exclusively by API responses. */
 export function ClientCatalogPage() {
   const manager = useSessionManager();
+  const session = useSession();
+  const customerId = session.status === 'authenticated' && session.actor.accountType === 'CUSTOMER' && session.actor.role === 'CLIENTE'
+    ? session.actor.id : null;
   const orderStore = mobileOrderStoreFor(manager);
   const orderAttempt = useSyncExternalStore(orderStore.subscribe, orderStore.getSnapshot, orderStore.getSnapshot);
   const lastOrderClearRevision = useRef(orderStore.getClearRevision());
@@ -35,33 +37,56 @@ export function ClientCatalogPage() {
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [selectedProduct, setSelectedProduct] = useState<CatalogProduct | null>(null);
-  const [lastConfirmed, setLastConfirmed] = useState<ConfirmedCustomization | null>(null);
-  const [cartItems, setCartItems] = useState<CartDraftItem[]>(() => getCartDraft().items);
-  const [cartNotice, setCartNotice] = useState<string | null>(null);
-  const [cartLocked, setCartLocked] = useState(false);
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(() => new Set());
+  const [favoriteBusyId, setFavoriteBusyId] = useState<string | null>(null);
+  const [favoriteNotice, setFavoriteNotice] = useState<string | null>(null);
+  const cart = useClientCart();
   const categoryButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
-  useEffect(() => manager.registerPrivateStateCleaner(() => {
-    setCartItems([]);
-    setLastConfirmed(null);
-    setCartNotice(null);
-    setCartLocked(false);
-  }), [manager]);
+  useEffect(() => {
+    if (customerId === null) { setFavoriteIds(new Set()); return; }
+    const controller = new AbortController();
+    void getFavorites(undefined, controller.signal).then((page) => {
+      if (!controller.signal.aborted) setFavoriteIds(new Set(page.data.map((favorite) => favorite.productId)));
+    }).catch(() => { /* the star remains usable; a failed list does not block the catalog */ });
+    return () => controller.abort();
+  }, [customerId, retryCount]);
+
+  async function toggleFavorite(product: CatalogProduct): Promise<void> {
+    if (customerId === null) {
+      setFavoriteNotice('Inicia sesión como cliente para guardar productos favoritos.');
+      return;
+    }
+    if (favoriteBusyId !== null) return;
+    const adding = !favoriteIds.has(product.id);
+    const before = favoriteIds;
+    setFavoriteBusyId(product.id);
+    setFavoriteNotice(null);
+    setFavoriteIds((current) => {
+      const next = new Set(current);
+      if (adding) next.add(product.id); else next.delete(product.id);
+      return next;
+    });
+    try {
+      await changeFavorite(product.id, adding);
+      setFavoriteNotice(adding ? `${product.name} agregado a favoritos.` : `${product.name} retirado de favoritos.`);
+    } catch {
+      setFavoriteIds(before);
+      setFavoriteNotice('No se pudo actualizar el favorito. Inténtalo de nuevo.');
+    } finally {
+      setFavoriteBusyId(null);
+    }
+  }
 
   useEffect(() => {
     const revision = orderStore.getClearRevision();
     if (revision === lastOrderClearRevision.current) return;
     lastOrderClearRevision.current = revision;
-    setCartItems([]);
-    setLastConfirmed(null);
     setSelectedProduct(null);
-    setCartNotice(null);
-    setCartLocked(false);
   }, [orderAttempt, orderStore]);
 
   useEffect(() => {
-    // A confirmed order invalidates the "added to draft" notice from the cart action.
-    if (orderAttempt.confirmed !== null) setCartNotice(null);
+    if (orderAttempt.confirmed !== null) clientCartStore.clearNotice();
   }, [orderAttempt.confirmed]);
 
   useEffect(() => {
@@ -128,31 +153,8 @@ export function ClientCatalogPage() {
         </p>
       </div>
 
-      {lastConfirmed !== null && (
-        <div className="auth-card catalog-confirmation" role="status">
-          <p>
-            Selección preparada: <strong>{lastConfirmed.quantity} × {lastConfirmed.productName}</strong>{' '}
-            ({lastConfirmed.selectedLabels.length > 0 ? lastConfirmed.selectedLabels.join(', ') : 'Sin extras'}) —{' '}
-            Estimado {formatMxnCents(lastConfirmed.estimatedTotalCents)}.
-          </p>
-          <button type="button" disabled={cartLocked} onClick={() => {
-            if (cartLocked) return;
-            if (cartItems.length >= 50) {
-              setCartNotice('El carrito admite hasta 50 líneas. Quita una antes de añadir otra.');
-              return;
-            }
-            const next = [...cartItems, { productId: lastConfirmed.productId, quantity: lastConfirmed.quantity, optionValueIds: lastConfirmed.optionValueIds }];
-            mobileOrderStoreFor(manager).dismissConfirmation();
-            saveCartDraft({ version: 1, items: next });
-            setCartItems(next);
-            setLastConfirmed(null);
-            setCartNotice('Producto añadido al carrito borrador. Comprueba el catálogo antes de ordenar.');
-          }}>Añadir al carrito</button>
-        </div>
-      )}
-      {cartNotice !== null && <p role="status">{cartNotice}</p>}
-
-      <ClientCart items={cartItems} onChange={setCartItems} catalogRevision={retryCount} onLockChange={setCartLocked} />
+      {cart.notice !== null && <p role="status">{cart.notice}</p>}
+      {favoriteNotice !== null && <p role="status">{favoriteNotice}</p>}
 
       {loading && (
         <p role="status" aria-live="polite">
@@ -164,7 +166,7 @@ export function ClientCatalogPage() {
         <div className="auth-card" role="alert">
           <p>{error}</p>
           <div className="auth-actions">
-            <button type="button" onClick={() => setRetryCount((c) => c + 1)}>
+            <button type="button" onClick={() => { setRetryCount((c) => c + 1); clientCartStore.bumpRevision(); }}>
               Reintentar carga
             </button>
           </div>
@@ -220,6 +222,19 @@ export function ClientCatalogPage() {
                   key={product.id}
                   className={`auth-card product-card${!product.isAvailable ? ' product-card-unavailable' : ''}`}
                 >
+                  <button
+                    type="button"
+                    className="product-favorite"
+                    aria-pressed={favoriteIds.has(product.id)}
+                    aria-label={favoriteIds.has(product.id) ? `Quitar ${product.name} de favoritos` : `Agregar ${product.name} a favoritos`}
+                    disabled={favoriteBusyId === product.id}
+                    onClick={() => { void toggleFavorite(product); }}
+                  >
+                    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
+                      <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3 6.4 20.2l1.1-6.2L3 9.6l6.2-.9Z"
+                        fill={favoriteIds.has(product.id) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+                    </svg>
+                  </button>
                   {isSafeImageUrl(product.imageUrl) && (
                     <img
                       src={product.imageUrl}
@@ -267,9 +282,16 @@ export function ClientCatalogPage() {
           productId={selectedProduct.id}
           fallbackProduct={selectedProduct}
           onClose={() => setSelectedProduct(null)}
+          confirmLabel="Añadir al carrito"
           onConfirm={(summary) => {
-            setLastConfirmed(summary);
-            setSelectedProduct(null);
+            mobileOrderStoreFor(manager).dismissConfirmation();
+            const added = clientCartStore.addItem({
+              productId: summary.productId,
+              quantity: summary.quantity,
+              optionValueIds: summary.optionValueIds,
+            });
+            if (added) setSelectedProduct(null);
+            return added;
           }}
         />
       )}

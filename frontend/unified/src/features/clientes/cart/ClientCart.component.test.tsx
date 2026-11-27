@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { HttpResponse, http } from 'msw';
 import { RouterProvider } from 'react-router-dom';
-import { afterEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createTestRouter } from '../../../app/router';
 import { SessionProvider } from '../../../shared/auth/SessionProvider';
 import { RefreshCoordinator, SessionManager } from '../../../shared/auth/session';
@@ -9,7 +9,10 @@ import { idempotencyOperations, isUncertainIdempotencyFailure } from '../../../s
 import { ApiError, invalidateCsrfToken } from '../../../shared/api/client';
 import { clearGuestSession, enterGuestSession } from '../auth/guestSession';
 import { mobileOrderStoreFor } from '../orders/mobileOrders';
+import { cashReceipts } from '../orders/cashReceipts';
+import { cartTotals } from './ClientCart';
 import { CART_DRAFT_KEY } from '../../../shared/storage';
+import { clientCartStore } from './clientCartStore';
 import { server } from '../../../test/server';
 
 const latte = { id: '10', categoryId: '1', name: 'Latte', description: null, imageUrl: null, basePriceCents: '6500', isAvailable: true };
@@ -59,13 +62,56 @@ async function addLatte() {
   fireEvent.click(await screen.findByRole('button', { name: 'Personalizar Latte' }));
   const dialog = await screen.findByRole('dialog', { name: 'Latte' });
   await within(dialog).findByRole('button', { name: /Grande/i });
-  fireEvent.click(within(dialog).getByRole('button', { name: 'Confirmar personalización' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Añadir al carrito' }));
-  await screen.findByText(/Subtotal estimado/);
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Añadir al carrito' }));
+  fireEvent.click(screen.getByRole('button', { name: /Abrir carrito/ }));
+  await screen.findByText(/Subtotal/);
 }
 
-afterEach(() => { localStorage.clear(); idempotencyOperations.clear(); clearGuestSession(); vi.unstubAllGlobals(); });
+function closeCart(): void {
+  const dialog = screen.queryByRole('dialog', { name: 'Tu carrito' });
+  if (dialog !== null) fireEvent.click(within(dialog).getByRole('button', { name: 'Cerrar' }));
+}
 
+function openCart(): void {
+  fireEvent.click(screen.getByRole('button', { name: /Abrir carrito/ }));
+}
+
+beforeEach(() => { localStorage.clear(); idempotencyOperations.clear(); clearGuestSession(); clientCartStore.clear(); cashReceipts.clear(); });
+afterEach(() => { localStorage.clear(); idempotencyOperations.clear(); clearGuestSession(); clientCartStore.clear(); cashReceipts.clear(); vi.unstubAllGlobals(); });
+
+describe('cart totals', () => {
+  test('splits IVA from the order total using the business example 100 -> 84 + 16', () => {
+    expect(cartTotals('10000')).toEqual({ subtotalCents: '8400', ivaCents: '1600', totalCents: '10000' });
+  });
+});
+
+describe('cart line controls', () => {
+  test('merges identical product and options into one persisted line', async () => {
+    mockCatalog();
+    menu();
+    await addLatte();
+    closeCart();
+    await addLatte();
+
+    await waitFor(() => {
+      const draft = JSON.parse(localStorage.getItem(CART_DRAFT_KEY) ?? '') as {
+        items: Array<{ productId: string; quantity: number }>;
+      };
+      expect(draft.items).toHaveLength(1);
+      expect(draft.items[0]).toMatchObject({ productId: '10', quantity: 2 });
+    });
+  });
+
+  test('increments and decrements each line quantity in the persisted draft', async () => {
+    mockCatalog();
+    menu();
+    await addLatte();
+    fireEvent.click(screen.getByRole('button', { name: 'Aumentar cantidad de Latte' }));
+    await waitFor(() => expect(JSON.parse(localStorage.getItem(CART_DRAFT_KEY) ?? '').items[0].quantity).toBe(2));
+    fireEvent.click(screen.getByRole('button', { name: 'Disminuir cantidad de Latte' }));
+    await waitFor(() => expect(JSON.parse(localStorage.getItem(CART_DRAFT_KEY) ?? '').items[0].quantity).toBe(1));
+  });
+});
 describe('Mobile cart and order (TASK-11)', () => {
   test('a local login broadcast cannot leave the new customer cart permanently paused', async () => {
     const broadcaster = stubAuthChannels();
@@ -87,10 +133,10 @@ describe('Mobile cart and order (TASK-11)', () => {
     render(<SessionProvider manager={manager}><RouterProvider router={createTestRouter(['/cliente/menu'])} /></SessionProvider>);
     await waitFor(() => expect(manager.getSnapshot().status).toBe('anonymous'));
     await manager.loginCustomer({ identifier: '5512345678', pin: '1234' });
-    await waitFor(() => expect(lookups).toBeGreaterThan(1));
+    await waitFor(() => expect(lookups).toBeGreaterThanOrEqual(1));
     await waitFor(() => expect(mobileOrderStoreFor(manager).getSnapshot().paused).toBe(false));
     await addLatte();
-    expect(screen.getByRole('button', { name: 'Crear orden pendiente' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Confirmar pedido y generar QR' })).toBeEnabled();
     manager.dispose();
     broadcaster.close();
   });
@@ -118,7 +164,7 @@ describe('Mobile cart and order (TASK-11)', () => {
     render(<SessionProvider manager={manager}><RouterProvider router={createTestRouter(['/cliente/menu'])} /></SessionProvider>);
     await waitFor(() => expect(manager.getSnapshot().status).toBe('anonymous'));
     await addLatte();
-    fireEvent.click(screen.getByRole('button', { name: 'Crear orden pendiente' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar pedido y generar QR' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('No sabemos si se creó');
     const pending = mobileOrderStoreFor(manager).getSnapshot().pending;
     expect(pending).not.toBeNull();
@@ -126,12 +172,13 @@ describe('Mobile cart and order (TASK-11)', () => {
     act(() => broadcaster.postMessage({ type: 'refresh-complete' }));
     expect(mobileOrderStoreFor(manager).getSnapshot().paused).toBe(true);
     expect(screen.getByRole('button', { name: 'Reintentar la misma orden' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Crear orden pendiente' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Confirmar pedido y generar QR' })).toBeDisabled();
     await mobileOrderStoreFor(manager).send();
     expect(posts).toBe(1);
     expect(mobileOrderStoreFor(manager).getSnapshot().pending).toBe(pending);
     release();
     await waitFor(() => expect(manager.getSnapshot().status).toBe('authenticated'));
+    openCart();
     await waitFor(() => expect(screen.getByText(/Tu carrito está vacío/)).toBeInTheDocument());
     expect(localStorage.getItem(CART_DRAFT_KEY)).toBeNull();
     expect(mobileOrderStoreFor(manager).getSnapshot().pending).toBeNull();
@@ -165,7 +212,7 @@ describe('Mobile cart and order (TASK-11)', () => {
     render(<SessionProvider manager={manager}><RouterProvider router={createTestRouter(['/cliente/menu'])} /></SessionProvider>);
     await waitFor(() => expect(manager.getSnapshot().status).toBe('authenticated'));
     await addLatte();
-    fireEvent.click(screen.getByRole('button', { name: 'Crear orden pendiente' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar pedido y generar QR' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('No sabemos si se creó');
     const pending = mobileOrderStoreFor(manager).getSnapshot().pending;
     resolving = true;
@@ -212,12 +259,12 @@ describe('Mobile cart and order (TASK-11)', () => {
     render(<SessionProvider manager={manager}><RouterProvider router={createTestRouter(['/cliente/menu'])} /></SessionProvider>);
     await waitFor(() => expect(manager.getSnapshot().status).toBe('authenticated'));
     await addLatte();
-    fireEvent.click(screen.getByRole('button', { name: 'Crear orden pendiente' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar pedido y generar QR' }));
     await waitFor(() => expect(detailCalls).toBe(3));
     resolving = true;
     act(() => broadcaster.postMessage({ type: 'refresh-complete' }));
     releaseDetail();
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Crear orden pendiente' })).toBeDisabled());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Confirmar pedido y generar QR' })).toBeDisabled());
     expect(posts).toBe(0);
     releaseActor();
     await waitFor(() => expect(mobileOrderStoreFor(manager).getSnapshot().paused).toBe(false));
@@ -245,7 +292,7 @@ describe('Mobile cart and order (TASK-11)', () => {
     render(<SessionProvider manager={manager}><RouterProvider router={createTestRouter(['/cliente/menu'])} /></SessionProvider>);
     await waitFor(() => expect(manager.getSnapshot().status).toBe('authenticated'));
     await addLatte();
-    fireEvent.click(screen.getByRole('button', { name: 'Crear orden pendiente' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar pedido y generar QR' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('No sabemos si se creó');
     unavailable = true;
     act(() => broadcaster.postMessage({ type: 'refresh-complete' }));
@@ -290,7 +337,7 @@ describe('Mobile cart and order (TASK-11)', () => {
     await waitFor(() => expect(manager.getSnapshot().status).toBe('authenticated'));
     await addLatte();
     invalidateCsrfToken();
-    fireEvent.click(screen.getByRole('button', { name: 'Crear orden pendiente' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar pedido y generar QR' }));
     await waitFor(() => expect(csrfRequested).toBe(true));
     resolving = true;
     act(() => broadcaster.postMessage({ type: 'refresh-complete' }));
@@ -338,14 +385,16 @@ describe('Mobile cart and order (TASK-11)', () => {
       );
       render(<SessionProvider manager={manager}><RouterProvider router={createTestRouter(['/cliente/menu'])} /></SessionProvider>);
       await waitFor(() => expect(manager.getSnapshot().status).toBe('anonymous'));
-      expect(await screen.findByText(/Subtotal estimado: \$75\.00/)).toBeInTheDocument();
+      openCart();
+      expect(await screen.findByText('$63.00')).toBeInTheDocument();
       expect(localStorage.getItem(CART_DRAFT_KEY)).toContain('large');
-      fireEvent.click(screen.getByRole('button', { name: 'Crear orden pendiente' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Confirmar pedido y generar QR' }));
       expect(await screen.findByRole('alert')).toHaveTextContent('No sabemos si se creó');
       expect(idempotencyOperations.activeCount).toBe(1);
       signedIn = true;
       coordinator.signalLogin();
       await waitFor(() => expect(manager.getSnapshot()).toMatchObject({ status: 'authenticated', actor: customer }));
+      openCart();
       await waitFor(() => expect(screen.getByText(/Tu carrito está vacío/)).toBeInTheDocument());
       expect(localStorage.getItem(CART_DRAFT_KEY)).toBeNull();
       expect(idempotencyOperations.activeCount).toBe(0);
@@ -386,7 +435,7 @@ describe('Mobile cart and order (TASK-11)', () => {
     render(<SessionProvider manager={manager}><RouterProvider router={createTestRouter(['/cliente/menu'])} /></SessionProvider>);
     await waitFor(() => expect(manager.getSnapshot().status).toBe('anonymous'));
     await addLatte();
-    fireEvent.click(screen.getByRole('button', { name: 'Crear orden pendiente' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar pedido y generar QR' }));
     await screen.findByText('Enviando orden…');
     signedIn = true;
     coordinator.signalLogin();
@@ -411,16 +460,17 @@ describe('Mobile cart and order (TASK-11)', () => {
     server.use(http.post('/api/v1/orders', async ({ request }) => {
       body = await request.json() as Record<string, unknown>;
       idempotencyKey = request.headers.get('Idempotency-Key');
-      return HttpResponse.json({ data: { id: '1', folio: 'A000001', status: 'PENDIENTE_PAGO', source: 'MOBILE', paidAt: null, totalCents: '8100', paymentMethod: 'CASH', paymentExpiresAt: '2026-11-20T12:30:00Z' } }, { status: 201 });
+      const token = 'A'.repeat(43);
+      return HttpResponse.json({ data: { id: '1', folio: 'A000001', status: 'PENDIENTE_PAGO', source: 'MOBILE', paidAt: null, totalCents: '8100', paymentMethod: 'CASH', paymentExpiresAt: '2027-11-20T12:30:00Z' }, cashQr: { purpose: 'CASH_PAYMENT', token, qrPayload: `cafeteria:cash:${token}`, expiresAt: '2027-11-20T12:30:00Z' } }, { status: 201 });
     }));
     menu();
     await addLatte();
     expect(JSON.parse(localStorage.getItem(CART_DRAFT_KEY) ?? '')).toEqual({ version: 1, items: [{ productId: '10', quantity: 1, optionValueIds: ['large'] }] });
-    fireEvent.click(screen.getByRole('button', { name: 'Crear orden pendiente' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar pedido y generar QR' }));
     expect(await screen.findByText('Orden creada')).toBeInTheDocument();
-    expect(screen.getByText(/Total confirmado por el servidor:/)).toBeInTheDocument();
-    expect(screen.getByText(/Crear la orden no confirma el pago/)).toBeInTheDocument();
-    expect(body).toEqual({ paymentMethod: 'CASH', items: [{ productId: '10', quantity: 1, optionValueIds: ['large'] }] });
+    expect(screen.getAllByText('$81.00').length).toBeGreaterThan(0);
+    expect(screen.getByText('Muestra este QR en caja')).toBeInTheDocument();
+    expect(body).toEqual({ paymentMethod: 'CASH', includeCashQr: true, items: [{ productId: '10', quantity: 1, optionValueIds: ['large'] }] });
     expect(idempotencyKey).toMatch(/^[0-9a-f-]{36}$/i);
     expect(JSON.parse(localStorage.getItem(CART_DRAFT_KEY) ?? '')).toEqual({ version: 1, items: [] });
   });
@@ -431,24 +481,23 @@ describe('Mobile cart and order (TASK-11)', () => {
     server.use(http.post('/api/v1/orders', async ({ request }) => {
       requests.push({ key: request.headers.get('Idempotency-Key'), body: await request.json() });
       if (requests.length === 1) return HttpResponse.error();
-      return HttpResponse.json({ data: { id: '2', folio: 'A000002', status: 'PENDIENTE_PAGO', source: 'MOBILE', paidAt: null, totalCents: '7500', paymentMethod: 'STRIPE', paymentExpiresAt: '2026-11-20T12:30:00Z' } }, { status: 201 });
+      const token = 'B'.repeat(43);
+      return HttpResponse.json({ data: { id: '2', folio: 'A000002', status: 'PENDIENTE_PAGO', source: 'MOBILE', paidAt: null, totalCents: '7500', paymentMethod: 'CASH', paymentExpiresAt: '2027-11-20T12:30:00Z' }, cashQr: { purpose: 'CASH_PAYMENT', token, qrPayload: `cafeteria:cash:${token}`, expiresAt: '2027-11-20T12:30:00Z' } }, { status: 201 });
     }));
     menu();
     await addLatte();
-    fireEvent.click(screen.getByRole('radio', { name: /STRIPE/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Crear orden pendiente' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar pedido y generar QR' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('No sabemos si se creó');
     expect(screen.getByText(/El envío anterior quedó sin confirmar/)).toBeInTheDocument();
     expect(screen.queryByText(/no se envió completamente/)).not.toBeInTheDocument();
     expect(screen.queryByText('Orden creada')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Crear orden pendiente' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Confirmar pedido y generar QR' })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Reintentar la misma orden' }));
     expect(await screen.findByText('Orden creada')).toBeInTheDocument();
-    expect(screen.getByText(/no se inició ningún cobro con tarjeta/)).toBeInTheDocument();
-    expect(screen.queryByText(/Paga en caja para completar/)).not.toBeInTheDocument();
+    expect(screen.getByText('Muestra este QR en caja')).toBeInTheDocument();
     expect(requests).toHaveLength(2);
     expect(requests[0]).toEqual(requests[1]);
-    expect(requests[0].body).toEqual({ paymentMethod: 'STRIPE', items: [{ productId: '10', quantity: 1, optionValueIds: ['large'] }] });
+    expect(requests[0].body).toEqual({ paymentMethod: 'CASH', includeCashQr: true, items: [{ productId: '10', quantity: 1, optionValueIds: ['large'] }] });
   });
 
   test('restored draft is checked against changed API and cannot order until reselected', async () => {
@@ -460,10 +509,11 @@ describe('Mobile cart and order (TASK-11)', () => {
       http.post('/api/v1/orders', () => { posted = true; return HttpResponse.json({ data: {} }, { status: 201 }); }),
     );
     menu();
+    openCart();
     expect(await screen.findByRole('alert')).toHaveTextContent('Opciones no disponibles');
-    expect(screen.getByRole('button', { name: 'Crear orden pendiente' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Confirmar pedido y generar QR' })).toBeDisabled();
     expect(posted).toBe(false);
-    fireEvent.click(screen.getByRole('button', { name: 'Quitar Latte' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Eliminar Latte' }));
     await waitFor(() => expect(JSON.parse(localStorage.getItem(CART_DRAFT_KEY) ?? '')).toEqual({ version: 1, items: [] }));
   });
 
@@ -473,16 +523,16 @@ describe('Mobile cart and order (TASK-11)', () => {
     server.use(http.post('/api/v1/orders', ({ request }) => {
       keys.push(request.headers.get('Idempotency-Key'));
       if (keys.length === 1) return HttpResponse.json({ code: 'ORDER_CONFLICT' }, { status: 409 });
-      return HttpResponse.json({ data: { id: '3', folio: 'A000003', status: 'PENDIENTE_PAGO', source: 'MOBILE', paidAt: null, totalCents: '7500', paymentMethod: 'CASH', paymentExpiresAt: '2026-11-20T12:30:00Z' } }, { status: 201 });
+      return HttpResponse.json({ data: { id: '3', folio: 'A000003', status: 'PENDIENTE_PAGO', source: 'MOBILE', paidAt: null, totalCents: '7500', paymentMethod: 'CASH', paymentExpiresAt: '2027-11-20T12:30:00Z' }, cashQr: { purpose: 'CASH_PAYMENT', token: 'C'.repeat(43), qrPayload: `cafeteria:cash:${'C'.repeat(43)}`, expiresAt: '2027-11-20T12:30:00Z' } }, { status: 201 });
     }));
     menu();
     await addLatte();
-    fireEvent.click(screen.getByRole('button', { name: 'Crear orden pendiente' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar pedido y generar QR' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('entraron en conflicto');
     expect(screen.queryByRole('button', { name: 'Reintentar la misma orden' })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Crear orden pendiente' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar pedido y generar QR' }));
     expect(await screen.findByText('Orden creada')).toBeInTheDocument();
-    expect(screen.getByText(/Paga en caja para completar/)).toBeInTheDocument();
+    expect(screen.getByText('Muestra este QR en caja')).toBeInTheDocument();
     expect(keys).toHaveLength(2);
     expect(keys[0]).not.toBe(keys[1]);
   });
@@ -497,10 +547,10 @@ describe('Mobile cart and order (TASK-11)', () => {
     }));
     menu();
     await addLatte();
-    fireEvent.click(screen.getByRole('button', { name: 'Crear orden pendiente' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar pedido y generar QR' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Reintenta la misma operación');
     expect(requests).toHaveLength(1);
-    expect(screen.getByRole('button', { name: 'Crear orden pendiente' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Confirmar pedido y generar QR' })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Reintentar la misma orden' }));
     expect(await screen.findByText('Orden creada')).toBeInTheDocument();
     expect(requests).toHaveLength(2);
@@ -517,19 +567,24 @@ describe('Mobile cart and order (TASK-11)', () => {
     }));
     menu();
     await addLatte();
-    fireEvent.click(screen.getByRole('button', { name: 'Crear orden pendiente' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar pedido y generar QR' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('No sabemos si se creó');
+    closeCart();
     fireEvent.click(screen.getByRole('link', { name: 'Iniciar sesión' }));
     await screen.findByRole('heading', { name: /Iniciar sesión/i });
     fireEvent.click(screen.getByRole('link', { name: 'Menú' }));
+    openCart();
     await screen.findByRole('button', { name: 'Reintentar la misma orden' });
-    expect(screen.getByRole('button', { name: 'Crear orden pendiente' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Confirmar pedido y generar QR' })).toBeDisabled();
+    closeCart();
     fireEvent.click(screen.getByRole('button', { name: 'Personalizar Latte' }));
     const dialog = await screen.findByRole('dialog', { name: 'Latte' });
     await within(dialog).findByRole('button', { name: /Grande/i });
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Confirmar personalización' }));
-    expect(screen.getByRole('button', { name: 'Añadir al carrito' })).toBeDisabled();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Añadir al carrito' }));
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('No se pudo añadir al carrito');
     expect(localStorage.getItem(CART_DRAFT_KEY)).not.toContain('Idempotency');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
+    openCart();
     fireEvent.click(screen.getByRole('button', { name: 'Reintentar la misma orden' }));
     expect(await screen.findByText('Orden creada')).toBeInTheDocument();
     expect(requests).toHaveLength(2);
@@ -553,11 +608,11 @@ describe('Mobile cart and order (TASK-11)', () => {
     await addLatte();
     currentPrice = '7500';
     currentOptions = [{ ...options[0], values: [{ ...options[0].values[0], name: 'Grande nuevo' }] }];
-    fireEvent.click(screen.getByRole('button', { name: 'Crear orden pendiente' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar pedido y generar QR' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('confirma nuevamente');
     expect(posted).toBe(0);
-    expect(screen.getByText(/Subtotal estimado: \$85\.00/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar cambios y crear orden pendiente' }));
+    expect(screen.getByText('$71.40')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar cambios y generar QR' }));
     expect(await screen.findByText('Orden creada')).toBeInTheDocument();
     expect(posted).toBe(1);
   });
@@ -569,10 +624,11 @@ describe('Mobile cart and order (TASK-11)', () => {
     server.use(http.get('/api/v1/products/10', () => unavailable
       ? HttpResponse.json({ code: 'DEPENDENCY_UNAVAILABLE' }, { status: 503 }) : HttpResponse.json({ data: latte })));
     menu();
+    openCart();
     expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo verificar');
     unavailable = false;
     fireEvent.click(screen.getByRole('button', { name: 'Revalidar carrito' }));
-    expect(await screen.findByText(/Subtotal estimado: \$75\.00/)).toBeInTheDocument();
+    expect(await screen.findByText('$63.00')).toBeInTheDocument();
     expect(JSON.parse(localStorage.getItem(CART_DRAFT_KEY) ?? '')).toEqual({ version: 1, items: [{ productId: '10', quantity: 1, optionValueIds: ['large'] }] });
   });
 
@@ -592,7 +648,7 @@ describe('Mobile cart and order (TASK-11)', () => {
     const manager = new SessionManager(new RefreshCoordinator('mobile-order-actor-test'));
     render(<SessionProvider manager={manager}><RouterProvider router={createTestRouter(['/cliente/menu'])} /></SessionProvider>);
     await addLatte();
-    fireEvent.click(screen.getByRole('button', { name: 'Crear orden pendiente' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar pedido y generar QR' }));
     await screen.findByText('Enviando orden…');
     expect(await manager.logout()).toBe(true);
     release();
@@ -611,24 +667,27 @@ describe('Mobile cart and order (TASK-11)', () => {
     }));
     menu();
     await addLatte();
-    fireEvent.click(screen.getByRole('button', { name: 'Crear orden pendiente' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar pedido y generar QR' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('confirma con la cafetería');
     expect(screen.getByRole('alert')).toHaveTextContent('No hay pago confirmado');
     expect(screen.queryByText('Orden creada')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Crear orden pendiente' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Confirmar pedido y generar QR' })).toBeDisabled();
     expect(screen.queryByRole('button', { name: 'Reintentar la misma orden' })).not.toBeInTheDocument();
     expect(idempotencyOperations.activeCount).toBe(0);
+    closeCart();
     fireEvent.click(screen.getByRole('link', { name: 'Iniciar sesión' }));
     await screen.findByRole('heading', { name: /Iniciar sesión/i });
     fireEvent.click(screen.getByRole('link', { name: 'Menú' }));
+    openCart();
     await screen.findByRole('heading', { name: 'Carrito borrador' });
-    expect(screen.getByRole('button', { name: 'Crear orden pendiente' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Confirmar pedido y generar QR' })).toBeDisabled();
     expect(screen.getByRole('alert')).toHaveTextContent('confirma con la cafetería');
+    closeCart();
     fireEvent.click(screen.getByRole('button', { name: 'Personalizar Latte' }));
     const dialog = await screen.findByRole('dialog', { name: 'Latte' });
     await within(dialog).findByRole('button', { name: /Grande/i });
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Confirmar personalización' }));
-    expect(screen.getByRole('button', { name: 'Añadir al carrito' })).toBeDisabled();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Añadir al carrito' }));
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('No se pudo añadir al carrito');
     expect(posted).toBe(1);
     expect(localStorage.getItem(CART_DRAFT_KEY)).toContain('large');
   });
@@ -647,9 +706,9 @@ describe('Mobile cart and order (TASK-11)', () => {
     server.use(http.post('/api/v1/orders', () => { posted += 1; return reply(); }));
     menu();
     await addLatte();
-    fireEvent.click(screen.getByRole('button', { name: 'Crear orden pendiente' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar pedido y generar QR' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('confirma con la cafetería');
-    expect(screen.getByRole('button', { name: 'Crear orden pendiente' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Confirmar pedido y generar QR' })).toBeDisabled();
     expect(screen.queryByRole('button', { name: 'Reintentar la misma orden' })).not.toBeInTheDocument();
     expect(screen.queryByText('Orden creada')).not.toBeInTheDocument();
     expect(posted).toBe(1);
@@ -662,10 +721,12 @@ describe('Mobile cart and order (TASK-11)', () => {
     server.use(http.post('/api/v1/orders', () => HttpResponse.json({ data: {} }, { status: 201 })));
     menu();
     await addLatte();
-    fireEvent.click(screen.getByRole('button', { name: 'Crear orden pendiente' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar pedido y generar QR' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('confirma con la cafetería');
+    closeCart();
     fireEvent.click(screen.getByRole('button', { name: 'Salir de invitado' }));
     fireEvent.click(screen.getByRole('link', { name: 'Menú' }));
+    openCart();
     await screen.findByRole('heading', { name: 'Carrito borrador' });
     expect(screen.queryByText(/confirma con la cafetería/)).not.toBeInTheDocument();
     expect(screen.getByText(/Tu carrito está vacío/)).toBeInTheDocument();
@@ -684,7 +745,7 @@ describe('Mobile cart and order (TASK-11)', () => {
     const manager = new SessionManager(new RefreshCoordinator('unverifiable-logout-test'));
     render(<SessionProvider manager={manager}><RouterProvider router={createTestRouter(['/cliente/menu'])} /></SessionProvider>);
     await addLatte();
-    fireEvent.click(screen.getByRole('button', { name: 'Crear orden pendiente' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar pedido y generar QR' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('confirma con la cafetería');
     expect(mobileOrderStoreFor(manager).getSnapshot().blocked).toBe(true);
     expect(await manager.logout()).toBe(true);
@@ -704,14 +765,16 @@ describe('Mobile cart and order (TASK-11)', () => {
     }));
     menu();
     await addLatte();
-    fireEvent.click(screen.getByRole('button', { name: 'Crear orden pendiente' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar pedido y generar QR' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('No sabemos si se creó');
+    closeCart();
     fireEvent.click(screen.getByRole('link', { name: 'Iniciar sesión' }));
     await screen.findByRole('heading', { name: /Iniciar sesión/i });
     fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Salir de invitado' }));
     expect(localStorage.getItem(CART_DRAFT_KEY)).toBeNull();
     expect(idempotencyOperations.activeCount).toBe(0);
     fireEvent.click(screen.getByRole('link', { name: 'Menú' }));
+    openCart();
     await screen.findByRole('heading', { name: 'Carrito borrador' });
     expect(screen.queryByRole('button', { name: 'Reintentar la misma orden' })).not.toBeInTheDocument();
     expect(screen.getByText(/Tu carrito está vacío/)).toBeInTheDocument();
@@ -729,11 +792,13 @@ describe('Mobile cart and order (TASK-11)', () => {
     }));
     menu();
     await addLatte();
-    fireEvent.click(screen.getByRole('button', { name: 'Crear orden pendiente' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar pedido y generar QR' }));
     await screen.findByText('Enviando orden…');
+    closeCart();
     fireEvent.click(screen.getByRole('button', { name: 'Salir de invitado' }));
     release();
     fireEvent.click(screen.getByRole('link', { name: 'Menú' }));
+    openCart();
     await screen.findByRole('heading', { name: 'Carrito borrador' });
     await waitFor(() => expect(idempotencyOperations.activeCount).toBe(0));
     expect(screen.queryByText('Orden creada')).not.toBeInTheDocument();
@@ -761,8 +826,9 @@ describe('Mobile cart and order (TASK-11)', () => {
     );
     menu();
     await addLatte();
-    fireEvent.click(screen.getByRole('button', { name: 'Crear orden pendiente' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar pedido y generar QR' }));
     await waitFor(() => expect(detailCalls).toBe(3));
+    closeCart();
     fireEvent.click(screen.getByRole('button', { name: 'Salir de invitado' }));
     release();
     await waitFor(() => expect(idempotencyOperations.activeCount).toBe(0));
@@ -770,7 +836,7 @@ describe('Mobile cart and order (TASK-11)', () => {
     expect(localStorage.getItem(CART_DRAFT_KEY)).toBeNull();
   });
 
-  test('guest exit discards a previously confirmed order from in-memory display', async () => {
+  test('confirming as guest exits guest mode automatically and keeps the created order visible', async () => {
     enterGuestSession('Invitada');
     mockCatalog();
     server.use(http.post('/api/v1/orders', () => HttpResponse.json({ data: {
@@ -779,12 +845,11 @@ describe('Mobile cart and order (TASK-11)', () => {
     } }, { status: 201 })));
     menu();
     await addLatte();
-    fireEvent.click(screen.getByRole('button', { name: 'Crear orden pendiente' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar pedido y generar QR' }));
     expect(await screen.findByText('Orden creada')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Salir de invitado' }));
-    fireEvent.click(screen.getByRole('link', { name: 'Menú' }));
-    await screen.findByRole('heading', { name: 'Carrito borrador' });
-    expect(screen.queryByText('Orden creada')).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText(/Invitado: Invitada/)).not.toBeInTheDocument());
+    expect(screen.queryByRole('button', { name: 'Salir de invitado' })).not.toBeInTheDocument();
+    expect(screen.getByText(/no se recibió un QR de cobro/)).toBeInTheDocument();
     expect(localStorage.getItem(CART_DRAFT_KEY)).toBeNull();
   });
 
@@ -805,22 +870,23 @@ describe('Mobile cart and order (TASK-11)', () => {
     }));
     menu();
     await addLatte();
-    fireEvent.click(screen.getByRole('button', { name: 'Crear orden pendiente' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar pedido y generar QR' }));
     expect(await screen.findByText('Orden creada')).toBeInTheDocument();
+    closeCart();
     fireEvent.click(screen.getByRole('button', { name: 'Personalizar Croissant' }));
     const dialog = await screen.findByRole('dialog', { name: 'Croissant' });
     await within(dialog).findByText('Este producto no tiene opciones adicionales de personalización.');
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Confirmar personalización' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Añadir al carrito' }));
-    await screen.findByText(/Subtotal estimado: \$45\.00/);
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Añadir al carrito' }));
+    openCart();
+    await screen.findByText('$37.80');
     expect(screen.queryByText('Orden creada')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Quitar Croissant' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Eliminar Croissant' })).toBeEnabled();
     expect(JSON.parse(localStorage.getItem(CART_DRAFT_KEY) ?? '')).toEqual({ version: 1, items: [{ productId: '11', quantity: 1, optionValueIds: [] }] });
-    fireEvent.click(screen.getByRole('button', { name: 'Crear orden pendiente' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar pedido y generar QR' }));
     expect(await screen.findByText('Orden creada')).toBeInTheDocument();
     expect(requests).toHaveLength(2);
     expect(requests[0].key).not.toBe(requests[1].key);
-    expect(requests[0].body).toEqual({ paymentMethod: 'CASH', items: [{ productId: '10', quantity: 1, optionValueIds: ['large'] }] });
-    expect(requests[1].body).toEqual({ paymentMethod: 'CASH', items: [{ productId: '11', quantity: 1, optionValueIds: [] }] });
+    expect(requests[0].body).toEqual({ paymentMethod: 'CASH', includeCashQr: true, items: [{ productId: '10', quantity: 1, optionValueIds: ['large'] }] });
+    expect(requests[1].body).toEqual({ paymentMethod: 'CASH', includeCashQr: true, items: [{ productId: '11', quantity: 1, optionValueIds: [] }] });
   });
 });

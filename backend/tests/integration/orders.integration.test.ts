@@ -118,6 +118,17 @@ describe.skipIf(!target)('orders con PostgreSQL real aislado', () => {
   ) => mutation('post', path, actor, body, key);
   const get = (id: string, actor: Identity) =>
     request(app).get(`/api/v1/orders/${id}`).set('Cookie', actor.cookie);
+  /** Una sola caja abierta global: el fixture la reasigna al cajero que opera. */
+  async function openCash(name: string) {
+    await db.cashSession.deleteMany({});
+    await db.cashSession.create({
+      data: {
+        employeeId: who(name).principal.userId,
+        openingAmountCents: 0n,
+        openedAt: now(),
+      },
+    });
+  }
   beforeAll(async () => {
     const url = new URL(target!);
     if (
@@ -173,6 +184,7 @@ describe.skipIf(!target)('orders con PostgreSQL real aislado', () => {
     expect((await get(own.body.data.id, who('client-one'))).status).toBe(200);
     expect((await get(own.body.data.id, who('client-two'))).status).toBe(404);
     for (const name of ['cashier', 'admin']) {
+      await openCash(name);
       const response = await create(who(name), input(), randomUUID(), '/api/v1/cashier/orders');
       expect(response.status).toBe(201);
       expect(response.body.data.source).toBe('CASHIER');
@@ -182,6 +194,20 @@ describe.skipIf(!target)('orders con PostgreSQL real aislado', () => {
       });
       expect(stored.createdByEmployeeId).toBe(who(name).principal.userId);
     }
+  });
+  it('rechaza tomar órdenes de caja sin una caja abierta del propio cajero', async () => {
+    await db.cashSession.deleteMany({});
+    const denied = await create(who('cashier'), input(), randomUUID(), '/api/v1/cashier/orders');
+    expect(denied.status).toBe(409);
+    expect(denied.body.code).toBe('ORDER_CONFLICT');
+    await openCash('admin');
+    expect(
+      (await create(who('cashier'), input(), randomUUID(), '/api/v1/cashier/orders')).status,
+    ).toBe(409);
+    await openCash('cashier');
+    expect(
+      (await create(who('cashier'), input(), randomUUID(), '/api/v1/cashier/orders')).status,
+    ).toBe(201);
   });
   it('roles, invitado sin consulta y no degradar acceso inválido', async () => {
     for (const name of ['cashier', 'admin', 'prep'])
@@ -418,6 +444,7 @@ describe.skipIf(!target)('orders con PostgreSQL real aislado', () => {
       ).status,
     ).toBe(403);
     const body = { ...input(), customer: { identifier: 'C000501', confirmedName: 'client-one' } };
+    await openCash('cashier');
     const response = await mutation('post', '/api/v1/cashier/orders', who('cashier'), body);
     expect(response.status).toBe(201);
     expect(response.body.data.customerId).toBe(who('client-one').principal.userId.toString());

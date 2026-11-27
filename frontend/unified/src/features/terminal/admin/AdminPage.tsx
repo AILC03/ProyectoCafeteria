@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { formatMxnCents } from '../../../shared/utils/money';
 import { DashboardSummary } from './dashboard/DashboardSummary';
+import { AdminCashPage } from './cash/AdminCashPage';
 import { SessionSettings } from './SessionSettings';
 import {
   deleteAdmin, formatAdminError, formatAdminMutationError, getConfiguration, isUncertainAdminMutation,
@@ -276,6 +277,7 @@ export function AdminPage() {
   const heading = useRef<HTMLHeadingElement>(null);
   const section = location.pathname.split('/').filter(Boolean)[2];
   const configuration = section === 'configuracion';
+  const cash = section === 'caja';
   const kind: AdminKind | 'dashboard' = section === 'catalogo' ? 'products'
     : section === 'categorias' ? 'categories' : section === 'grupos' ? 'option-groups'
       : section === 'valores' ? 'option-values' : section === 'personal' ? 'employees' : 'dashboard';
@@ -288,7 +290,7 @@ export function AdminPage() {
           <ul>
             <li><NavLink end to="/terminal/administracion">Inicio</NavLink></li>
             <li><NavLink to="/terminal/historial">Ventas</NavLink></li>
-            <li><NavLink to="/terminal/caja">Caja</NavLink></li>
+            <li><NavLink to="/terminal/administracion/caja">Caja</NavLink></li>
           </ul>
         </div>
         <div className="admin-nav-group">
@@ -313,6 +315,8 @@ export function AdminPage() {
       <h1 id="admin-title" ref={heading} tabIndex={-1}>Administración</h1>
       {configuration ? (
         <SessionSettings />
+      ) : cash ? (
+        <AdminCashPage />
       ) : kind === 'dashboard' ? (
         <DashboardSummary />
       ) : (

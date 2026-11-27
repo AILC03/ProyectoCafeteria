@@ -1,0 +1,274 @@
+.terminal-layout .admin-cash {
+  background: #fff;
+  border: 1px solid var(--term-border-light, #e2e8f0);
+  border-radius: 18px;
+  box-shadow: var(--term-shadow-sm, 0 1px 2px rgb(15 23 42 / 8%));
+  padding: clamp(1rem, 2vw, 1.6rem);
+}
+
+.terminal-layout .admin-cash-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem 1.25rem;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.terminal-layout .admin-cash-eyebrow {
+  margin: 0;
+  color: #64748b;
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.terminal-layout .admin-cash-header h2 {
+  margin: .15rem 0 0;
+  color: #0f172a;
+}
+
+.terminal-layout .admin-cash-help {
+  margin: 0;
+  max-width: 34rem;
+  color: #475569;
+  font-size: .85rem;
+}
+
+.terminal-layout .admin-cash-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+  align-items: flex-start;
+  padding: 1rem;
+  border: 1px solid var(--term-border-light, #e2e8f0);
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.terminal-layout .admin-cash-filters fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: .5rem;
+  flex: 1 1 24rem;
+  min-width: 0;
+}
+
+.terminal-layout .admin-cash-filters legend {
+  color: #0f172a;
+  font-weight: 700;
+  font-size: .85rem;
+  padding: 0;
+}
+
+.terminal-layout .admin-cash-filters label {
+  display: grid;
+  gap: .25rem;
+  font-size: .82rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.terminal-layout .admin-cash-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+}
+
+.terminal-layout .admin-cash-presets button {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #334155;
+  border-radius: 999px;
+  padding: .35rem .8rem;
+  font-size: .8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.terminal-layout .admin-cash-presets button.active {
+  background: #0f172a;
+  border-color: #0f172a;
+  color: #fff;
+}
+
+.terminal-layout .admin-cash-custom {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6rem;
+  align-items: flex-end;
+}
+
+.terminal-layout .admin-cash-period-label {
+  margin: 0;
+  color: #475569;
+  font-size: .8rem;
+}
+
+.terminal-layout .admin-cash-metrics {
+  display: grid;
+  gap: .75rem;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  margin: 0;
+}
+
+.terminal-layout .admin-cash-metric {
+  border: 1px solid var(--term-border-light, #e2e8f0);
+  border-radius: 12px;
+  padding: .7rem .85rem;
+  background: #f8fafc;
+  min-width: 0;
+}
+
+.terminal-layout .admin-cash-metric dt {
+  color: #64748b;
+  font-size: .75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.terminal-layout .admin-cash-metric dd {
+  margin: .3rem 0 0;
+  color: #0f172a;
+  font-size: 1.15rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.terminal-layout .admin-cash-metric-shortage {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.terminal-layout .admin-cash-metric-shortage dd {
+  color: #b91c1c;
+}
+
+.terminal-layout .admin-cash-metric-surplus {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.terminal-layout .admin-cash-metric-surplus dd {
+  color: #15803d;
+}
+
+.terminal-layout .admin-cash-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--term-border-light, #e2e8f0);
+  border-radius: 14px;
+}
+
+.terminal-layout .admin-cash-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .82rem;
+  min-width: 62rem;
+}
+
+.terminal-layout .admin-cash-table th,
+.terminal-layout .admin-cash-table td {
+  padding: .6rem .7rem;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+}
+
+.terminal-layout .admin-cash-table th {
+  background: #f1f5f9;
+  color: #475569;
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.terminal-layout .admin-cash-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.terminal-layout .admin-cash-table tr.selected td {
+  background: #f8fafc;
+}
+
+.terminal-layout .admin-cash-username {
+  display: block;
+  color: #64748b;
+  font-size: .75rem;
+}
+
+.terminal-layout .admin-cash-difference-shortage {
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+.terminal-layout .admin-cash-difference-surplus {
+  color: #15803d;
+  font-weight: 700;
+}
+
+.terminal-layout .admin-cash-difference-none {
+  color: #475569;
+}
+
+.terminal-layout .admin-cash-detail {
+  border: 1px solid var(--term-border-light, #e2e8f0);
+  border-radius: 14px;
+  padding: 1rem;
+  background: #f8fafc;
+}
+
+.terminal-layout .admin-cash-detail h3 {
+  margin: 0 0 .75rem;
+  color: #0f172a;
+}
+
+.terminal-layout .admin-cash-detail dl {
+  display: grid;
+  gap: .6rem;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  margin: 0;
+}
+
+.terminal-layout .admin-cash-detail dt {
+  color: #64748b;
+  font-size: .75rem;
+  font-weight: 700;
+}
+
+.terminal-layout .admin-cash-detail dd {
+  margin: .2rem 0 0;
+  color: #0f172a;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.terminal-layout .admin-cash-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.3rem;
+  border: 1px solid var(--term-border-light, #e2e8f0);
+  border-radius: 999px;
+  background: #f1f5f9;
+  width: fit-content;
+}
+
+.terminal-layout .admin-cash-tabs button {
+  border: 0;
+  background: transparent;
+  color: #475569;
+  border-radius: 999px;
+  padding: 0.45rem 1rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.terminal-layout .admin-cash-tabs button.active {
+  background: #fff;
+  color: #0f172a;
+  box-shadow: var(--term-shadow-sm, 0 1px 2px rgb(15 23 42 / 8%));
+}

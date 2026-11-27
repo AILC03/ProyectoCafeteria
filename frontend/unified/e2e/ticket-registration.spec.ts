@@ -27,7 +27,7 @@ async function mockPaidGuestTicket(context: BrowserContext, registration: unknow
     if (path === '/api/v1/sales/9/ticket') return json({ data: { saleId: '9', saleNumber: 'V000009', orderFolio: 'A000007', soldAt: '2099-01-01T12:00:00.000Z', currency: 'MXN', totalCents: '6500', cashReceivedCents: '7000', changeCents: '500', items: [{ productName: 'Latte', quantity: 1, unitPriceCents: '6500', lineTotalCents: '6500' }], registration } }); return json({ code: 'NOT_FOUND' }, 404);
   });
 }
-async function createPaidTicket(page: Page) { await page.goto('/terminal/pos'); await page.getByRole('button', { name: /Personalizar.*Latte.*\$65\.00/ }).click(); await page.getByRole('button', { name: 'Confirmar personalización' }).click(); await page.getByRole('button', { name: 'Crear orden pendiente' }).click(); await page.getByRole('link', { name: 'Cobrar efectivo' }).click(); await page.getByLabel('Efectivo recibido (MXN)').fill('70'); await page.getByRole('button', { name: 'Confirmar cobro' }).click(); }
+async function createPaidTicket(page: Page) { await page.goto('/terminal/pos'); await page.getByRole('button', { name: /Personalizar.*Latte.*\$65\.00/ }).click(); await page.getByRole('button', { name: 'Confirmar personalización' }).click(); await page.getByRole('button', { name: 'Crear orden pendiente' }).click(); await page.getByLabel('Efectivo recibido (MXN)').fill('70'); await page.getByRole('button', { name: 'Aceptar y cobrar' }).click(); }
 
 test.describe('TASK-16 ticket registration', () => {
   test('registers anonymously, confirms success, and requires explicit login without URL or storage leaks', async ({ page, context }) => {

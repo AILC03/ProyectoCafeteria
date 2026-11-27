@@ -334,6 +334,76 @@ describe('SessionManager', () => {
     manager.dispose();
   });
 
+  it('renews an expired access session and retries the same mutation before reporting 401', async () => {
+    const staff = { id: 'staff-1', name: 'Caja', role: 'CAJERO', accountType: 'STAFF', mustChangePin: false };
+    let meCalls = 0;
+    let refreshes = 0;
+    let attempts = 0;
+    window.history.replaceState(null, '', '/terminal/pos');
+    server.use(
+      http.get(`${api}/auth/me`, () => {
+        meCalls += 1;
+        return meCalls === 1
+          ? HttpResponse.json({ data: staff })
+          : HttpResponse.json({ code: 'UNAUTHENTICATED' }, { status: 401 });
+      }),
+      http.get(`${api}/auth/csrf`, () => HttpResponse.json({ data: { csrfToken: 'initial-csrf' } })),
+      http.post(`${api}/auth/refresh`, () => {
+        refreshes += 1;
+        return HttpResponse.json({ data: { user: staff, csrfToken: 'renewed-csrf' } });
+      }),
+      http.post(`${api}/cashier/orders`, async ({ request }) => {
+        attempts += 1;
+        if (attempts === 1) return new HttpResponse(null, { status: 401 });
+        expect(request.headers.get('x-csrf-token')).toBe('renewed-csrf');
+        expect(request.headers.get('idempotency-key')).toBe('same-key');
+        expect(await request.json()).toEqual({ paymentMethod: 'CASH', items: [] });
+        return HttpResponse.json({ data: { id: '1' } }, { status: 201 });
+      }),
+    );
+    const manager = new SessionManager(new RefreshCoordinator('expired-access-retry'));
+    await manager.bootstrap();
+
+    await expect(apiFetch('/cashier/orders', {
+      method: 'POST',
+      body: { paymentMethod: 'CASH', items: [] },
+      headers: { 'Idempotency-Key': 'same-key' },
+    })).resolves.toEqual({ data: { id: '1' } });
+
+    expect(attempts).toBe(2);
+    expect(refreshes).toBe(1);
+    expect(manager.getSnapshot()).toEqual({ status: 'authenticated', actor: staff });
+    expect(window.location.pathname).toBe('/terminal/pos');
+    manager.dispose();
+  });
+
+  it('keeps the authenticated session and private state when renewal is temporarily unavailable', async () => {
+    const staff = { id: 'staff-1', name: 'Caja', role: 'CAJERO', accountType: 'STAFF', mustChangePin: false };
+    let meCalls = 0;
+    window.history.replaceState(null, '', '/terminal/pos');
+    server.use(
+      http.get(`${api}/auth/me`, () => {
+        meCalls += 1;
+        return meCalls === 1
+          ? HttpResponse.json({ data: staff })
+          : HttpResponse.json({ code: 'UNAUTHENTICATED' }, { status: 401 });
+      }),
+      http.get(`${api}/auth/csrf`, () => HttpResponse.json({ data: { csrfToken: 'initial-csrf' } })),
+      http.post(`${api}/auth/refresh`, () => HttpResponse.json({ code: 'UNAVAILABLE' }, { status: 503 })),
+      http.post(`${api}/cashier/orders`, () => new HttpResponse(null, { status: 401 })),
+    );
+    const manager = new SessionManager(new RefreshCoordinator('expired-access-recoverable'));
+    const cleaner = vi.fn();
+    manager.registerPrivateStateCleaner(cleaner);
+    await manager.bootstrap();
+
+    await expect(apiFetch('/cashier/orders', { method: 'POST', body: {} })).rejects.toMatchObject({ status: 503 });
+    expect(manager.getSnapshot()).toEqual({ status: 'authenticated', actor: staff });
+    expect(cleaner).not.toHaveBeenCalled();
+    expect(window.location.pathname).toBe('/terminal/pos');
+    manager.dispose();
+  });
+
   it('treats an empty 401 from GET /auth/csrf as definitive for a normal mutation', async () => {
     const messages: unknown[] = [];
     class TestBroadcastChannel {

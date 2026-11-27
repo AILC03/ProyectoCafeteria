@@ -3678,11 +3678,12 @@ paths:
       operationId: createCashierOrder
       summary: createCashierOrder
       description:
-        CAJERO/ADMINISTRADOR. Crea CASH pendiente, sin abrir/cobrar caja ni exigir sesión de
-        caja en esta entrega. Cliente opcional por identifier exacto y confirmedName; confirmar
-        nombre vigente. customer y guestName son excluyentes. No acepta precios, customerId, source
-        ni estado. includeCashQr=true añade cashQr junto a data con plazo original; reintentos
-        conservan original por 48h y no pagan ni renuevan QR.
+        CAJERO/ADMINISTRADOR. Crea CASH pendiente sin abrir ni cobrar caja, pero exige una caja
+        abierta cuyo responsable sea el mismo empleado; sin ella responde 409 ORDER_CONFLICT.
+        Cliente opcional por identifier exacto y confirmedName; confirmar nombre vigente. customer
+        y guestName son excluyentes. No acepta precios, customerId, source ni estado.
+        includeCashQr=true añade cashQr junto a data con plazo original; reintentos conservan
+        original por 48h y no pagan ni renuevan QR.
       security: &a22
         - accessCookie: &a18 []
           csrfHeader: []
@@ -4791,6 +4792,186 @@ paths:
               $ref: '#/components/schemas/CashClose'
             example:
               countedCashCents: '49000'
+  /api/v1/admin/cash-sessions:
+    get:
+      x-contract-status: proposed-2026-11-27
+      tags:
+        - Cash
+      operationId: listAdminCashSessions
+      summary: listAdminCashSessions
+      description: >-
+        Solo ADMINISTRADOR. Historial de cajas de solo lectura para Administración → Caja:
+        no abre, no cierra ni modifica importes. Filtra por apertura en UTC semiabierto
+        [from,to) (máximo 366 días), estado, diferencia y responsable. Ordena por
+        apertura descendente con keyset (cursor) sin OFFSET. `data` contiene la página;
+        `summary` agrega el mismo filtro completo: faltantes (negativos) y sobrantes
+        (positivos) por separado para no compensarse. Importes en centavos MXN como
+        cadenas; `differenceCents` puede ser negativo. Respuesta privada no-store.
+      security:
+        - accessCookie: []
+        - productionAccessCookie: []
+      parameters:
+        - name: from
+          in: query
+          required: true
+          description: Inicio inclusivo de la apertura en UTC, ISO 8601 con Z.
+          schema:
+            type: string
+            format: date-time
+            pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?Z$
+            example: '2026-11-01T08:00:00.000Z'
+        - name: to
+          in: query
+          required: true
+          description: Fin exclusivo, estrictamente posterior a from; intervalo máximo 366 días.
+          schema:
+            type: string
+            format: date-time
+            pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?Z$
+            example: '2026-11-27T08:00:00.000Z'
+        - name: status
+          in: query
+          required: false
+          description: Filtro opcional por estado de la sesión.
+          schema:
+            type: string
+            enum:
+              - OPEN
+              - CLOSED
+        - name: difference
+          in: query
+          required: false
+          description: >-
+            Filtro opcional: SHORTAGE (diferencia negativa), SURPLUS (positiva) o NONE (cero).
+            No se combina con status=OPEN porque una sesión abierta no tiene diferencia.
+          schema:
+            type: string
+            enum:
+              - SHORTAGE
+              - SURPLUS
+              - NONE
+        - name: employeeId
+          in: query
+          required: false
+          description: Filtro opcional por responsable que abrió la caja.
+          schema:
+            type: string
+            pattern: ^[1-9][0-9]{0,18}$
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 2048
+      responses:
+        '200':
+          description: Página del historial y totales del filtro. Cache-Control no-store.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              example: no-store
+            Referrer-Policy:
+              schema:
+                type: string
+              example: no-referrer
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AdminCashSession'
+                  summary:
+                    $ref: '#/components/schemas/AdminCashSessionSummary'
+                  page:
+                    type: object
+                    additionalProperties: false
+                    properties:
+                      limit:
+                        type: integer
+                        minimum: 1
+                        maximum: 100
+                      nextCursor:
+                        type: string
+                        nullable: true
+                    required:
+                      - limit
+                      - nextCursor
+                required:
+                  - data
+                  - summary
+                  - page
+              example:
+                data:
+                  - id: '7'
+                    employeeId: '2'
+                    employeeName: Caja Uno
+                    employeeUsername: caja1
+                    openedAt: '2026-11-26T15:00:00.000000Z'
+                    closedAt: '2026-11-26T23:10:00.000000Z'
+                    closedByEmployeeId: '2'
+                    closedByName: Caja Uno
+                    exceptionalCloseReason: null
+                    openingAmountCents: '50000'
+                    cashSalesCents: '120000'
+                    successfulPayments: '12'
+                    computedExpectedCashCents: '170000'
+                    expectedCashCents: '170000'
+                    countedCashCents: '165000'
+                    differenceCents: '-5000'
+                summary:
+                  sessionCount: '1'
+                  closedCount: '1'
+                  openCount: '0'
+                  shortageCents: '-5000'
+                  surplusCents: '0'
+                  differenceCount: '1'
+                page:
+                  limit: 20
+                  nextCursor: null
+        '400':
+          description: 'VALIDATION_ERROR: rango, filtros, límite o cursor inválidos.'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: UNAUTHENTICATED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: FORBIDDEN / PIN_CHANGE_REQUIRED / ORIGIN_NOT_ALLOWED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: RATE_LIMITED
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: INTERNAL_ERROR
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
   /api/v1/payments/cash:
     post:
       operationId: chargeCashOrder
@@ -10445,6 +10626,105 @@ components:
       additionalProperties: false
       properties: *a85
       required: *a86
+    AdminCashSession:
+      type: object
+      additionalProperties: false
+      properties:
+        id: *a26
+        employeeId: *a26
+        employeeName:
+          type: string
+          minLength: 1
+          maxLength: 120
+        employeeUsername:
+          type: string
+          maxLength: 24
+          nullable: true
+        openedAt: *a87
+        closedAt:
+          type: string
+          format: date-time
+          nullable: true
+        closedByEmployeeId:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}$
+          nullable: true
+        closedByName:
+          type: string
+          maxLength: 120
+          nullable: true
+        exceptionalCloseReason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          nullable: true
+        openingAmountCents: *a27
+        cashSalesCents: *a27
+        successfulPayments:
+          type: string
+          pattern: ^[0-9]+$
+        computedExpectedCashCents: *a27
+        expectedCashCents:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+          nullable: true
+        countedCashCents:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+          nullable: true
+        differenceCents:
+          type: string
+          pattern: ^-?(0|[1-9][0-9]{0,18})$
+          nullable: true
+      required:
+        - id
+        - employeeId
+        - employeeName
+        - employeeUsername
+        - openedAt
+        - closedAt
+        - closedByEmployeeId
+        - closedByName
+        - exceptionalCloseReason
+        - openingAmountCents
+        - cashSalesCents
+        - successfulPayments
+        - computedExpectedCashCents
+        - expectedCashCents
+        - countedCashCents
+        - differenceCents
+    AdminCashSessionSummary:
+      type: object
+      additionalProperties: false
+      properties:
+        sessionCount:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+        closedCount:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+        openCount:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+        shortageCents:
+          type: string
+          pattern: ^-?(0|[1-9][0-9]{0,18})$
+          description: Suma de diferencias negativas (faltantes); nunca positiva.
+        surplusCents:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+          description: Suma de diferencias positivas (sobrantes); nunca negativa.
+        differenceCount:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+          description: Cierres con diferencia distinta de cero.
+      required:
+        - sessionCount
+        - closedCount
+        - openCount
+        - shortageCents
+        - surplusCents
+        - differenceCount
     CashPayment:
       type: object
       additionalProperties: false

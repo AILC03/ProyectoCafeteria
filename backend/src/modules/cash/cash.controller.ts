@@ -2,7 +2,14 @@ import type { RequestHandler } from 'express';
 import { principal } from '../auth/auth.http.js';
 import { jsonValue } from '../../shared/http/serialization.js';
 import type { CashService } from './cash.service.js';
-import { cashOpen, cashClose, dbId, emptyInput, operationKey } from './cash.validation.js';
+import {
+  adminCashQuery,
+  cashOpen,
+  cashClose,
+  dbId,
+  emptyInput,
+  operationKey,
+} from './cash.validation.js';
 export function cashController(service: CashService) {
   const open: RequestHandler = async (request, response) => {
     emptyInput.parse(request.query);
@@ -41,5 +48,10 @@ export function cashController(service: CashService) {
       ),
     );
   };
-  return { open, current, get, close };
+  const adminList: RequestHandler = async (request, response) => {
+    response.json(
+      jsonValue(await service.adminList(principal(response), adminCashQuery.parse(request.query))),
+    );
+  };
+  return { open, current, get, close, adminList };
 }

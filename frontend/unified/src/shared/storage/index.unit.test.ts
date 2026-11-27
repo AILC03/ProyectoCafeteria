@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  CART_DRAFT_KEY, PREFERENCES_KEY, clearPrivateState, defaultPreferences, getCartDraft,
-  cleanupLegacyDatabase, cleanupLegacyDatabaseWithRetry, getPreferences, migrateAndCleanupStorage, saveCartDraft, savePreferences, startLegacyDatabaseCleanupLifecycle,
+  CART_DRAFT_KEY, POS_DRAFT_KEY, PREFERENCES_KEY, clearPrivateState, defaultPreferences, getCartDraft, getPosDraft,
+  cleanupLegacyDatabase, cleanupLegacyDatabaseWithRetry, getPreferences, migrateAndCleanupStorage, saveCartDraft, savePosDraft, savePreferences, startLegacyDatabaseCleanupLifecycle,
 } from './index';
 
 afterEach(() => {
@@ -25,6 +25,26 @@ describe('shared storage adapter', () => {
     ] }));
     expect(getPreferences()).toEqual(defaultPreferences);
     expect(getCartDraft()).toEqual({ version: 1, items: [{ productId: 'coffee-1', quantity: 2, optionValueIds: ['milk-1'] }] });
+  });
+
+  it('persists only safe POS draft fields and rejects invalid lines', () => {
+    const saved = savePosDraft({
+      version: 1,
+      lines: [
+        { productId: '10', quantity: 2, optionValueIds: ['5', '5'], productName: 'Latte', selectedLabels: ['Mediano'], unitEstimateCents: '6500', guestName: 'Ada' },
+        { productId: '11', quantity: 0, optionValueIds: [], productName: 'Agua', selectedLabels: [], unitEstimateCents: '2000' },
+        { productId: '12', quantity: 1, optionValueIds: [], productName: '', selectedLabels: [], unitEstimateCents: '2000' },
+        { productId: '13', quantity: 1, optionValueIds: [], productName: 'Té', selectedLabels: [], unitEstimateCents: 'abc' },
+      ],
+    });
+    expect(saved).toBe(true);
+    expect(getPosDraft()).toEqual({
+      version: 1,
+      lines: [{ productId: '10', quantity: 2, optionValueIds: ['5'], productName: 'Latte', selectedLabels: ['Mediano'], unitEstimateCents: '6500' }],
+    });
+    expect(localStorage.getItem(POS_DRAFT_KEY)).not.toContain('Ada');
+    clearPrivateState();
+    expect(getPosDraft()).toEqual({ version: 1, lines: [] });
   });
 
   it('migrates only allowed legacy preferences and deletes all inventoried legacy sources', async () => {

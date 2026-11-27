@@ -33,7 +33,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 800 
       await expect(context.page.getByRole('button', { name: 'Cerrar' })).toBeVisible();
       await expect(context.page.getByRole('button', { name: 'Disminuir cantidad' })).toBeVisible();
       await expect(context.page.getByRole('button', { name: 'Aumentar cantidad' })).toBeVisible();
-      await expect(context.page.getByRole('button', { name: 'Confirmar personalización' })).toBeVisible();
+      await expect(context.page.getByRole('button', { name: 'Añadir al carrito' })).toBeVisible();
       await expect(context.page.getByText('Precio estimado:')).toBeVisible();
       await waitForVisualStability(context.page);
       await context.page.screenshot({ path: info.outputPath(`hyb20-${viewport.width}x${viewport.height}-dialog-unapproved.png`) });

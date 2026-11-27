@@ -1,10 +1,12 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { HttpResponse, http } from 'msw';
 import { RouterProvider } from 'react-router-dom';
-import { afterEach, describe, expect, test } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { createTestRouter } from '../../../app/router';
 import { SessionProvider } from '../../../shared/auth/SessionProvider';
 import { server } from '../../../test/server';
+import { clientCartStore } from '../cart/clientCartStore';
+import { cashReceipts } from '../orders/cashReceipts';
 
 const categories = [
   { id: '1', name: 'Cafés' },
@@ -71,9 +73,17 @@ function renderMenu() {
   );
 }
 
+beforeEach(() => {
+  localStorage.clear();
+  sessionStorage.clear();
+  clientCartStore.clear();
+  cashReceipts.clear();
+});
 afterEach(() => {
   localStorage.clear();
   sessionStorage.clear();
+  clientCartStore.clear();
+  cashReceipts.clear();
 });
 
 describe('Client catalog and customization (TASK-10)', () => {
@@ -198,7 +208,7 @@ describe('Client catalog and customization (TASK-10)', () => {
 
     // Focus wraps across Tab and Shift+Tab within the modal.
     const closeButton = within(dialog).getByRole('button', { name: 'Cerrar' });
-    const confirmButton = within(dialog).getByRole('button', { name: 'Confirmar personalización' });
+    const confirmButton = within(dialog).getByRole('button', { name: 'Añadir al carrito' });
     expect(closeButton).toHaveFocus();
     fireEvent.keyDown(closeButton, { key: 'Tab', shiftKey: true });
     expect(confirmButton).toHaveFocus();
@@ -239,13 +249,21 @@ describe('Client catalog and customization (TASK-10)', () => {
     fireEvent.click(within(reopened).getByRole('button', { name: 'Aumentar cantidad' }));
     expect(within(reopened).getByText('$194.00')).toBeInTheDocument();
 
-    fireEvent.click(within(reopened).getByRole('button', { name: 'Confirmar personalización' }));
+    fireEvent.click(within(reopened).getByRole('button', { name: 'Añadir al carrito' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
 
-    expect(screen.getByRole('status')).toHaveTextContent('2 × Latte');
-    expect(screen.getByRole('status')).toHaveTextContent('$194.00');
+    expect(screen.getByRole('status')).toHaveTextContent('Producto añadido al carrito');
+    const draft = JSON.parse(localStorage.getItem('cafeteria:cart-draft:v1') ?? '') as { version: number; items: Array<{ productId: string; quantity: number; optionValueIds: string[] }> };
+    expect(draft.version).toBe(1);
+    expect(draft.items).toHaveLength(1);
+    expect(draft.items[0]).toMatchObject({ productId: '10', quantity: 2 });
+    expect(draft.items[0]!.optionValueIds).toEqual(expect.arrayContaining(['v-large', 'v-oat', 'v-almond']));
+    fireEvent.click(screen.getByRole('button', { name: /Abrir carrito/ }));
+    const cart = await screen.findByRole('dialog', { name: 'Tu carrito' });
+    expect(within(cart).getByText(/2 × Latte/)).toBeInTheDocument();
+    expect(within(cart).getByText('$162.96')).toBeInTheDocument();
+    expect(within(cart).getByText('$31.04')).toBeInTheDocument();
     expect(orderPosted).toBe(false);
-    expect(localStorage.length).toBe(0);
   });
 
   test('blocks confirmation if product becomes unavailable on detail fetch', async () => {
@@ -267,7 +285,7 @@ describe('Client catalog and customization (TASK-10)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Personalizar Latte' }));
     const dialog = await screen.findByRole('dialog', { name: 'Latte' });
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('agotado');
-    expect(within(dialog).getByRole('button', { name: 'Confirmar personalización' })).toBeDisabled();
+    expect(within(dialog).getByRole('button', { name: 'Añadir al carrito' })).toBeDisabled();
   });
 
   test('hides fallback prices during dialog fetch error, supports retry without losing focus, and enforces mandatory selections', async () => {
@@ -318,6 +336,27 @@ describe('Client catalog and customization (TASK-10)', () => {
 
     expect(await within(dialog).findByText('Tamaño — Obligatorio (mín. 1, máx. 1)')).toBeInTheDocument();
     expect(within(dialog).getByRole('alert')).toHaveTextContent('Selecciona al menos 1 opción');
-    expect(within(dialog).getByRole('button', { name: 'Confirmar personalización' })).toBeDisabled();
+    expect(within(dialog).getByRole('button', { name: 'Añadir al carrito' })).toBeDisabled();
+  });
+
+  test('customer can toggle a favorite directly from the product star', async () => {
+    const actor = { id: '42', name: 'Ana', role: 'CLIENTE', accountType: 'CUSTOMER', mustChangePin: false };
+    const calls: string[] = [];
+    server.use(
+      http.get('/api/v1/auth/me', () => HttpResponse.json({ data: actor })),
+      http.get('/api/v1/auth/csrf', () => HttpResponse.json({ data: { csrfToken: 'csrf-favorite' } })),
+      http.get('/api/v1/categories', () => HttpResponse.json({ data: categories, page: { limit: 100, nextCursor: null } })),
+      http.get('/api/v1/products', () => HttpResponse.json({ data: productsPage1, page: { limit: 100, nextCursor: null } })),
+      http.get('/api/v1/customers/me/favorites', () => HttpResponse.json({ data: [], page: { limit: 20, nextCursor: null } })),
+      http.put('/api/v1/customers/me/favorites/10', () => { calls.push('PUT'); return HttpResponse.json({}); }),
+      http.delete('/api/v1/customers/me/favorites/10', () => { calls.push('DELETE'); return HttpResponse.json({}); }),
+    );
+    renderMenu();
+    const star = await screen.findByRole('button', { name: 'Agregar Latte a favoritos' });
+    fireEvent.click(star);
+    expect(await screen.findByRole('button', { name: 'Quitar Latte de favoritos' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Quitar Latte de favoritos' }));
+    expect(await screen.findByRole('button', { name: 'Agregar Latte a favoritos' })).toHaveAttribute('aria-pressed', 'false');
+    expect(calls).toEqual(['PUT', 'DELETE']);
   });
 });

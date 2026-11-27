@@ -468,7 +468,7 @@ export function DashboardSummary({ now = () => new Date() }: { now?: () => Date 
               </div>
             </dl>
           )}
-          <p><Link to="/terminal/caja">Ir a caja y corte</Link></p>
+          <p><Link to="/terminal/pos">Ir a POS y caja</Link></p>
         </section>
 
         <section aria-labelledby="dashboard-sales-title" className="dashboard-operational-card">

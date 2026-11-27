@@ -5,7 +5,8 @@ import type { Principal, RoleName } from '../auth/auth.types.js';
 import { digest, forbidden } from '../auth/auth.tokens.js';
 import { CashRepository, type CashTransaction } from './cash.repository.js';
 import { cashConflict, checkedCents } from './cash.rules.js';
-import type { CloseInput } from './cash.validation.js';
+import type { AdminCashFilters, AdminCashQuery, CloseInput } from './cash.validation.js';
+import { decodeCursor, paginate } from '../../shared/http/pagination.js';
 
 export function requireCashRole(role: RoleName) {
   if (!['CAJERO', 'ADMINISTRADOR', 'GERENTE'].includes(role)) throw forbidden();
@@ -110,6 +111,24 @@ export class CashService {
       if (!session) throw notFound();
       return { data: await sessionSummary(tx, session) };
     });
+  }
+  /** Historial de solo lectura para Administración → Caja. No abre ni cierra. */
+  async adminList(actor: Principal, input: AdminCashQuery) {
+    const { limit, cursor, ...filters } = input;
+    const scope = JSON.stringify([
+      filters.from,
+      filters.to,
+      filters.status ?? null,
+      filters.difference ?? null,
+      filters.employeeId === undefined ? null : filters.employeeId.toString(),
+    ]);
+    const after = decodeCursor(cursor, 'admin-cash-sessions', scope);
+    const [entries, summary] = await Promise.all([
+      this.repository.adminSessions(actor, filters as AdminCashFilters, limit, after),
+      this.repository.adminSummary(actor, filters as AdminCashFilters),
+    ]);
+    const page = paginate(entries, limit, 'admin-cash-sessions', scope);
+    return { data: page.data, summary, page: page.page };
   }
   close(actor: Principal, id: bigint, input: CloseInput, key: string) {
     return cashOperation(

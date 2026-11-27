@@ -31,6 +31,7 @@ const cursorSchema = z
       'customer-favorites',
       'sales',
       'employees',
+      'admin-cash-sessions',
     ]),
     filters: z.string(),
     id: idSchema,
@@ -49,7 +50,8 @@ export type CursorScope =
   | 'customer-orders'
   | 'customer-favorites'
   | 'sales'
-  | 'employees';
+  | 'employees'
+  | 'admin-cash-sessions';
 export function decodeCursor(
   token: string | undefined,
   scope: CursorScope,

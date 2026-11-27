@@ -429,6 +429,21 @@ e integración; no confundir implementación local con despliegue activo.
 6. `POST /cash-sessions/{id}/close` con `{countedCashCents}`: backend calcula
    esperado/diferencia. Admin solo cierra ajena con `exceptionalCloseReason` no vacío;
    esa excepción no le permite cobrar por otro responsable.
+7. La **apertura y el panel completo de caja** viven en Administración → Caja →
+   «Caja del turno»; la misma pantalla permite alternar con «Historial de caja».
+   El **POS conserva solo el cierre** de la caja activa. La toma de órdenes
+   permanece bloqueada hasta que `GET /cash-sessions/current` devuelva una sesión
+   abierta del propio cajero. `POST /cashier/orders` responde **409
+   ORDER_CONFLICT** sin esa caja; no confiar solo en deshabilitar botones en el
+   navegador. La ruta anterior `/terminal/caja` redirige a `/terminal/pos`.
+8. `GET /admin/cash-sessions` (solo ADMINISTRADOR, **propuesto 2026-11-27**) es el
+   historial de solo lectura para Administración → Caja. Filtra por apertura
+   `[from,to)` UTC, estado, diferencia y responsable; pagina con cursor. Devuelve
+   `data`, `summary` y `page`. `summary.shortageCents` acumula solo diferencias
+   negativas y `summary.surplusCents` solo positivas: mostrarlos por separado,
+   nunca compensarlos. No abre ni cierra cajas y no sustituye a
+   `/cash-sessions/current`. El enlace «Caja» de Administración ya no debe llevar
+   a `/terminal/caja` (pantalla operativa); usa `/terminal/administracion/caja`.
 
 Apertura, cierre y cobro exigen Idempotency-Key y CSRF. Después de un replay,
 refrescar caja actual/resumen: la respuesta idempotente es la original, no estado vivo.

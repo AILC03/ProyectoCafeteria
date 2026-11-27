@@ -17,6 +17,7 @@ import '../styles/terminal/admin-shell.css';
 import '../styles/terminal/admin-catalog.css';
 import '../styles/terminal/admin-options.css';
 import '../styles/terminal/admin-staff.css';
+import '../styles/terminal/admin-cash.css';
 
 function navTabClass({ isActive }: { isActive: boolean }): string {
   return isActive ? 'pos-view-tab active' : 'pos-view-tab';
@@ -53,7 +54,6 @@ export function TerminalLayout() {
             <NavLink className={navTabClass} end to="/terminal">Inicio</NavLink>
             <NavLink className={navTabClass} to="/terminal/pos">POS</NavLink>
             {canSeeKitchen && <NavLink className={navTabClass} to="/terminal/cocina">Cocina</NavLink>}
-            <NavLink className={navTabClass} to="/terminal/caja">Caja</NavLink>
             {canSeeAvailability && <NavLink className={navTabClass} to="/terminal/disponibilidad">Disponibilidad</NavLink>}
             {canSeeHistory && <NavLink className={navTabClass} to="/terminal/historial">Historial</NavLink>}
             {canSeeAdmin && <NavLink className={navTabClass} to="/terminal/administracion">Administración</NavLink>}

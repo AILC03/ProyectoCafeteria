@@ -22,10 +22,10 @@ describe('staff access helpers', () => {
   });
 
   test('offers only shortcuts permitted for the actor role', () => {
-    expect(staffHomeLinks('CAJERO').map((link) => link.to)).toEqual(['/terminal/pos', '/terminal/cocina', '/terminal/caja']);
+    expect(staffHomeLinks('CAJERO').map((link) => link.to)).toEqual(['/terminal/pos', '/terminal/cocina']);
     expect(staffHomeLinks('PREPARACION').map((link) => link.to)).toEqual(['/terminal/cocina']);
     expect(staffHomeLinks('ADMINISTRADOR').map((link) => link.to)).toEqual([
-      '/terminal/pos', '/terminal/cocina', '/terminal/caja', '/terminal/administracion',
+      '/terminal/pos', '/terminal/cocina', '/terminal/administracion',
     ]);
     expect(staffHomeLinks('GERENTE')).toEqual([]);
     expect(staffHomeLinks('CLIENTE')).toEqual([]);

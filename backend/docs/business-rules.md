@@ -33,6 +33,7 @@
 ## Caja y registro
 
 - BR-CASH-001: una caja física y una sesión abierta globalmente; efectivo exige sesión abierta. Stripe independiente de caja.
+- BR-CASH-006: la toma de órdenes de caja exige una sesión abierta del propio cajero; sin ella el backend responde 409 y el POS bloquea el alta hasta que el servidor confirme la apertura. La apertura y el panel completo de caja se operan desde Administración → Caja → «Caja del turno»; el POS conserva únicamente el cierre de la caja activa.
 - BR-CASH-002: esperado = fondo inicial + ventas efectivo; diferencia = contado − esperado. Sin retiros/depósitos adicionales en alcance inicial.
 - BR-REG-001: solo compra pagada de invitado emite QR de registro; distinto al QR de cobro.
 - BR-REG-002: token de un uso vence 24 horas tras pago confirmado.

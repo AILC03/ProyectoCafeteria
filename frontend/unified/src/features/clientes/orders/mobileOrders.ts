@@ -5,6 +5,7 @@ import type { SessionManager, SessionState } from '../../../shared/auth/session'
 import { getGuestSessionSnapshot, subscribeGuestSession } from '../auth/guestSession';
 
 export type PaymentMethod = 'CASH' | 'STRIPE';
+export type CashQr = { purpose: 'CASH_PAYMENT'; token: string; qrPayload: string; expiresAt: string };
 export type MobileOrder = {
   id: string;
   folio: string;
@@ -14,6 +15,7 @@ export type MobileOrder = {
   paymentMethod: PaymentMethod;
   totalCents: string;
   paymentExpiresAt: string;
+  cashQr: CashQr | null;
 };
 
 /** A successful HTTP response consumed the idempotency key but cannot establish an order. */
@@ -25,21 +27,34 @@ export class UnverifiableMobileOrderResponseError extends Error {
 }
 
 /** No prices, totals, QR or checkout flags enter the request snapshot. */
-export function prepareMobileOrder(items: readonly CartDraftItem[], paymentMethod: PaymentMethod, guestName?: string): IdempotentOperation {
+export function prepareMobileOrder(items: readonly CartDraftItem[], paymentMethod: PaymentMethod, guestName?: string, includeCashQr = false): IdempotentOperation {
   if (items.length < 1 || items.length > 50) throw new Error('El carrito debe tener entre 1 y 50 líneas.');
   const body = {
     paymentMethod,
     items: items.map(({ productId, quantity, optionValueIds }) => ({ productId, quantity, optionValueIds: [...optionValueIds] })),
     ...(guestName ? { guestName } : {}),
+    ...(includeCashQr && paymentMethod === 'CASH' ? { includeCashQr: true } : {}),
   };
   return idempotencyOperations.create(body);
 }
 
+function verifiedCashQr(value: unknown): CashQr | null {
+  if (value === null || value === undefined) return null;
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return null;
+  const candidate = value as Record<string, unknown>;
+  if (candidate.purpose !== 'CASH_PAYMENT') return null;
+  if (typeof candidate.token !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(candidate.token)) return null;
+  if (typeof candidate.qrPayload !== 'string' || candidate.qrPayload !== `cafeteria:cash:${candidate.token}`) return null;
+  if (typeof candidate.expiresAt !== 'string' || !Number.isFinite(Date.parse(candidate.expiresAt))) return null;
+  return { purpose: 'CASH_PAYMENT', token: candidate.token, qrPayload: candidate.qrPayload, expiresAt: candidate.expiresAt };
+}
+
 export async function sendMobileOrder(operation: IdempotentOperation, signal?: AbortSignal): Promise<MobileOrder> {
-  const requestedMethod = (JSON.parse(operation.snapshot) as { paymentMethod: PaymentMethod }).paymentMethod;
-  let response: { data?: MobileOrder };
+  const request = JSON.parse(operation.snapshot) as { paymentMethod: PaymentMethod; includeCashQr?: unknown };
+  const requestedMethod = request.paymentMethod;
+  let response: { data?: MobileOrder; cashQr?: unknown };
   try {
-    response = await idempotencyOperations.send<{ data?: MobileOrder }>(operation, '/orders', { method: 'POST', signal });
+    response = await idempotencyOperations.send<{ data?: MobileOrder; cashQr?: unknown }>(operation, '/orders', { method: 'POST', signal });
   } catch (error) {
     // apiFetch parses successful JSON after the HTTP response. A malformed 2xx
     // payload raises SyntaxError after the shared manager has finalized the key.
@@ -55,7 +70,9 @@ export async function sendMobileOrder(operation: IdempotentOperation, signal?: A
     || order.source !== 'MOBILE' || order.paidAt !== null || order.paymentMethod !== requestedMethod) {
     throw new UnverifiableMobileOrderResponseError();
   }
-  return order;
+  const cashQr = verifiedCashQr(response.cashQr);
+  if (response.cashQr !== null && response.cashQr !== undefined && cashQr === null) throw new UnverifiableMobileOrderResponseError();
+  return { ...order, cashQr };
 }
 
 type AttemptSnapshot = Readonly<{
@@ -73,6 +90,7 @@ export class MobileOrderAttemptStore {
   private readonly listeners = new Set<() => void>();
   private generation = 0;
   private clearRevision = 0;
+  private protected = false;
   private activeRequest: AbortController | null = null;
   private deferred: { operation: IdempotentOperation; outcome: { order: MobileOrder } | { error: unknown } } | null = null;
 
@@ -95,14 +113,27 @@ export class MobileOrderAttemptStore {
     this.activeRequest?.abort();
     this.activeRequest = null;
     this.deferred = null;
+    this.protected = false;
     this.set({ pending: null, sending: false, message: null, confirmed: null, blocked: false, paused: false });
   };
 
   /** A cross-tab login may already have switched the cookie before /auth/me resolves. */
   pauseForActorResolution(): void {
+    // Nothing financial is in flight or awaiting retry: there is no operation
+    // to protect, so an identity refresh must not block a fresh cart.
+    if (!this.protected && this.state.pending === null && !this.state.sending && this.state.confirmed === null) return;
     this.generation += 1;
     this.activeRequest?.abort();
     this.set({ ...this.state, paused: true });
+  }
+
+  /** Marks an in-progress cart preflight as financial work that must not cross actors. */
+  protectActorResolution(): void {
+    this.protected = true;
+  }
+
+  releaseActorResolution(): void {
+    this.protected = false;
   }
 
   resumeAfterSameActor(): void {
@@ -269,6 +300,8 @@ export function mobileOrderStoreFor(manager: SessionManager): MobileOrderAttempt
         clearPrivateState();
         ownedStore.clear();
       } else if (ownedStore.getSnapshot().paused) {
+        // The first resolved actor also releases a pause created while the
+        // session was still loading; there is no previous actor to compare.
         ownedStore.resumeAfterSameActor();
       }
       previousIdentity = identity;

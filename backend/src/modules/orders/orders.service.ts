@@ -167,6 +167,8 @@ export class OrdersService {
         );
       }
       if (existing) await tx.removeIdempotency(existing.id);
+      if (source === 'CASHIER' && (!actor || !(await tx.activeCashSession(actor.userId))))
+        throw orderConflict('Abre tu caja del turno antes de tomar órdenes');
       let customerId = source === 'MOBILE' && actor ? actor.userId : null;
       if (input.customer) {
         const customer = await tx.customer(input.customer.identifier);

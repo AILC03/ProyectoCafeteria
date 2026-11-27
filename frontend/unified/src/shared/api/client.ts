@@ -53,6 +53,26 @@ type AuthEventMode = 'normal' | 'suppressed';
 type ApiAuthEvent = { type: 'csrf-invalid' } | { type: 'pin-change-required' } | { type: 'session-expired' };
 const apiAuthListeners = new Set<(event: ApiAuthEvent) => void>();
 
+export type SessionRecoveryResult = 'recovered' | 'retry-later' | 'expired';
+let sessionRecoveryHandler: (() => Promise<SessionRecoveryResult>) | null = null;
+
+/**
+ * Registers the single session owner that may renew an expired access cookie.
+ * The HTTP client stays payload-free and never imports session code.
+ */
+export function registerSessionRecoveryHandler(
+  handler: () => Promise<SessionRecoveryResult>,
+): () => void {
+  sessionRecoveryHandler = handler;
+  return () => {
+    if (sessionRecoveryHandler === handler) sessionRecoveryHandler = null;
+  };
+}
+
+function isAuthEndpoint(endpoint: string): boolean {
+  return endpoint.replace(/^\/+/, '').startsWith('auth/');
+}
+
 export function subscribeToApiAuthEvents(listener: (event: ApiAuthEvent) => void): () => void {
   apiAuthListeners.add(listener);
   return () => apiAuthListeners.delete(listener);
@@ -201,6 +221,32 @@ async function apiFetchInternal<T = void>(endpoint: string, options: ApiFetchOpt
   };
   const url = endpointUrl(endpoint);
   let response = await fetchResponse(url, init);
+
+  // Access cookies live 15 minutes. Renew once and retry the same request
+  // (including its idempotency key) before treating a 401 as definitive.
+  if (response.status === 401 && authEventMode === 'normal' && !isAuthEndpoint(endpoint)) {
+    const recovery = sessionRecoveryHandler;
+    if (recovery !== null) {
+      let outcome: SessionRecoveryResult = 'retry-later';
+      try {
+        outcome = await recovery();
+      } catch {
+        outcome = 'retry-later';
+      }
+      if (outcome === 'recovered') {
+        if (isMutation && !options.skipCsrf) {
+          headers.set('X-CSRF-Token', await getCsrfTokenInternal('normal'));
+        }
+        response = await fetchResponse(url, { ...init, headers });
+      } else if (outcome === 'retry-later') {
+        throw new ApiError(503, 'Session recovery unavailable', {
+          status: 503,
+          code: 'SESSION_RECOVERY_UNAVAILABLE',
+          detail: 'No se pudo renovar la sesión. Reintenta la misma operación.',
+        });
+      }
+    }
+  }
 
   if (isMutation && !options.skipCsrf && response.status === 403) {
     const problem = await readProblem(response.clone());

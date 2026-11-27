@@ -13,27 +13,27 @@
 .terminal-layout .cash-page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
 .terminal-layout .cash-page-header h1 { margin: 0; font-size: clamp(1.45rem, 2vw, 1.8rem); font-weight: 800; }
 .terminal-layout .cash-page-header .field-hint { color: var(--term-text-muted); margin: .4rem 0 0; }
-.terminal-layout .terminal-cash > .auth-card {
+.terminal-layout :is(.terminal-cash, .pos-cash-card) > .auth-card {
   border: 1px solid var(--term-border-light);
   border-radius: 16px;
   box-shadow: var(--term-shadow-sm);
   padding: clamp(1rem, 2vw, 1.5rem);
   gap: 1rem;
 }
-.terminal-layout .terminal-cash .cash-eyebrow { margin: 0; color: var(--term-text-muted); font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; }
-.terminal-layout .terminal-cash .auth-card h2 { margin: 0; font-size: 1.2rem; font-weight: 800; }
-.terminal-layout .terminal-cash .cash-summary { grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: .8rem; }
-.terminal-layout .terminal-cash .cash-summary > div {
+.terminal-layout :is(.terminal-cash, .pos-cash-card) .cash-eyebrow { margin: 0; color: var(--term-text-muted); font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; }
+.terminal-layout :is(.terminal-cash, .pos-cash-card) .auth-card h2 { margin: 0; font-size: 1.2rem; font-weight: 800; }
+.terminal-layout :is(.terminal-cash, .pos-cash-card) .cash-summary { grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: .8rem; }
+.terminal-layout :is(.terminal-cash, .pos-cash-card) .cash-summary > div {
   min-width: 0;
   padding: 1rem;
   background: var(--term-bg-secondary);
   border: 0;
   border-radius: 12px;
 }
-.terminal-layout .terminal-cash .cash-summary dt { color: var(--term-text-muted); font-size: .76rem; font-weight: 700; text-transform: uppercase; letter-spacing: .025em; }
-.terminal-layout .terminal-cash .cash-summary dd { margin-top: .4rem; font-size: 1.16rem; line-height: 1.35; font-weight: 800; }
-.terminal-layout .terminal-cash .cash-metric-primary dd { color: #047857; }
-.terminal-layout .terminal-cash .cash-close {
+.terminal-layout :is(.terminal-cash, .pos-cash-card) .cash-summary dt { color: var(--term-text-muted); font-size: .76rem; font-weight: 700; text-transform: uppercase; letter-spacing: .025em; }
+.terminal-layout :is(.terminal-cash, .pos-cash-card) .cash-summary dd { margin-top: .4rem; font-size: 1.16rem; line-height: 1.35; font-weight: 800; }
+.terminal-layout :is(.terminal-cash, .pos-cash-card) .cash-metric-primary dd { color: #047857; }
+.terminal-layout :is(.terminal-cash, .pos-cash-card) .cash-close {
   border: 1px solid #fde68a;
   border-radius: 12px;
   background: #fffbeb;
@@ -41,11 +41,12 @@
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
   align-items: end;
 }
-.terminal-layout .terminal-cash .cash-close h3 { grid-column: 1 / -1; font-size: 1.05rem; color: #92400e; }
-.terminal-layout .terminal-cash .form-field { min-width: 0; }
-.terminal-layout .terminal-cash .form-field label { color: #334155; font-weight: 700; }
-.terminal-layout .terminal-cash .form-field input,
-.terminal-layout .terminal-cash .form-field textarea {
+.terminal-layout :is(.terminal-cash, .pos-cash-card) .cash-close h3 { grid-column: 1 / -1; font-size: 1.05rem; color: #92400e; }
+.terminal-layout :is(.terminal-cash, .pos-cash-card) .cash-close-actions { display: flex; flex-wrap: wrap; gap: .6rem; grid-column: 1 / -1; }
+.terminal-layout :is(.terminal-cash, .pos-cash-card) .form-field { min-width: 0; }
+.terminal-layout :is(.terminal-cash, .pos-cash-card) .form-field label { color: #334155; font-weight: 700; }
+.terminal-layout :is(.terminal-cash, .pos-cash-card) .form-field input,
+.terminal-layout :is(.terminal-cash, .pos-cash-card) .form-field textarea {
   box-sizing: border-box;
   width: 100%;
   min-height: 44px;
@@ -55,8 +56,8 @@
   background: #fff;
   font: inherit;
 }
-.terminal-layout .terminal-cash .form-field textarea { resize: vertical; }
-.terminal-layout .terminal-cash .auth-card button:not(.secondary-button) {
+.terminal-layout :is(.terminal-cash, .pos-cash-card) .form-field textarea { resize: vertical; }
+.terminal-layout :is(.terminal-cash, .pos-cash-card) .auth-card button:not(.secondary-button) {
   min-height: 44px;
   width: fit-content;
   max-width: 100%;
@@ -65,11 +66,11 @@
   border-color: #0f172a;
   font-weight: 700;
 }
-.terminal-layout .terminal-cash .cash-close button:not(.secondary-button) { background: #92400e; border-color: #92400e; }
-.terminal-layout .terminal-cash .cash-notice { padding: 1rem 1.2rem; border: 1px solid #cbd5e1; border-radius: 12px; background: #f1f5f9; color: #334155; }
-.terminal-layout .terminal-cash .cash-notice-error { border-color: #fecaca; background: #fef2f2; color: #991b1b; }
-.terminal-layout .terminal-cash .cash-notice-success { border-color: #a7f3d0; background: #ecfdf5; color: #065f46; }
-.terminal-layout .terminal-cash .cash-retry { margin-top: 1rem; }
+.terminal-layout :is(.terminal-cash, .pos-cash-card) .cash-close button:not(.secondary-button) { background: #92400e; border-color: #92400e; }
+.terminal-layout :is(.terminal-cash, .pos-cash-card) .cash-notice { padding: 1rem 1.2rem; border: 1px solid #cbd5e1; border-radius: 12px; background: #f1f5f9; color: #334155; }
+.terminal-layout :is(.terminal-cash, .pos-cash-card) .cash-notice-error { border-color: #fecaca; background: #fef2f2; color: #991b1b; }
+.terminal-layout :is(.terminal-cash, .pos-cash-card) .cash-notice-success { border-color: #a7f3d0; background: #ecfdf5; color: #065f46; }
+.terminal-layout :is(.terminal-cash, .pos-cash-card) .cash-retry { margin-top: 1rem; }
 @media (max-width: 600px) {
-  .terminal-layout .terminal-cash .cash-close button:not(.secondary-button) { width: 100%; }
+  .terminal-layout :is(.terminal-cash, .pos-cash-card) .cash-close button:not(.secondary-button) { width: 100%; }
 }
