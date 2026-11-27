@@ -196,7 +196,7 @@ test.describe('Client auth and actor isolation', () => {
     await expect(page.getByText('Invitado: Ana')).toHaveCount(0);
   });
 
-  test('handles actor replacement for STAFF -> client with logout failure guard', async ({ page, context }) => {
+  test('handles actor replacement for STAFF -> client and CUSTOMER -> terminal with logout failure guard', async ({ page, context }) => {
     const mocks = await setupApiMocks(context, { initialActor: STAFF_ACTOR, failLogout: true });
 
     await page.goto('/cliente/menu');
@@ -216,14 +216,18 @@ test.describe('Client auth and actor isolation', () => {
     await expect(page).toHaveURL(/\/cliente\/iniciar-sesion$/);
     await expect(page.getByLabel('Teléfono o número de cliente')).toBeVisible();
 
-    // Log in as customer and confirm the client area offers no terminal entry.
+    // Log in as customer and confirm switching back to terminal clears session.
     await page.getByLabel('Teléfono o número de cliente').fill('5512345678');
     await page.getByLabel('Dígito 1 del NIP').fill('1234');
     await page.getByRole('button', { name: 'Iniciar sesión como cliente' }).click();
     await expect(page).toHaveURL(/\/cliente\/menu$/);
 
-    const nav = page.getByRole('navigation', { name: 'Navegación de cliente' });
-    await expect(nav.getByRole('link', { name: 'Terminal' })).toHaveCount(0);
-    await expect(nav.locator('a[href^="/terminal"]')).toHaveCount(0);
+    await page.getByRole('link', { name: 'Terminal' }).click();
+    const terminalDialog = page.getByRole('dialog', { name: 'Cambiar de sesión' });
+    await expect(terminalDialog).toBeVisible();
+    await terminalDialog.getByRole('button', { name: 'Cerrar sesión y continuar' }).click();
+
+    await expect(page).toHaveURL(/\/terminal$/);
+    await expect(page.getByRole('heading', { name: 'Terminal' })).toBeVisible();
   });
 });

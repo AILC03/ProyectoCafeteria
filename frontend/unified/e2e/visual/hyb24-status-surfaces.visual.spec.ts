@@ -168,8 +168,8 @@ test('HYB-24 landing 1024, global 404 and terminal-destination dialog (unapprove
 
   const customerInClient = await createIsolatedContext(browser, { viewport: { width: 1024, height: 768 }, actor: SYNTHETIC_ACTORS.CLIENTE });
   try {
-    await customerInClient.page.goto(`${ORIGINS.unified}/`);
-    await customerInClient.page.getByRole('link', { name: 'Entrar a la terminal' }).click();
+    await customerInClient.page.goto(`${ORIGINS.unified}/cliente/menu`);
+    await customerInClient.page.getByRole('navigation', { name: 'Navegación de cliente' }).getByRole('link', { name: 'Terminal' }).click();
     const dialog = customerInClient.page.getByRole('dialog', { name: 'Cambiar de sesión' });
     await expect(dialog).toHaveClass(/actor-change-dialog-terminal/);
     await waitForVisualStability(customerInClient.page);
