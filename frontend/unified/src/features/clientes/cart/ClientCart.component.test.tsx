@@ -86,6 +86,22 @@ describe('cart totals', () => {
 });
 
 describe('cart line controls', () => {
+  test('merges identical product and options into one persisted line', async () => {
+    mockCatalog();
+    menu();
+    await addLatte();
+    closeCart();
+    await addLatte();
+
+    await waitFor(() => {
+      const draft = JSON.parse(localStorage.getItem(CART_DRAFT_KEY) ?? '') as {
+        items: Array<{ productId: string; quantity: number }>;
+      };
+      expect(draft.items).toHaveLength(1);
+      expect(draft.items[0]).toMatchObject({ productId: '10', quantity: 2 });
+    });
+  });
+
   test('increments and decrements each line quantity in the persisted draft', async () => {
     mockCatalog();
     menu();

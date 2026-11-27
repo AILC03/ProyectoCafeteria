@@ -124,6 +124,17 @@ export class OrdersTransaction {
   saveIdempotency(data: Prisma.IdempotencyRecordUncheckedCreateInput) {
     return this.tx.idempotencyRecord.create({ data });
   }
+  /**
+   * Caja abierta del propio empleado; el POS no toma órdenes sin ella.
+   * `FOR SHARE` serializa con el cierre (`FOR UPDATE`) de la misma sesión.
+   */
+  async activeCashSession(employeeId: bigint) {
+    const [row] = await this.tx.$queryRaw<{ id: bigint }[]>`
+      SELECT id FROM cash_sessions
+      WHERE employee_id=${employeeId} AND closed_at IS NULL
+      FOR SHARE`;
+    return row ? this.tx.cashSession.findUnique({ where: { id: row.id } }) : null;
+  }
   async lockCatalog() {
     await this.tx.$executeRaw`SELECT pg_advisory_xact_lock(2026,1)`;
   }

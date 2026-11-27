@@ -1,4 +1,5 @@
 import { multiplyCents, sumCents } from '../../../shared/utils/money';
+import type { PosDraftLine } from '../../../shared/storage';
 import type { ConfirmedCustomization } from '../../clientes/catalog/ProductCustomizationDialog';
 import type { PosLineInput } from './posApi';
 
@@ -63,6 +64,58 @@ export function updateDraftLineQuantity(line: DraftLine, quantity: number): Draf
     label: formatDraftLineLabel(nextQuantity, line.productName, line.selectedLabels),
     estimateCents: multiplyCents(line.unitEstimateCents, nextQuantity),
   };
+}
+
+/** Identical product and option set; option order never creates a new line. */
+function draftLineKey(line: Pick<DraftLine, 'productId' | 'optionValueIds'>): string {
+  const options = [...new Set(line.optionValueIds ?? [])].sort((a, b) => a.localeCompare(b));
+  return `${line.productId}\u0000${options.join('\u0001')}`;
+}
+
+/** Adds a line, summing quantity when product and options are identical. */
+export function appendDraftLine(lines: readonly DraftLine[], line: DraftLine): DraftLine[] {
+  const key = draftLineKey(line);
+  const index = lines.findIndex((existing) => draftLineKey(existing) === key);
+  if (index < 0) return [...lines, line];
+  const existing = lines[index]!;
+  const quantity = clampQuantity(existing.quantity + line.quantity);
+  const merged: DraftLine = {
+    ...existing,
+    quantity,
+    unitEstimateCents: line.unitEstimateCents,
+    label: formatDraftLineLabel(quantity, line.productName, line.selectedLabels),
+    estimateCents: multiplyCents(line.unitEstimateCents, quantity),
+  };
+  return lines.map((item, position) => (position === index ? merged : item));
+}
+
+/** Rebuilds persisted draft lines with fresh local IDs and consistent derived fields. */
+export function hydrateDraftLines(stored: readonly PosDraftLine[]): DraftLine[] {
+  return stored.map((line) => {
+    const quantity = clampQuantity(line.quantity);
+    return {
+      localId: nextLocalId(),
+      productId: line.productId,
+      quantity,
+      optionValueIds: [...line.optionValueIds],
+      productName: line.productName,
+      selectedLabels: [...line.selectedLabels],
+      unitEstimateCents: line.unitEstimateCents,
+      label: formatDraftLineLabel(quantity, line.productName, line.selectedLabels),
+      estimateCents: multiplyCents(line.unitEstimateCents, quantity),
+    };
+  });
+}
+
+export function toPosDraftLines(lines: readonly DraftLine[]): PosDraftLine[] {
+  return lines.map((line) => ({
+    productId: line.productId,
+    quantity: line.quantity,
+    optionValueIds: [...(line.optionValueIds ?? [])],
+    productName: line.productName,
+    selectedLabels: [...line.selectedLabels],
+    unitEstimateCents: line.unitEstimateCents,
+  }));
 }
 
 export function sumDraftLines(lines: readonly DraftLine[]): string {

@@ -147,7 +147,7 @@ async function setupApi(context: BrowserContext, options: SetupOptions) {
 }
 
 test.describe('POS and cash sessions (TASK-14)', () => {
-  test('creates a pending order with customer association, opens and closes own cash, and stays keyboard/touch usable', async ({ page, context }) => {
+  test('creates a pending order with customer association and stays keyboard/touch usable', async ({ page, context }) => {
     const { requests } = await setupApi(context, { actor: CAJERO });
 
     await page.goto('/terminal/pos');
@@ -183,16 +183,9 @@ test.describe('POS and cash sessions (TASK-14)', () => {
     });
     expect(orderRequest?.key).toMatch(/^[0-9a-f-]{36}$/i);
 
-    await page.getByRole('navigation', { name: 'Navegación de terminal' }).getByRole('link', { name: 'Caja' }).click();
-    await expect(page.getByRole('heading', { name: 'Caja cerrada' })).toBeVisible();
-    await page.getByLabel('Fondo inicial (MXN)').fill('500');
-    await page.getByRole('button', { name: 'Abrir caja' }).click();
-    await expect(page.getByRole('heading', { name: 'Caja abierta' })).toBeVisible();
-    await expect(page.getByText('Caja abierta con fondo $500.00.')).toBeVisible();
-    await page.getByLabel('Efectivo contado (MXN)').fill('490');
-    await page.getByRole('button', { name: 'Cerrar caja' }).click();
-    await expect(page.getByRole('heading', { name: 'Última sesión cerrada' })).toBeVisible();
-    await expect(page.getByText(/Diferencia calculada por el servidor: -\$10\.00/)).toBeVisible();
+    await page.goto('/terminal/pos');
+    await expect(page.getByRole('button', { name: 'Abrir caja' })).toHaveCount(0);
+    await expect(page.getByText('No hay caja abierta.')).toBeVisible();
 
     await page.setViewportSize({ width: 320, height: 700 });
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
@@ -201,35 +194,26 @@ test.describe('POS and cash sessions (TASK-14)', () => {
   test('requires an exceptional reason for an administrator closing another cashier session', async ({ page, context }) => {
     await setupApi(context, { actor: ADMIN, cashSession: openSession });
 
-    await page.goto('/terminal/caja');
+    await page.goto('/terminal/pos');
     await expect(page.getByRole('heading', { name: 'Caja abierta' })).toBeVisible();
-    await page.getByLabel('Efectivo contado (MXN)').fill('500');
     await page.getByRole('button', { name: 'Cerrar caja' }).click();
+    await page.getByLabel('Efectivo contado (MXN)').fill('500');
+    await page.getByRole('button', { name: 'Confirmar cierre' }).click();
     await expect(page.getByText('Indica el motivo para cerrar una caja ajena.')).toBeVisible();
 
     await page.getByLabel('Motivo de cierre excepcional').fill('Responsable ausente');
-    await page.getByRole('button', { name: 'Cerrar caja' }).click();
+    await page.getByRole('button', { name: 'Confirmar cierre' }).click();
     await expect(page.getByRole('heading', { name: 'Última sesión cerrada' })).toBeVisible();
     await expect(page.getByText('Responsable ausente')).toBeVisible();
   });
 
-  test('blocks another cashier from closing and reports 409 without claiming success', async ({ page, context }) => {
-    await setupApi(context, { actor: OTRO_CAJERO, cashSession: openSession, associateFails409: true });
-
-    await page.goto('/terminal/caja');
-    await expect(page.getByRole('heading', { name: 'Caja abierta' })).toBeVisible();
-    await expect(page.getByRole('status')).toContainText('Sólo el responsable de la caja puede cerrarla');
-    await expect(page.getByRole('button', { name: 'Cerrar caja' })).toHaveCount(0);
+  test('blocks another cashier from closing or taking orders on a foreign cash session', async ({ page, context }) => {
+    await setupApi(context, { actor: OTRO_CAJERO, cashSession: openSession });
 
     await page.goto('/terminal/pos');
-    await page.getByRole('button', { name: /Personalizar.*Latte.*\$65\.00/ }).click();
-    await page.getByRole('button', { name: 'Confirmar personalización' }).click();
-    await page.getByRole('button', { name: 'Buscar cliente' }).click();
-    await page.getByLabel('Teléfono o número de cliente').fill('C10');
-    await page.getByRole('button', { name: 'Buscar', exact: true }).click();
-    await page.getByRole('button', { name: 'Aceptar' }).click();
-    await page.getByLabel('ID de orden pendiente').fill('7');
-    await page.getByRole('button', { name: 'Asociar cliente' }).click();
-    await expect(page.getByText(/ya no permite asociar clientes/)).toBeVisible();
+    await expect(page.getByText('Sólo el responsable de la caja puede cerrarla')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Cerrar caja' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Personalizar.*Latte.*\$65\.00/ })).toBeDisabled();
+    await expect(page.getByText(/La toma de órdenes está bloqueada/)).toBeVisible();
   });
 });

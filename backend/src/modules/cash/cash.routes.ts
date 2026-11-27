@@ -13,7 +13,9 @@ export function cashRoutes(auth: AuthService, service: CashService) {
   const router = Router(),
     c = cashController(service),
     writeAccess = [privateCashResponse, authenticate(auth), authorize('CAJERO')],
-    readAccess = [privateCashResponse, authenticate(auth), authorize('CAJERO', 'GERENTE')];
+    readAccess = [privateCashResponse, authenticate(auth), authorize('CAJERO', 'GERENTE')],
+    adminAccess = [privateCashResponse, authenticate(auth), authorize('ADMINISTRADOR')];
+  router.get('/admin/cash-sessions', ...adminAccess, c.adminList);
   router.post('/cash-sessions', ...writeAccess, csrf(auth), c.open);
   router.get('/cash-sessions/current', ...readAccess, c.current);
   router.get('/cash-sessions/:id', ...readAccess, c.get);

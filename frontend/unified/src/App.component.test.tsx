@@ -39,7 +39,7 @@ describe('application routes', () => {
     ['/terminal/pos', 'Punto de venta'],
     ['/terminal/cocina', 'Cola de cocina'],
     ['/terminal/disponibilidad', 'Disponibilidad de productos'],
-    ['/terminal/caja', 'Corte y Sesión de Caja'],
+    ['/terminal/caja', 'Punto de venta'],
     ['/terminal/historial', 'Historial y ventas'],
     ['/terminal/administracion/catalogo', 'Administración'],
     ['/terminal/administracion/configuracion', 'Administración'],

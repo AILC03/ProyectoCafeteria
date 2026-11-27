@@ -299,6 +299,7 @@ describe.skipIf(!target)('CASH-01/02: HTTP y PostgreSQL aislado', () => {
       }),
     ).toBe(1);
     expect((await qrCreation(randomUUID(), who('client'))).status).toBe(201);
+    await open();
     const cashier = await post('/api/v1/cashier/orders', who('cashier'), {
       paymentMethod: 'CASH',
       includeCashQr: true,
@@ -733,6 +734,49 @@ describe.skipIf(!target)('CASH-01/02: HTTP y PostgreSQL aislado', () => {
         },
       }),
     ).toBe(1);
+  });
+  it('historial administrativo lista faltantes del filtro y niega a roles sin acceso', async () => {
+    const session = await open(),
+      order = await newOrder();
+    expect((await charge(session.id, order)).status).toBe(201);
+    const expected = (50000n + BigInt(order.totalCents)).toString(),
+      counted = (BigInt(expected) - 1000n).toString();
+    const closed = await post(`/api/v1/cash-sessions/${session.id}/close`, who('cashier'), {
+      countedCashCents: counted,
+    });
+    expect(closed.status).toBe(200);
+    expect(closed.body.data.differenceCents).toBe('-1000');
+    const from = new Date(time - 60000).toISOString(),
+      to = new Date(time + 60000).toISOString(),
+      employeeId = who('cashier').principal.userId.toString(),
+      path = `/api/v1/admin/cash-sessions?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&employeeId=${employeeId}&limit=100`;
+    const listed = await get(path, who('admin'));
+    expect(listed.status).toBe(200);
+    conform('/api/v1/admin/cash-sessions', 'get', 200, listed.body);
+    const row = listed.body.data.find((item: { id: string }) => item.id === session.id);
+    expect(row).toMatchObject({
+      employeeName: 'cashier',
+      computedExpectedCashCents: expected,
+      countedCashCents: counted,
+      differenceCents: '-1000',
+    });
+    const shortage = listed.body.data
+      .map((item: { differenceCents: string | null }) => BigInt(item.differenceCents ?? '0'))
+      .filter((value: bigint) => value < 0n)
+      .reduce((total: bigint, value: bigint) => total + value, 0n)
+      .toString();
+    expect(listed.body.summary.shortageCents).toBe(shortage);
+    const filtered = await get(`${path}&difference=SHORTAGE`, who('admin'));
+    expect(filtered.status).toBe(200);
+    expect(
+      filtered.body.data.every(
+        (item: { differenceCents: string }) => BigInt(item.differenceCents) < 0n,
+      ),
+    ).toBe(true);
+    expect((await get(path, who('cashier'))).status).toBe(403);
+    expect((await get(path, who('prep'))).status).toBe(403);
+    expect((await get(`${path}&status=OPEN&difference=SHORTAGE`, who('admin'))).status).toBe(400);
+    expect((await get(`${path}&unknown=1`, who('admin'))).status).toBe(400);
   });
   it('cobro exitoso crea referencias separadas, resumen neto y LISTO; no reasocia', async () => {
     const session = await open(),

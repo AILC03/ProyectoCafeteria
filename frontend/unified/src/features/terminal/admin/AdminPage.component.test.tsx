@@ -100,6 +100,42 @@ describe('administrative workspace (TASK-19)', () => {
     expect(bodies).toEqual([{ name: 'Comida', isActive: true }]);
   });
 
+  test('la sección Caja permanece en Administración y no abre la caja operativa', async () => {
+    const requested: string[] = [];
+    server.use(
+      http.get('/api/v1/admin/cash-sessions', () => {
+        requested.push('admin-cash');
+        return HttpResponse.json({
+          data: [],
+          summary: {
+            sessionCount: '0',
+            closedCount: '0',
+            openCount: '0',
+            shortageCents: '0',
+            surplusCents: '0',
+            differenceCount: '0',
+          },
+          page: { limit: 20, nextCursor: null },
+        });
+      }),
+      http.get('/api/v1/cash-sessions/current', () => {
+        requested.push('operational-cash');
+        return HttpResponse.json({ data: null });
+      }),
+    );
+    setup();
+    const tabs = await screen.findByRole('navigation', { name: 'Secciones administrativas' });
+    fireEvent.click(within(tabs).getByRole('link', { name: 'Caja' }));
+    expect(await screen.findByRole('heading', { name: 'Historial de caja' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Administración' })).toBeInTheDocument();
+    expect(requested).toContain('admin-cash');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Caja del turno' }));
+    expect(await screen.findByRole('heading', { name: 'Caja del turno' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Caja cerrada' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Abrir caja' })).toBeInTheDocument();
+  });
+
   test('denies CAJERO before any admin API or summary request', async () => {
     const requests: string[] = [];
     server.use(

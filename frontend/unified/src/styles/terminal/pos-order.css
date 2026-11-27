@@ -20,7 +20,7 @@
 
 .terminal-layout .terminal-pos .pos-top-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1rem;
   align-items: stretch;
 }
@@ -260,4 +260,65 @@
   .terminal-layout .terminal-pos .pos-qr-order > p,
   .terminal-layout .terminal-pos .pos-qr-order > button { display: none !important; }
   .terminal-layout .terminal-pos .auth-card { border: 0; padding: 0; }
+}
+
+/* Cierre de caja dentro del POS, junto a cliente y QR */
+.terminal-layout .terminal-pos .pos-cash-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  background: #fff;
+  border: 1px solid var(--term-border-light);
+  border-radius: 16px;
+  box-shadow: var(--term-shadow-sm);
+}
+
+.terminal-layout .terminal-pos .pos-cash-copy h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.terminal-layout .terminal-pos .pos-cash-copy p { margin: 0.3rem 0 0; }
+
+.terminal-layout .terminal-pos .pos-cash-card .auth-card {
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+}
+
+.terminal-layout .terminal-pos .pos-cash-card .cash-notice { margin: 0; }
+
+.terminal-layout .terminal-pos .pos-close-cash-button {
+  min-height: 44px;
+  width: 100%;
+  border: 1px solid #dc2626;
+  border-radius: 12px;
+  background: #dc2626;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.terminal-layout .terminal-pos .pos-close-cash-button:hover:not(:disabled) {
+  background: #b91c1c;
+  border-color: #b91c1c;
+}
+
+.terminal-layout .terminal-pos .pos-close-cash-button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.terminal-layout .terminal-pos .pos-cash-card .cash-close-warning {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #991b1b;
+  font-size: 0.85rem;
+  font-weight: 600;
 }

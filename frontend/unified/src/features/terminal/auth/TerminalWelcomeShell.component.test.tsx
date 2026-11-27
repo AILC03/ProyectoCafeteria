@@ -111,14 +111,14 @@ describe('Terminal welcome and shell (HYB-05)', () => {
     const shortcutsNav = screen.getByRole('navigation', { name: 'Accesos de terminal' });
     expect(within(shortcutsNav).getByRole('link', { name: 'Punto de venta' })).toHaveAttribute('href', '/terminal/pos');
     expect(within(shortcutsNav).getByRole('link', { name: 'Cocina' })).toHaveAttribute('href', '/terminal/cocina');
-    expect(within(shortcutsNav).getByRole('link', { name: 'Caja' })).toHaveAttribute('href', '/terminal/caja');
+    expect(within(shortcutsNav).queryByRole('link', { name: 'Caja' })).not.toBeInTheDocument();
     expect(within(shortcutsNav).queryByRole('link', { name: 'Administración' })).not.toBeInTheDocument();
 
     const shellNav = screen.getByRole('navigation', { name: 'Navegación de terminal' });
     expect(within(shellNav).getByRole('link', { name: 'Inicio' })).toHaveAttribute('href', '/terminal');
     expect(within(shellNav).getByRole('link', { name: 'POS' })).toHaveAttribute('href', '/terminal/pos');
     expect(within(shellNav).getByRole('link', { name: 'Cocina' })).toHaveAttribute('href', '/terminal/cocina');
-    expect(within(shellNav).getByRole('link', { name: 'Caja' })).toHaveAttribute('href', '/terminal/caja');
+    expect(within(shellNav).queryByRole('link', { name: 'Caja' })).not.toBeInTheDocument();
     expect(within(shellNav).getByRole('link', { name: 'Disponibilidad' })).toHaveAttribute('href', '/terminal/disponibilidad');
     expect(within(shellNav).getByRole('link', { name: 'Historial' })).toHaveAttribute('href', '/terminal/historial');
     expect(within(shellNav).queryByRole('link', { name: 'Administración' })).not.toBeInTheDocument();
@@ -141,7 +141,7 @@ describe('Terminal welcome and shell (HYB-05)', () => {
     expect(within(shellNav).getByRole('link', { name: 'Inicio' })).toBeInTheDocument();
     expect(within(shellNav).getByRole('link', { name: 'POS' })).toBeInTheDocument();
     expect(within(shellNav).getByRole('link', { name: 'Cocina' })).toBeInTheDocument();
-    expect(within(shellNav).getByRole('link', { name: 'Caja' })).toBeInTheDocument();
+    expect(within(shellNav).queryByRole('link', { name: 'Caja' })).not.toBeInTheDocument();
     expect(within(shellNav).queryByRole('link', { name: 'Disponibilidad' })).not.toBeInTheDocument();
     expect(within(shellNav).queryByRole('link', { name: 'Historial' })).not.toBeInTheDocument();
     expect(within(shellNav).queryByRole('link', { name: 'Administración' })).not.toBeInTheDocument();
@@ -156,7 +156,7 @@ describe('Terminal welcome and shell (HYB-05)', () => {
     const shortcutsNav = screen.getByRole('navigation', { name: 'Accesos de terminal' });
     expect(within(shortcutsNav).getByRole('link', { name: 'Punto de venta' })).toHaveAttribute('href', '/terminal/pos');
     expect(within(shortcutsNav).getByRole('link', { name: 'Cocina' })).toHaveAttribute('href', '/terminal/cocina');
-    expect(within(shortcutsNav).getByRole('link', { name: 'Caja' })).toHaveAttribute('href', '/terminal/caja');
+    expect(within(shortcutsNav).queryByRole('link', { name: 'Caja' })).not.toBeInTheDocument();
     expect(within(shortcutsNav).getByRole('link', { name: 'Administración' })).toHaveAttribute('href', '/terminal/administracion');
 
     const shellNav = screen.getByRole('navigation', { name: 'Navegación de terminal' });

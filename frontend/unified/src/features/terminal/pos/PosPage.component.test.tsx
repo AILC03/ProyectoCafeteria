@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { HttpResponse, http } from 'msw';
 import { RouterProvider } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
@@ -79,6 +79,14 @@ function renderPos() {
   );
 }
 
+/** La caja se confirma por API: espera a que el catálogo quede habilitado. */
+async function addLatteToOrder(): Promise<void> {
+  const product = await screen.findByRole('button', { name: /Personalizar.*Latte/ });
+  await waitFor(() => expect(product).toBeEnabled());
+  fireEvent.click(product);
+  fireEvent.click(await screen.findByRole('button', { name: 'Confirmar personalización' }));
+}
+
 beforeEach(() => {
   server.use(
     http.get('/api/v1/auth/me', () => HttpResponse.json({ data: cajero })),
@@ -87,7 +95,7 @@ beforeEach(() => {
     http.get('/api/v1/products', () => HttpResponse.json({ data: [product], page: { limit: 100, nextCursor: null } })),
     http.get('/api/v1/products/10', () => HttpResponse.json({ data: product })),
     http.get('/api/v1/products/10/options', () => HttpResponse.json({ data: options })),
-    http.get('/api/v1/cash-sessions/current', () => HttpResponse.json({ data: null })),
+    http.get('/api/v1/cash-sessions/current', () => HttpResponse.json({ data: openCashSession })),
   );
 });
 
@@ -99,11 +107,50 @@ afterEach(() => {
 });
 
 describe('Terminal POS (TASK-14)', () => {
+  test('blocks order taking until the cashier opens their own caja', async () => {
+    server.use(http.get('/api/v1/cash-sessions/current', () => HttpResponse.json({ data: null })));
+    renderPos();
+
+    expect(await screen.findByText('No hay caja abierta.')).toBeInTheDocument();
+    expect(
+      await screen.findByText(/La toma de órdenes está bloqueada hasta que haya una caja abierta/),
+    ).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /Personalizar.*Latte/ })).toBeDisabled();
+  });
+
+  test('closes the caja from POS and blocks ordering afterwards', async () => {
+    server.use(
+      http.post('/api/v1/cash-sessions/1/close', () =>
+        HttpResponse.json({
+          data: {
+            ...openCashSession,
+            closedAt: '2099-01-01T13:00:00.000Z',
+            closedByEmployeeId: '2',
+            expectedCashCents: '0',
+            countedCashCents: '0',
+            differenceCents: '0',
+          },
+        }),
+      ),
+    );
+    renderPos();
+    const closeButton = await screen.findByRole('button', { name: 'Cerrar caja' });
+    await waitFor(() => expect(closeButton).toBeEnabled());
+
+    fireEvent.click(closeButton);
+    fireEvent.change(await screen.findByLabelText('Efectivo contado (MXN)'), { target: { value: '0' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar cierre' }));
+
+    expect(await screen.findByText('No hay una caja abierta.')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /Personalizar.*Latte/ })).toBeDisabled();
+  });
+
   test('keeps the product catalog usable when only category loading fails', async () => {
     server.use(http.get('/api/v1/categories', () => HttpResponse.json({ code: 'TEMPORARY' }, { status: 503 })));
     renderPos();
-    expect(await screen.findByRole('button', { name: /Personalizar.*Latte.*\$65\.00/ })).toBeEnabled();
-    expect(screen.getByRole('status')).toHaveTextContent('No se pudieron cargar las categorías');
+    const product = await screen.findByRole('button', { name: /Personalizar.*Latte.*\$65\.00/ });
+    await waitFor(() => expect(product).toBeEnabled());
+    expect(screen.getByText(/No se pudieron cargar las categorías/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Reintentar categorías' })).toBeEnabled();
   });
 
@@ -122,7 +169,8 @@ describe('Terminal POS (TASK-14)', () => {
     );
     renderPos();
     const catalog = await screen.findByRole('region', { name: 'Productos disponibles' });
-    expect(await within(catalog).findByRole('button', { name: new RegExp(`Personalizar.*${longName}.*\\$65\\.00`) })).toBeEnabled();
+    const longProduct = await within(catalog).findByRole('button', { name: new RegExp(`Personalizar.*${longName}.*\\$65\\.00`) });
+    await waitFor(() => expect(longProduct).toBeEnabled());
     expect(within(catalog).getByRole('button', { name: /Personalizar.*Agotado.*\$65\.00/ })).toBeDisabled();
     expect(within(catalog).getAllByText('Sin imagen')).toHaveLength(4);
     fireEvent.click(within(catalog).getByRole('button', { name: 'Panadería' }));
@@ -140,7 +188,14 @@ describe('Terminal POS (TASK-14)', () => {
     let orderKey: string | undefined;
     let searchBody: unknown;
     let patchBody: unknown;
+    let cashChecks = 0;
     server.use(
+      http.get('/api/v1/cash-sessions/current', () => {
+        cashChecks += 1;
+        return HttpResponse.json({
+          data: cashChecks === 1 ? openCashSession : { ...openCashSession, employeeId: '99' },
+        });
+      }),
       http.post('/api/v1/cashier/customers/search', async ({ request }) => {
         searchBody = await request.json();
         return HttpResponse.json({ data: { id: '10', name: 'Cliente Uno', customerNumber: 'C10' } });
@@ -160,8 +215,7 @@ describe('Terminal POS (TASK-14)', () => {
     renderPos();
     await screen.findByRole('heading', { name: 'Punto de venta' });
     expect(await screen.findByRole('button', { name: /Personalizar.*Latte.*\$65\.00/ })).toBeInTheDocument();
-    fireEvent.click(await screen.findByRole('button', { name: /Personalizar.*Latte/ }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Confirmar personalización' }));
+    await addLatteToOrder();
     expect(await screen.findByText('1 × Latte (Mediano)')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Buscar cliente' }));
@@ -213,8 +267,7 @@ describe('Terminal POS (TASK-14)', () => {
     );
 
     renderPos();
-    fireEvent.click(await screen.findByRole('button', { name: /Personalizar.*Latte/ }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Confirmar personalización' }));
+    await addLatteToOrder();
     fireEvent.click(screen.getByRole('button', { name: 'Crear orden pendiente' }));
     expect(await screen.findByRole('heading', { name: 'Cobro en efectivo' })).toBeInTheDocument();
 
@@ -236,8 +289,7 @@ describe('Terminal POS (TASK-14)', () => {
     server.use(http.post('/api/v1/cashier/orders', () => HttpResponse.json({ data: { id: '7' } }, { status: 201 })));
     renderPos();
     expect(await screen.findByRole('button', { name: /Personalizar.*Latte.*\$65\.00/ })).toBeInTheDocument();
-    fireEvent.click(await screen.findByRole('button', { name: /Personalizar.*Latte/ }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Confirmar personalización' }));
+    await addLatteToOrder();
     fireEvent.click(await screen.findByRole('button', { name: 'Crear orden pendiente' }));
     fireEvent.change(await screen.findByLabelText('Efectivo recibido (MXN)'), { target: { value: '70' } });
     fireEvent.click(screen.getByRole('button', { name: 'Aceptar y cobrar' }));
@@ -282,8 +334,7 @@ describe('Terminal POS (TASK-14)', () => {
 
   test('updates quantities, removes lines and shows the IVA-inclusive breakdown', async () => {
     renderPos();
-    fireEvent.click(await screen.findByRole('button', { name: /Personalizar.*Latte/ }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Confirmar personalización' }));
+    await addLatteToOrder();
     expect(await screen.findByText('1 × Latte (Mediano)')).toBeInTheDocument();
     expect(screen.getByText('Subtotal')).toBeInTheDocument();
     expect(screen.getByText('IVA incluido (16%)')).toBeInTheDocument();
@@ -301,6 +352,27 @@ describe('Terminal POS (TASK-14)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Eliminar Latte' }));
     expect(await screen.findByText('Agrega productos para preparar la orden.')).toBeInTheDocument();
+  });
+
+  test('merges identical product and options into a single line', async () => {
+    renderPos();
+    await addLatteToOrder();
+    expect(await screen.findByText('1 × Latte (Mediano)')).toBeInTheDocument();
+
+    await addLatteToOrder();
+
+    expect(await screen.findByText('2 × Latte (Mediano)')).toBeInTheDocument();
+    expect(screen.queryByText('1 × Latte (Mediano)')).not.toBeInTheDocument();
+  });
+
+  test('keeps the POS draft when the screen unmounts and remounts', async () => {
+    const first = renderPos();
+    await addLatteToOrder();
+    expect(await screen.findByText('1 × Latte (Mediano)')).toBeInTheDocument();
+    first.unmount();
+
+    renderPos();
+    expect(await screen.findByText('1 × Latte (Mediano)')).toBeInTheDocument();
   });
 
   test('offers scan and token QR actions and loads an order from a token', async () => {

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
 import type { IdempotentOperation } from '../../../shared/api/idempotency';
 import { useSession } from '../../../shared/auth/SessionProvider';
 import { formatMxnCents } from '../../../shared/utils/money';
@@ -23,8 +22,19 @@ type PendingAction = {
   sessionId?: string;
 };
 
-/** Cash session screen: no charges, no QR and no local cash authority. */
-export function CashSessionsPage() {
+/**
+ * Caja del turno compartida por POS y la pantalla de Caja. El servidor sigue
+ * siendo la única autoridad: aquí no se calculan importes ni se simula estado.
+ */
+export function CashSessionPanel({
+  onSessionChange,
+  mode = 'full',
+}: {
+  onSessionChange?: (session: CashSession | null) => void;
+  /** `close-only` se usa en POS: no abre caja ni muestra el resumen completo. */
+  mode?: 'full' | 'close-only';
+}) {
+  const closeOnly = mode === 'close-only';
   const actorState = useSession();
   const [session, setSession] = useState<CashSession | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,8 +46,11 @@ export function CashSessionsPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [blocked, setBlocked] = useState(false);
+  const [closeFormOpen, setCloseFormOpen] = useState(false);
   const [pending, setPending] = useState<PendingAction | null>(null);
   const feedbackRef = useRef<HTMLParagraphElement>(null);
+  const notify = useRef(onSessionChange);
+  notify.current = onSessionChange;
 
   function showActionError(text: string): void {
     setActionError(text);
@@ -66,10 +79,9 @@ export function CashSessionsPage() {
     return () => controller.abort();
   }, [load]);
 
-  if (actorState.status !== 'authenticated') {
-    return <section className="terminal-cash" aria-labelledby="cash-title"><h1 id="cash-title">Caja</h1><p role="status">Comprobando sesión…</p></section>;
-  }
-  const actor = actorState.actor;
+  useEffect(() => {
+    notify.current?.(session);
+  }, [session]);
 
   function handleActionFailure(error: unknown): void {
     if (error instanceof UnverifiableCashSessionResponseError) {
@@ -130,6 +142,7 @@ export function CashSessionsPage() {
       setPending(null);
       setCountedAmount('');
       setCloseReason('');
+      setCloseFormOpen(false);
       setMessage(`Caja cerrada. ${closed.differenceCents === null
         ? 'El servidor no informó una diferencia verificable.'
         : `Diferencia calculada por el servidor: ${formatMxnCents(closed.differenceCents)}.`}`);
@@ -144,8 +157,9 @@ export function CashSessionsPage() {
   }
 
   async function handleClose(): Promise<void> {
+    if (actorState.status !== 'authenticated') return;
     if (busy || blocked || session === null || session.closedAt !== null) return;
-    if (!mayCloseCashSession(session, actor)) return;
+    if (!mayCloseCashSession(session, actorState.actor)) return;
     let cents: string;
     try {
       cents = parseMxnAmountToCents(countedAmount);
@@ -153,8 +167,8 @@ export function CashSessionsPage() {
       showActionError(formatCashError(error));
       return;
     }
-    const reason = requiresExceptionalCloseReason(session, actor) ? closeReason.trim() : '';
-    if (requiresExceptionalCloseReason(session, actor) && reason.length < 1) {
+    const reason = requiresExceptionalCloseReason(session, actorState.actor) ? closeReason.trim() : '';
+    if (requiresExceptionalCloseReason(session, actorState.actor) && reason.length < 1) {
       showActionError('Indica el motivo para cerrar una caja ajena.');
       return;
     }
@@ -175,21 +189,18 @@ export function CashSessionsPage() {
   }
 
   const isOpen = session !== null && session.closedAt === null;
-  const canRetry = pending !== null && !busy && !blocked
+  const actor = actorState.status === 'authenticated' ? actorState.actor : null;
+  const canRetry = pending !== null && !busy && !blocked && actor !== null
     && (pending.kind === 'open'
       ? session === null
       : session !== null && session.id === pending.sessionId && mayCloseCashSession(session, actor));
 
-  return (
-    <section className="terminal-cash" aria-labelledby="cash-title">
-      <header className="cash-page-header">
-        <div>
-          <h1 id="cash-title">Corte y Sesión de Caja</h1>
-          <p className="field-hint">Sesión de efectivo confirmada por el servidor. El cobro de pedidos se realiza desde el cobro con QR.</p>
-          <p><Link className="status-action" to="/terminal/cobro">Cobrar pedido con QR</Link></p>
-        </div>
-      </header>
+  if (actor === null) {
+    return <p className="cash-notice" role="status">Comprobando sesión…</p>;
+  }
 
+  return (
+    <>
       {loading && <p className="cash-notice" role="status">Consultando estado de caja…</p>}
       {loadError !== null && (
         <div className="form-alert cash-notice" role="alert">
@@ -197,7 +208,7 @@ export function CashSessionsPage() {
           <button type="button" className="secondary-button" onClick={() => { void load(); }}>Reintentar consulta</button>
         </div>
       )}
-      {!loading && loadError === null && session === null && !blocked && (
+      {!loading && loadError === null && session === null && !blocked && !closeOnly && (
         <section className="auth-card" aria-labelledby="cash-open-title">
           <p className="cash-eyebrow">Estado de caja del turno · API</p>
           <h2 id="cash-open-title">Caja cerrada</h2>
@@ -220,6 +231,10 @@ export function CashSessionsPage() {
         </section>
       )}
 
+      {!loading && loadError === null && session === null && !blocked && closeOnly && (
+        <p className="cash-notice" role="status">No hay caja abierta.</p>
+      )}
+
       {!loading && loadError === null && session === null && blocked && (
         <section className="auth-card" aria-labelledby="cash-uncertain-title">
           <p className="cash-eyebrow">Estado de caja del turno · sin confirmar</p>
@@ -232,29 +247,45 @@ export function CashSessionsPage() {
       )}
 
       {session !== null && (
-        <section className="auth-card" aria-labelledby="cash-summary-title">
-          <p className="cash-eyebrow">Estado de caja del turno · API</p>
-          <h2 id="cash-summary-title">{isOpen ? 'Caja abierta' : 'Última sesión cerrada'}</h2>
-          <dl className="cash-summary">
-            <div><dt>Sesión</dt><dd>{session.id}</dd></div>
-            <div><dt>Responsable</dt><dd>{session.employeeId}</dd></div>
-            <div><dt>Fondo</dt><dd>{formatMxnCents(session.openingAmountCents)}</dd></div>
-            <div><dt>Ventas en efectivo</dt><dd>{formatMxnCents(session.cashSalesCents)}</dd></div>
-            <div className="cash-metric-primary"><dt>Esperado calculado</dt><dd>{formatMxnCents(session.computedExpectedCashCents)}</dd></div>
-            <div><dt>Contado</dt><dd>{session.countedCashCents === null ? '—' : formatMxnCents(session.countedCashCents)}</dd></div>
-            <div><dt>Diferencia</dt><dd>{session.differenceCents === null ? '—' : formatMxnCents(session.differenceCents)}</dd></div>
-            <div><dt>Pagos exitosos</dt><dd>{session.successfulPayments}</dd></div>
-            {session.closedAt !== null && <div><dt>Cerrada</dt><dd>{new Date(session.closedAt).toLocaleString('es-MX')}</dd></div>}
-            {session.exceptionalCloseReason !== null && <div><dt>Motivo excepcional</dt><dd>{session.exceptionalCloseReason}</dd></div>}
-          </dl>
+        <section className="auth-card" aria-labelledby={closeOnly ? undefined : 'cash-summary-title'}>
+          {closeOnly ? (
+            !isOpen && <p className="cash-notice" role="status">No hay una caja abierta.</p>
+          ) : (
+            <>
+              <p className="cash-eyebrow">Estado de caja del turno · API</p>
+              <h2 id="cash-summary-title">{isOpen ? 'Caja abierta' : 'Última sesión cerrada'}</h2>
+              <dl className="cash-summary">
+                <div><dt>Sesión</dt><dd>{session.id}</dd></div>
+                <div><dt>Responsable</dt><dd>{session.employeeId}</dd></div>
+                <div><dt>Fondo</dt><dd>{formatMxnCents(session.openingAmountCents)}</dd></div>
+                <div><dt>Ventas en efectivo</dt><dd>{formatMxnCents(session.cashSalesCents)}</dd></div>
+                <div className="cash-metric-primary"><dt>Esperado calculado</dt><dd>{formatMxnCents(session.computedExpectedCashCents)}</dd></div>
+                <div><dt>Contado</dt><dd>{session.countedCashCents === null ? '—' : formatMxnCents(session.countedCashCents)}</dd></div>
+                <div><dt>Diferencia</dt><dd>{session.differenceCents === null ? '—' : formatMxnCents(session.differenceCents)}</dd></div>
+                <div><dt>Pagos exitosos</dt><dd>{session.successfulPayments}</dd></div>
+                {session.closedAt !== null && <div><dt>Cerrada</dt><dd>{new Date(session.closedAt).toLocaleString('es-MX')}</dd></div>}
+                {session.exceptionalCloseReason !== null && <div><dt>Motivo excepcional</dt><dd>{session.exceptionalCloseReason}</dd></div>}
+              </dl>
+            </>
+          )}
 
           {isOpen && !mayCloseCashSession(session, actor) && (
             <p className="cash-notice" role="status">Sólo el responsable de la caja puede cerrarla. Tu perfil no puede cerrar una caja ajena.</p>
           )}
 
-          {isOpen && mayCloseCashSession(session, actor) && (
+          {isOpen && mayCloseCashSession(session, actor) && !closeFormOpen && (
+            <button
+              type="button"
+              className={closeOnly ? 'pos-close-cash-button' : 'secondary-button'}
+              onClick={() => setCloseFormOpen(true)}
+            >
+              Cerrar caja
+            </button>
+          )}
+
+          {isOpen && mayCloseCashSession(session, actor) && closeFormOpen && (
             <div className="cash-close">
-              <h3>Cerrar caja</h3>
+              <h3>Confirmar cierre de caja</h3>
               <div className="form-field">
                 <label htmlFor="cash-counted-amount">Efectivo contado (MXN)</label>
                 <input
@@ -280,9 +311,27 @@ export function CashSessionsPage() {
                   />
                 </div>
               )}
-              <button type="button" disabled={busy || blocked} onClick={() => { void handleClose(); }}>
-                {busy && pending?.kind === 'close' ? 'Cerrando caja…' : 'Cerrar caja'}
-              </button>
+              <p className="cash-close-warning">
+                ¿Confirmas el cierre de la caja? Se bloqueará la toma de órdenes hasta abrir otra.
+              </p>
+              <div className="cash-close-actions">
+                <button
+                  type="button"
+                  className={closeOnly ? 'pos-close-cash-button' : undefined}
+                  disabled={busy || blocked}
+                  onClick={() => { void handleClose(); }}
+                >
+                  {busy && pending?.kind === 'close' ? 'Cerrando caja…' : 'Confirmar cierre'}
+                </button>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  disabled={busy || blocked}
+                  onClick={() => { setCloseFormOpen(false); setCountedAmount(''); setCloseReason(''); }}
+                >
+                  Cancelar
+                </button>
+              </div>
             </div>
           )}
         </section>
@@ -290,14 +339,14 @@ export function CashSessionsPage() {
 
       {canRetry && (
         <button type="button" className="secondary-button cash-retry" onClick={() => {
-          if (pending.kind === 'open') void openSession(pending.operation);
-          else if (session !== null) void closeSession(session.id, pending.operation);
+          if (pending!.kind === 'open') void openSession(pending!.operation);
+          else if (session !== null) void closeSession(session.id, pending!.operation);
         }}>
           Reintentar la misma operación de caja
         </button>
       )}
       {actionError !== null && <p ref={feedbackRef} tabIndex={-1} className="cash-notice cash-notice-error" role="alert">{actionError}</p>}
       {message !== null && <p className="cash-notice cash-notice-success" role="status">{message}</p>}
-    </section>
+    </>
   );
 }

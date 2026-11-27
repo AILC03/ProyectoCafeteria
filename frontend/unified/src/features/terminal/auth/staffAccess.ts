@@ -19,9 +19,7 @@ export function staffHomeLinks(role: string): { label: string; to: string }[] {
   if (role === 'PREPARACION') return [{ label: 'Cocina', to: '/terminal/cocina' }];
   const links = [{ label: 'Punto de venta', to: '/terminal/pos' }, { label: 'Cocina', to: '/terminal/cocina' }];
   if (role === 'ADMINISTRADOR') {
-    links.push({ label: 'Caja', to: '/terminal/caja' }, { label: 'Administración', to: '/terminal/administracion' });
-  } else {
-    links.push({ label: 'Caja', to: '/terminal/caja' });
+    links.push({ label: 'Administración', to: '/terminal/administracion' });
   }
   return links;
 }

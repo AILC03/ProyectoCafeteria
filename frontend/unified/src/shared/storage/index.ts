@@ -1,5 +1,6 @@
 export const PREFERENCES_KEY = 'cafeteria:preferences:v1';
 export const CART_DRAFT_KEY = 'cafeteria:cart-draft:v1';
+export const POS_DRAFT_KEY = 'cafeteria:pos-draft:v1';
 
 const LEGACY_PREFERENCE_KEYS = {
   theme: ['coffees_theme', 'taffy_theme'],
@@ -49,6 +50,16 @@ export type Preferences = {
 
 export type CartDraftItem = { productId: string; quantity: number; optionValueIds: string[] };
 export type CartDraft = { version: 1; items: CartDraftItem[] };
+/** POS draft line: catalogue facts and estimates only, never customer data. */
+export type PosDraftLine = {
+  productId: string;
+  quantity: number;
+  optionValueIds: string[];
+  productName: string;
+  selectedLabels: string[];
+  unitEstimateCents: string;
+};
+export type PosDraft = { version: 1; lines: PosDraftLine[] };
 
 export const defaultPreferences: Preferences = {
   theme: 'theme-nordic', audio: true, ticketWidth: '80mm', autoPrint: false,
@@ -136,10 +147,72 @@ export function saveCartDraft(draft: unknown): boolean {
   return store !== null && write(store, CART_DRAFT_KEY, JSON.stringify(cartFrom(draft)));
 }
 
+function shortText(value: unknown, maxLength: number): value is string {
+  return typeof value === 'string' && value.trim().length > 0 && value.length <= maxLength;
+}
+
+function cents(value: unknown): value is string {
+  return typeof value === 'string' && /^(0|[1-9][0-9]{0,18})$/.test(value);
+}
+
+function posDraftFrom(value: unknown): PosDraft {
+  const rawLines =
+    isRecord(value) && value.version === 1 && Array.isArray(value.lines) ? value.lines : [];
+  const lines: PosDraftLine[] = [];
+  for (const raw of rawLines.slice(0, MAX_CART_ITEMS)) {
+    if (
+      !isRecord(raw) ||
+      !validId(raw.productId) ||
+      typeof raw.quantity !== 'number' ||
+      !Number.isInteger(raw.quantity) ||
+      raw.quantity < 1 ||
+      raw.quantity > 99 ||
+      !Array.isArray(raw.optionValueIds) ||
+      raw.optionValueIds.length > MAX_OPTION_VALUES ||
+      !shortText(raw.productName, 120) ||
+      !Array.isArray(raw.selectedLabels) ||
+      raw.selectedLabels.length > MAX_OPTION_VALUES ||
+      !cents(raw.unitEstimateCents)
+    ) {
+      continue;
+    }
+    const optionValueIds = raw.optionValueIds.filter(validId);
+    if (optionValueIds.length !== raw.optionValueIds.length) continue;
+    if (!raw.selectedLabels.every((label) => typeof label === 'string' && label.length <= 120)) {
+      continue;
+    }
+    lines.push({
+      productId: raw.productId,
+      quantity: raw.quantity,
+      optionValueIds: [...new Set(optionValueIds)],
+      productName: raw.productName,
+      selectedLabels: raw.selectedLabels.map((label) => label as string),
+      unitEstimateCents: raw.unitEstimateCents,
+    });
+  }
+  return { version: 1, lines };
+}
+
+export function getPosDraft(): PosDraft {
+  const store = storage();
+  return store === null ? { version: 1, lines: [] } : posDraftFrom(parse(read(store, POS_DRAFT_KEY)));
+}
+
+export function savePosDraft(draft: unknown): boolean {
+  const store = storage();
+  return store !== null && write(store, POS_DRAFT_KEY, JSON.stringify(posDraftFrom(draft)));
+}
+
+export function clearPosDraft(): void {
+  const store = storage();
+  if (store !== null) remove(store, POS_DRAFT_KEY);
+}
+
 /** Private actor-bound state only; workstation preferences deliberately remain. */
 export function clearPrivateState(): void {
   const store = storage();
   if (store !== null) remove(store, CART_DRAFT_KEY);
+  if (store !== null) remove(store, POS_DRAFT_KEY);
 }
 
 function legacyValue(store: Storage, keys: readonly string[]): string | null {

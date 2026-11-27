@@ -19,7 +19,7 @@ import { TerminalLayout } from '../layouts/TerminalLayout';
 import { TerminalAuthPage } from '../features/terminal/auth/TerminalAuthPage';
 import { TerminalWelcomePage } from '../features/terminal/auth/TerminalWelcomePage';
 import { PosPage } from '../features/terminal/pos/PosPage';
-import { CashSessionsPage } from '../features/terminal/cash/CashSessionsPage';
+
 import { CashPaymentPage } from '../features/terminal/payment/CashPaymentPage';
 import { HistoryPage } from '../features/terminal/history/HistoryPage';
 import { KitchenPage } from '../features/terminal/kitchen/KitchenPage';
@@ -137,7 +137,7 @@ export const appRoutes: RouteObject[] = [
       { path: 'acceso', element: <TerminalAuthPage /> },
       { element: <TerminalAccessGuard allowedRoles={['CAJERO', 'ADMINISTRADOR']} />, children: [
         { path: 'pos', element: <PosPage /> },
-         { path: 'caja', element: <CashSessionsPage /> },
+         { path: 'caja', element: <Navigate to="/terminal/pos" replace /> },
          { path: 'cobro', element: <CashPaymentPage /> },
          { path: 'historial', element: <HistoryPage /> },
       ] },

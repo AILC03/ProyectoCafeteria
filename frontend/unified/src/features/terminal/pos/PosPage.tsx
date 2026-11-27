@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { IdempotentOperation } from '../../../shared/api/idempotency';
 import { formatMxnCents } from '../../../shared/utils/money';
 import { useSession } from '../../../shared/auth/SessionProvider';
+import { clearPosDraft, getPosDraft, savePosDraft } from '../../../shared/storage';
 import {
   fetchCatalogCategories,
   fetchCatalogProducts,
@@ -25,8 +26,11 @@ import {
   type PosOrder,
 } from './posApi';
 import {
+  appendDraftLine,
   createDraftLine,
+  hydrateDraftLines,
   sumDraftLines,
+  toPosDraftLines,
   toPosLineInput,
   updateDraftLineQuantity,
   MAX_POS_QUANTITY,
@@ -42,6 +46,7 @@ import { CashPaymentPanel } from '../payment/CashPaymentPanel';
 import { targetFromPosOrder, targetFromScannedOrder } from '../payment/cashPaymentTarget';
 import { getCurrentCashSession, parseMxnAmountToCents, type CashSession } from '../cash/cashApi';
 import { isCashSessionOwner } from '../cash/cashSessionRules';
+import { CashSessionPanel } from '../cash/CashSessionPanel';
 import {
   formatPaymentError,
   getProtectedTicket,
@@ -84,7 +89,9 @@ export function PosPage() {
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const [catalogRevision, setCatalogRevision] = useState(0);
   const [customizing, setCustomizing] = useState<CatalogProduct | null>(null);
-  const [lines, setLines] = useState<DraftLine[]>([]);
+  const [lines, setLines] = useState<DraftLine[]>(() => hydrateDraftLines(getPosDraft().lines));
+  const [cashGate, setCashGate] = useState<CashSession | null | undefined>(undefined);
+  const handleCashSession = useCallback((next: CashSession | null) => { setCashGate(next); }, []);
 
   const [candidate, setCandidate] = useState<FoundCustomer | null>(null);
   const [confirmedName, setConfirmedName] = useState('');
@@ -120,6 +127,18 @@ export function PosPage() {
   const [associationMessage, setAssociationMessage] = useState<string | null>(null);
   const [associating, setAssociating] = useState(false);
 
+  const cashReady = cashGate !== undefined
+    && cashGate !== null
+    && cashGate.closedAt === null
+    && actorState.status === 'authenticated'
+    && isCashSessionOwner(cashGate, actorState.actor);
+
+  useEffect(() => {
+    // A created order is owned by the server: never replay its draft later.
+    if (order !== null || lines.length === 0) clearPosDraft();
+    else savePosDraft({ version: 1, lines: toPosDraftLines(lines) });
+  }, [lines, order]);
+
   useEffect(() => {
     const controller = new AbortController();
     setCatalogLoading(true);
@@ -136,8 +155,8 @@ export function PosPage() {
   }, [catalogRevision]);
 
   function handleCustomizationConfirm(summary: ConfirmedCustomization): void {
-    if (blocked || order !== null || scanned !== null) return;
-    setLines((current) => [...current, createDraftLine(summary)]);
+    if (!cashReady || blocked || order !== null || scanned !== null) return;
+    setLines((current) => appendDraftLine(current, createDraftLine(summary)));
     setCustomizing(null);
   }
 
@@ -195,6 +214,9 @@ export function PosPage() {
 
   async function ensureCashierOrder(): Promise<{ kind: 'created'; order: PosOrder } | { kind: 'failed'; message: string; blocked: boolean }> {
     if (order !== null) return { kind: 'created', order };
+    if (!cashReady) {
+      return { kind: 'failed', message: 'Abre tu caja del turno antes de tomar órdenes.', blocked: false };
+    }
     if (blocked) {
       return { kind: 'failed', message: 'No vuelvas a crear otra orden; confirma con la cafetería si se registró.', blocked: true };
     }
@@ -219,6 +241,10 @@ export function PosPage() {
 
   function openCheckout(): void {
     if (creating || blocked || lines.length === 0 || order !== null || scanned !== null) return;
+    if (!cashReady) {
+      setOrderError('Abre tu caja del turno antes de tomar órdenes.');
+      return;
+    }
     if (candidate !== null && !customerConfirmed) {
       setOrderError('Confirma el nombre del cliente antes de crear la orden.');
       return;
@@ -404,7 +430,7 @@ export function PosPage() {
   );
   const qrTarget = scanned === null ? null : targetFromScannedOrder(scanned);
   const orderTarget = order === null ? null : targetFromPosOrder(order);
-  const draftFrozen = order !== null || blocked || creating || scanned !== null;
+  const draftFrozen = order !== null || blocked || creating || scanned !== null || !cashReady;
   const customerSummary = candidate !== null
     ? `Cliente: ${candidate.name} (${candidate.customerNumber})`
     : guestName.trim().length > 0 ? `Invitado: ${guestName.trim()}` : 'Sin cliente asignado (opcional).';
@@ -466,7 +492,21 @@ export function PosPage() {
           </div>
           {scanError !== null && <p role="alert" className="payment-notice payment-notice-error">{scanError}</p>}
         </section>
+
+        <section className="pos-cash-card" aria-labelledby="pos-cash-close-title">
+          <div className="pos-cash-copy">
+            <h2 id="pos-cash-close-title">Cerrar caja</h2>
+            <p className="field-hint">Finaliza el turno cuando termines de cobrar.</p>
+          </div>
+          <CashSessionPanel mode="close-only" onSessionChange={handleCashSession} />
+        </section>
       </div>
+
+      {cashGate !== undefined && !cashReady && (
+        <p className="form-alert" role="status">
+          La toma de órdenes está bloqueada hasta que haya una caja abierta confirmada por el servidor.
+        </p>
+      )}
 
       <div className="pos-layout">
         <section className="auth-card pos-catalog-panel" aria-labelledby="pos-catalog-title">
@@ -619,7 +659,7 @@ export function PosPage() {
               <h2 id="pos-order-title">Orden pendiente</h2>
               <button
                 type="button"
-                disabled={creating || blocked || lines.length === 0 || order !== null}
+                disabled={creating || blocked || !cashReady || lines.length === 0 || order !== null}
                 onClick={openCheckout}
               >
                 Crear orden pendiente

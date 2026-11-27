@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { ConfirmedCustomization } from '../../clientes/catalog/ProductCustomizationDialog';
 import {
+  appendDraftLine,
   createDraftLine,
   formatDraftLineLabel,
+  hydrateDraftLines,
   sumDraftLines,
+  toPosDraftLines,
   toPosLineInput,
   updateDraftLineQuantity,
 } from './posDraft';
@@ -54,6 +57,40 @@ describe('POS draft lines', () => {
       productId: '10',
       quantity: 2,
       optionValueIds: ['5', '8'],
+    });
+  });
+
+  it('merges identical product and options, ignoring option order', () => {
+    const first = createDraftLine(summary);
+    const same = createDraftLine({ ...summary, quantity: 1, estimatedTotalCents: '7000', optionValueIds: ['8', '5'] });
+    const merged = appendDraftLine([first], same);
+    expect(merged).toHaveLength(1);
+    expect(merged[0]!.quantity).toBe(3);
+    expect(merged[0]!.label).toBe('3 × Latte (Chico, Vainilla)');
+    expect(merged[0]!.estimateCents).toBe('21000');
+    expect(merged[0]!.localId).toBe(first.localId);
+  });
+
+  it('keeps different options as separate lines and caps merged quantity at 99', () => {
+    const first = createDraftLine({ ...summary, quantity: 1, estimatedTotalCents: '7000' });
+    const different = createDraftLine({
+      ...summary, quantity: 1, optionValueIds: ['5'], selectedLabels: ['Chico'], estimatedTotalCents: '7000',
+    });
+    expect(appendDraftLine([first], different)).toHaveLength(2);
+    const many = createDraftLine({ ...summary, quantity: 99, estimatedTotalCents: '693000' });
+    expect(appendDraftLine([first], many)[0]!.quantity).toBe(99);
+  });
+
+  it('hydrates persisted lines with fresh ids and derived estimates', () => {
+    const line = createDraftLine(summary);
+    const stored = toPosDraftLines([line]);
+    const [restored] = hydrateDraftLines(stored);
+    expect(restored!.localId).not.toBe(line.localId);
+    expect(restored!.label).toBe(line.label);
+    expect(restored!.estimateCents).toBe(line.estimateCents);
+    expect(stored[0]).toEqual({
+      productId: '10', quantity: 2, optionValueIds: ['5', '8'],
+      productName: 'Latte', selectedLabels: ['Chico', 'Vainilla'], unitEstimateCents: '7000',
     });
   });
 

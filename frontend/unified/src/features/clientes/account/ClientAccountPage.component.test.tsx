@@ -66,6 +66,34 @@ describe('customer account', () => {
     expect(JSON.parse(localStorage.getItem('cafeteria:cart-draft:v1') ?? '')).toEqual({ version: 1, items: [{ productId: '9', quantity: 1, optionValueIds: [] }] });
   });
 
+  test('repeat order merges identical preview lines into one cart item', async () => {
+    mockAccount();
+    server.use(
+      http.get('/api/v1/categories', () => HttpResponse.json({ data: [], page: { limit: 100, nextCursor: null } })),
+      http.get('/api/v1/products', () => HttpResponse.json({ data: [{ id: '9', categoryId: '1', name: 'Agua', description: null, imageUrl: null, basePriceCents: '2000', isAvailable: true }], page: { limit: 100, nextCursor: null } })),
+      http.get('/api/v1/products/9', () => HttpResponse.json({ data: { id: '9', categoryId: '1', name: 'Agua', description: null, imageUrl: null, basePriceCents: '2000', isAvailable: true } })),
+      http.get('/api/v1/products/9/options', () => HttpResponse.json({ data: [] })),
+      http.post('/api/v1/customers/me/orders/12/repeat-preview', () => HttpResponse.json({
+        data: {
+          ...preview,
+          items: [
+            { productId: '9', productName: 'Agua', quantity: 1, optionValueIds: [], currentUnitPriceCents: '2000', currentLineTotalCents: '2000' },
+            { productId: '9', productName: 'Agua', quantity: 1, optionValueIds: [], currentUnitPriceCents: '2000', currentLineTotalCents: '2000' },
+          ],
+          totalCents: '4000',
+        },
+      })),
+    );
+    mount();
+    fireEvent.click(await screen.findByRole('button', { name: 'Repetir pedido A000012' }));
+    const cart = await screen.findByRole('dialog', { name: 'Tu carrito' });
+    expect(await within(cart).findByText(/2 × Agua/)).toBeInTheDocument();
+    expect(JSON.parse(localStorage.getItem('cafeteria:cart-draft:v1') ?? '')).toEqual({
+      version: 1,
+      items: [{ productId: '9', quantity: 2, optionValueIds: [] }],
+    });
+  });
+
   test('blocking repeat preview reports the reason and does not alter the cart', async () => {
     mockAccount();
     server.use(http.post('/api/v1/customers/me/orders/12/repeat-preview', () => HttpResponse.json({ data: { ...preview, canCreateOrder: false, totalCents: null, warnings: [{ line: 1, code: 'PRODUCT_UNAVAILABLE', blocking: true, optionValueId: null }] } })));
