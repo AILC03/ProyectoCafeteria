@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { HttpResponse, http } from 'msw';
 import { RouterProvider } from 'react-router-dom';
 import { beforeEach, describe, expect, test } from 'vitest';
@@ -65,14 +65,11 @@ describe('application routes', () => {
     expect(nav.querySelector('a[href*="/customers/me/"]')).toBeNull();
   });
 
-  test('requires actor replacement confirmation before crossing from client to terminal', async () => {
+  test('does not offer terminal entry from the client area', async () => {
     renderRoute('/cliente/menu');
-    const terminalLink = await screen.findByRole('link', { name: 'Terminal' });
-    fireEvent.click(terminalLink);
-    expect(await screen.findByRole('dialog', { name: 'Cambiar de sesión' })).toBeInTheDocument();
-    expect(screen.getByText('Se cerrará la sesión de Cliente para abrir la terminal.')).toBeInTheDocument();
-    expect(document.querySelector('.session-content')).toHaveAttribute('inert');
-    expect(document.querySelector('.session-content')).toHaveAttribute('aria-hidden', 'true');
+    const nav = await screen.findByRole('navigation', { name: 'Navegación de cliente' });
+    expect(within(nav).queryByRole('link', { name: 'Terminal' })).not.toBeInTheDocument();
+    expect(nav.querySelector('a[href^="/terminal"]')).toBeNull();
   });
 
   test('renders the restricted PIN route with a visible logout action and no NIP form', async () => {
