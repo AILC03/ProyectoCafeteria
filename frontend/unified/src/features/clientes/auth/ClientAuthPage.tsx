@@ -204,6 +204,7 @@ export function ClientAuthPage() {
   return (
     <section className="client-auth" aria-labelledby="page-title">
       <h1 id="page-title">Iniciar sesión</h1>
+      <div className="client-auth-hero"><span className="client-auth-eyebrow">Bienvenido</span><h2>Café de especialidad a tu alcance</h2><p>Haz tu pedido desde tu móvil, personaliza a tu gusto y recoge en barra.</p></div>
 
       {session.status === 'recoverable-error' && (
         <div className="auth-card" role="status">

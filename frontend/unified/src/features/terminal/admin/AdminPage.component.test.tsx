@@ -23,6 +23,20 @@ beforeEach(() => setCsrfToken('admin-test'));
 afterEach(() => invalidateCsrfToken());
 
 describe('administrative workspace (TASK-19)', () => {
+  test('shows API product availability and missing-image status without inventing an image or write', async () => {
+    const writes: string[] = [];
+    server.use(
+      http.get('/api/v1/admin/products', () => HttpResponse.json({ data: [{ id: '2', categoryId: '1', name: 'Café', description: null, basePriceCents: '4500', imageUrl: null, imagePublicId: null, imageVersion: null, isAvailable: false, deletedAt: null, createdAt: '2026-01-01T12:00:00.000Z', updatedAt: '2026-01-01T12:00:00.000Z' }], page: { limit: 20, nextCursor: null } })),
+      http.patch('/api/v1/admin/products/2', () => { writes.push('PATCH'); return HttpResponse.json({ data: null }); }),
+    );
+    setup();
+    fireEvent.click(within(await screen.findByRole('navigation', { name: 'Secciones administrativas' })).getByRole('button', { name: 'Productos' }));
+    expect(await screen.findByText('Sin imagen')).toBeInTheDocument();
+    expect(screen.getByText('Agotado')).toBeInTheDocument();
+    expect(screen.getByText('$45.00')).toBeInTheDocument();
+    expect(writes).toEqual([]);
+  });
+
   test('shows backend dashboard and allows catalog CRUD only for ADMINISTRADOR', async () => {
     const bodies: unknown[] = [];
     server.use(

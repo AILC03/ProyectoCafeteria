@@ -4,11 +4,13 @@ import type { Actor, ActorDestination } from './session';
 export function ActorChangeDialog({
   actor,
   destination,
+  returnFocus,
   onCancel,
   onConfirm,
 }: {
   actor: Actor;
   destination: ActorDestination;
+  returnFocus?: HTMLElement | null;
   onCancel: () => void;
   onConfirm: () => Promise<boolean>;
 }) {
@@ -19,10 +21,16 @@ export function ActorChangeDialog({
   const area = destination === 'client' ? 'el inicio de sesión de cliente' : 'la terminal';
 
   useEffect(() => {
-    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const captured = returnFocus ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
     cancelRef.current?.focus();
-    return () => previouslyFocused?.focus();
-  }, []);
+    return () => {
+      const focus = () => { if (captured?.isConnected) captured.focus(); };
+      // The provider still marks the page inert while this dialog unmounts;
+      // defer focus until inert/aria-hidden are cleared, otherwise focus is lost.
+      if (document.querySelector('.session-content[inert]') !== null) window.setTimeout(focus, 0);
+      else focus();
+    };
+  }, [returnFocus]);
 
   function handleKeyDown(event: KeyboardEvent<HTMLElement>): void {
     if (event.key === 'Escape' && !submitting) {
@@ -55,13 +63,14 @@ export function ActorChangeDialog({
   }
 
   return (
-    <div className="auth-dialog-backdrop" role="presentation">
-      <section ref={dialogRef} className="auth-dialog" role="dialog" aria-modal="true" aria-labelledby="actor-change-title" aria-describedby="actor-change-description" onKeyDown={handleKeyDown}>
+    <div className={`auth-dialog-backdrop actor-change-backdrop actor-change-backdrop-${destination}`} role="presentation">
+      <section ref={dialogRef} className={`auth-dialog actor-change-dialog actor-change-dialog-${destination}`} role="dialog" aria-modal="true" aria-labelledby="actor-change-title" aria-describedby="actor-change-description" onKeyDown={handleKeyDown}>
+        <p className="status-eyebrow">{destination === 'client' ? 'Área de cliente' : 'Terminal'}</p>
         <h2 id="actor-change-title">Cambiar de sesión</h2>
         <p id="actor-change-description">Se cerrará la sesión de {actor.name} para abrir {area}.</p>
         {error !== null && <p role="alert">{error}</p>}
         <div className="auth-dialog-actions">
-          <button ref={cancelRef} type="button" onClick={onCancel} disabled={submitting}>Cancelar</button>
+          <button ref={cancelRef} type="button" className="secondary-button" onClick={onCancel} disabled={submitting}>Cancelar</button>
           <button type="button" onClick={() => { void confirm(); }} disabled={submitting}>{submitting ? 'Cerrando sesión…' : 'Cerrar sesión y continuar'}</button>
         </div>
       </section>

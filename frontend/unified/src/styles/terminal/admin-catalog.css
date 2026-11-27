@@ -1,0 +1,38 @@
+/* HYB-15: category/product listing presentation only; writes and validation remain unchanged. */
+.terminal-layout .admin-collection-categories,
+.terminal-layout .admin-collection-products { align-content: start; min-width: 0; }
+.terminal-layout .admin-collection-categories > h2,
+.terminal-layout .admin-collection-products > h2 { margin: 0; font-size: 1.4rem; font-weight: 800; }
+.terminal-layout .admin-collection-categories > p,
+.terminal-layout .admin-collection-products > p { margin: 0; color: #475569; }
+.terminal-layout .admin-collection-categories > .admin-list,
+.terminal-layout .admin-collection-products > .admin-list { background: #fff; border: 1px solid var(--term-border-light); border-radius: 16px; overflow: hidden; box-shadow: var(--term-shadow-sm); }
+.terminal-layout .admin-collection-categories .admin-list li,
+.terminal-layout .admin-collection-products .admin-list li { border: 0; border-bottom: 1px solid var(--term-border-light); padding: .9rem 1.1rem; gap: .65rem; background: #fff; min-width: 0; }
+.terminal-layout .admin-collection-categories .admin-list li:last-child,
+.terminal-layout .admin-collection-products .admin-list li:last-child { border-bottom: 0; }
+.terminal-layout .admin-collection-categories .admin-list strong,
+.terminal-layout .admin-collection-products .admin-list strong { color: #0f172a; font-size: .95rem; min-width: 0; }
+.terminal-layout .admin-collection-categories .admin-list li > span,
+.terminal-layout .admin-collection-products .admin-list li > span { color: #475569; font-size: .85rem; }
+.terminal-layout .admin-collection-products .admin-list .admin-no-image { padding: .3rem .55rem; border: 1px dashed #cbd5e1; border-radius: 6px; background: #f8fafc; }
+.terminal-layout .admin-collection-products .admin-list .admin-product-state { padding: .3rem .6rem; border-radius: 999px; background: #dcfce7; color: #166534; font-weight: 700; }
+.terminal-layout .admin-collection-products .admin-list .admin-product-state-soldout { background: #fee2e2; color: #991b1b; }
+.terminal-layout .admin-collection-categories .admin-list button,
+.terminal-layout .admin-collection-products .admin-list button { min-height: 44px; border-radius: 8px; background: #f8fafc; border: 1px solid #cbd5e1; color: #334155; font-weight: 700; }
+.terminal-layout .admin-collection-categories > button,
+.terminal-layout .admin-collection-products > button { justify-self: start; min-height: 44px; border-radius: 999px; background: #fff; border: 1px solid #cbd5e1; color: #334155; }
+.terminal-layout .admin-collection-categories > .admin-form,
+.terminal-layout .admin-collection-products > .admin-form { max-width: 100%; padding: 1.2rem; background: #fff; border: 1px solid var(--term-border-light); border-radius: 16px; box-shadow: var(--term-shadow-sm); }
+.terminal-layout .admin-collection-categories .admin-form h3,
+.terminal-layout .admin-collection-products .admin-form h3 { margin: 0; font-size: 1.15rem; }
+.terminal-layout .admin-collection-categories .admin-form label,
+.terminal-layout .admin-collection-products .admin-form label { font-weight: 700; color: #334155; }
+.terminal-layout .admin-collection-categories .admin-form input:not([type='checkbox']),
+.terminal-layout .admin-collection-products .admin-form input:not([type='checkbox']) { width: 100%; min-height: 44px; min-width: 0; border: 1px solid #94a3b8; border-radius: 10px; padding: .6rem .75rem; font: inherit; }
+.terminal-layout .admin-collection-categories .admin-form button,
+.terminal-layout .admin-collection-products .admin-form button { min-height: 44px; border-radius: 10px; }
+.terminal-layout .admin-collection-categories .kitchen-pagination,
+.terminal-layout .admin-collection-products .kitchen-pagination { justify-content: center; }
+.terminal-layout .admin-collection-categories .kitchen-pagination button:disabled,
+.terminal-layout .admin-collection-products .kitchen-pagination button:disabled { background: #f1f5f9; border: 1px solid #cbd5e1; color: #475569; }

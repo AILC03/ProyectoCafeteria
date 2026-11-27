@@ -136,7 +136,9 @@ describe('Terminal cash sessions (TASK-14)', () => {
     fireEvent.change(await screen.findByLabelText('Fondo inicial (MXN)'), { target: { value: '500' } });
     fireEvent.click(screen.getByRole('button', { name: 'Abrir caja' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('No repitas la operación');
-    expect(screen.getByRole('button', { name: 'Abrir caja' })).toBeDisabled();
+    expect(screen.getByRole('heading', { name: 'Estado no verificable' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Caja cerrada' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Abrir caja' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Reintentar la misma operación de caja' })).not.toBeInTheDocument();
   });
 });

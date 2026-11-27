@@ -153,7 +153,7 @@ test.describe('POS and cash sessions (TASK-14)', () => {
     await page.goto('/terminal/pos');
     await expect(page.getByRole('heading', { name: 'Punto de venta' })).toBeVisible();
 
-    const productButton = page.getByRole('button', { name: 'Personalizar Latte' });
+    const productButton = page.getByRole('button', { name: /Personalizar.*Latte.*\$65\.00/ });
     await productButton.focus();
     await page.keyboard.press('Enter');
     await expect(page.getByRole('dialog', { name: 'Latte' })).toBeVisible();
@@ -217,7 +217,7 @@ test.describe('POS and cash sessions (TASK-14)', () => {
     await expect(page.getByRole('button', { name: 'Cerrar caja' })).toHaveCount(0);
 
     await page.goto('/terminal/pos');
-    await page.getByRole('button', { name: 'Personalizar Latte' }).click();
+    await page.getByRole('button', { name: /Personalizar.*Latte.*\$65\.00/ }).click();
     await page.getByRole('button', { name: 'Confirmar personalización' }).click();
     await page.getByLabel('Teléfono o número de cliente').fill('C10');
     await page.getByRole('button', { name: 'Buscar cliente' }).click();

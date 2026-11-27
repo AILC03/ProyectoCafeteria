@@ -1,0 +1,81 @@
+/* HYB-14: nested administrative shell inspired by the original dark sidebar. */
+.terminal-layout .terminal-admin {
+  width: 100%; max-width: 86rem; margin: 0 auto;
+  padding: clamp(1rem, 2vw, 1.5rem);
+  display: grid; grid-template-columns: minmax(12rem, 15rem) minmax(0, 1fr);
+  grid-template-rows: auto 1fr; gap: 1rem;
+  align-content: start; align-items: start;
+  min-height: calc(100vh - 5rem); background: var(--term-bg-secondary);
+}
+.terminal-layout .terminal-admin > h1 { grid-column: 1 / -1; margin: 0; font-size: clamp(1.45rem, 2.5vw, 1.8rem); font-weight: 800; }
+.terminal-layout .terminal-admin .admin-tabs {
+  grid-column: 1; align-self: stretch; display: flex; flex-direction: column; flex-wrap: nowrap;
+  padding: 1rem .7rem; background: #0b1120; border: 1px solid #1e293b;
+  border-radius: 16px; box-shadow: var(--term-shadow-md);
+}
+.terminal-layout .terminal-admin .admin-tabs button {
+  min-height: 44px; width: 100%; border: 0; border-radius: 10px;
+  padding: .75rem .85rem; background: transparent; color: #cbd5e1;
+  text-align: left; font: inherit; font-size: .88rem; font-weight: 600;
+}
+.terminal-layout .terminal-admin .admin-tabs button:hover { background: #1e293b; color: #fff; }
+.terminal-layout .terminal-admin .admin-tabs button[aria-current='page'] { outline: 0; background: #1e293b; color: #7dd3fc; font-weight: 800; }
+.terminal-layout .terminal-admin .admin-tabs button:focus-visible { outline: 3px solid #7dd3fc; outline-offset: 2px; }
+.terminal-layout .terminal-admin > .admin-panel { grid-column: 2; min-width: 0; }
+.terminal-layout .terminal-admin .admin-dashboard {
+  background: #fff; border: 1px solid var(--term-border-light); border-radius: 16px;
+  padding: clamp(1rem, 2vw, 1.5rem); align-content: start; box-shadow: var(--term-shadow-sm);
+}
+.terminal-layout .terminal-admin .admin-dashboard h2 { margin: 0; font-size: 1.3rem; }
+.terminal-layout .terminal-admin .admin-dashboard > p { margin: 0; color: #475569; }
+.terminal-layout .terminal-admin .admin-dashboard .cash-summary { gap: .8rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr)); }
+.terminal-layout .terminal-admin .admin-dashboard .cash-summary > div { padding: 1rem; border: 0; border-radius: 12px; background: var(--term-bg-secondary); }
+.terminal-layout .terminal-admin .admin-dashboard .cash-summary dt { color: #475569; font-size: .75rem; font-weight: 700; text-transform: uppercase; }
+.terminal-layout .terminal-admin .admin-dashboard .cash-summary dd { font-size: 1.15rem; font-weight: 800; }
+.terminal-layout .admin-dashboard-links { display: flex; gap: .7rem; flex-wrap: wrap; }
+.terminal-layout .admin-dashboard-links a { display: inline-flex; align-items: center; min-height: 44px; border-radius: 10px; padding: .6rem 1rem; background: #0f172a; color: #fff; font-weight: 700; text-decoration: none; }
+.terminal-layout .admin-dashboard-links a:hover { background: #1e293b; }
+@media (max-width: 700px) {
+  .terminal-layout .terminal-admin { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto 1fr; }
+  .terminal-layout .terminal-admin > h1,
+  .terminal-layout .terminal-admin .admin-tabs,
+  .terminal-layout .terminal-admin > .admin-panel { grid-column: 1; }
+  .terminal-layout .terminal-admin .admin-tabs { flex-direction: row; flex-wrap: wrap; align-self: start; }
+  .terminal-layout .terminal-admin .admin-tabs button { width: auto; flex: 1 1 8rem; text-align: center; }
+}
+
+/* Consistent administrative form controls and pagination. */
+.terminal-layout .terminal-admin .admin-form label:has(> input[type='checkbox']) {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: .5rem;
+}
+.terminal-layout .terminal-admin .admin-form input[type='checkbox'] { justify-self: start; margin: 0; }
+.terminal-layout .terminal-admin :is(.admin-form, .admin-config-editor form) button[type='submit'] {
+  justify-self: start;
+  min-height: 44px;
+  padding: .6rem 1.2rem;
+  border-radius: 999px;
+  background: #0f172a;
+  border: 1px solid #0f172a;
+  color: #fff;
+  font-weight: 700;
+}
+.terminal-layout .terminal-admin :is(.admin-form, .admin-config-editor form) button[type='submit']:disabled { opacity: .65; }
+.terminal-layout .terminal-admin .admin-form button:not([type='submit']) {
+  justify-self: start;
+  min-height: 44px;
+  padding: .6rem 1.2rem;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  font-weight: 700;
+}
+.terminal-layout .terminal-admin .kitchen-pagination button:disabled {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #94a3b8;
+  opacity: 1;
+}

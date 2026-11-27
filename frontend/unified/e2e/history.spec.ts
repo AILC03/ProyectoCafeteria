@@ -69,11 +69,11 @@ test.describe('TASK-17 operational history', () => {
     await page.setViewportSize({ width: 320, height: 640 });
     await page.goto('/terminal/historial');
     await expect(page.getByRole('heading', { name: 'Historial y ventas' })).toBeVisible();
-    await expect(page.getByText('V000009')).toBeVisible();
+    await expect(page.getByRole('cell', { name: 'V000009', exact: true })).toBeVisible();
     await expect(page.getByText('$65.00').first()).toBeVisible();
     await expect(page.getByRole('link', { name: 'Historial' })).toHaveAttribute('href', '/terminal/historial');
 
-    const reprint = page.getByRole('button', { name: 'Reimprimir ticket V000009' });
+    const reprint = page.getByRole('button', { name: 'Ver ticket V000009' });
     await reprint.focus();
     await expect(reprint).toBeFocused();
     await page.keyboard.press('Enter');
@@ -99,7 +99,7 @@ test.describe('TASK-17 operational history', () => {
     await mock(context, 'empty');
     await page.goto('/terminal/historial');
     await expect(page.getByText(/No hay ventas en el rango seleccionado/)).toBeVisible();
-    await expect(page.getByRole('button', { name: /Reimprimir ticket/ })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Ver ticket V/ })).toHaveCount(0);
   });
 
   test('shows a denied message for 403 without private data', async ({ page, context }) => {
@@ -112,7 +112,7 @@ test.describe('TASK-17 operational history', () => {
   test('reports a missing sale on reprint without another charge', async ({ page, context }) => {
     const api = await mock(context, 'not-found');
     await page.goto('/terminal/historial');
-    await page.getByRole('button', { name: 'Reimprimir ticket V000009' }).click();
+    await page.getByRole('button', { name: 'Ver ticket V000009' }).click();
     await expect(page.getByRole('alert')).toContainText(/la venta no existe/);
     await expect(page.getByRole('heading', { name: 'Ticket reimpreso' })).toHaveCount(0);
     expect(api.posts).toEqual([]);
@@ -121,7 +121,7 @@ test.describe('TASK-17 operational history', () => {
   test('moves pages only with opaque cursors', async ({ page, context }) => {
     const api = await mock(context, 'paged');
     await page.goto('/terminal/historial');
-    await expect(page.getByText('V000009')).toBeVisible();
+    await expect(page.getByRole('cell', { name: 'V000009', exact: true })).toBeVisible();
     const initialCount = api.cursors.length;
     expect(initialCount).toBeGreaterThan(0);
     expect(api.cursors.every((cursor) => cursor === null)).toBe(true);
@@ -136,8 +136,8 @@ test.describe('TASK-17 operational history', () => {
   test('reprints a STRIPE ticket without cash amounts or a new charge', async ({ page, context }) => {
     const api = await mock(context, 'stripe');
     await page.goto('/terminal/historial');
-    await expect(page.getByText('V000010')).toBeVisible();
-    await page.getByRole('button', { name: 'Reimprimir ticket V000010' }).click();
+    await expect(page.getByRole('cell', { name: 'V000010', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Ver ticket V000010' }).click();
     await expect(page.getByRole('heading', { name: 'Ticket reimpreso' })).toBeVisible();
     await expect(page.getByText(/Total:/)).toContainText('$35.00');
     await expect(page.getByText(/Recibido:/)).toHaveCount(0);

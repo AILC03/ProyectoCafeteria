@@ -141,11 +141,33 @@ export function ClientCart({ items, onChange, catalogRevision, onLockChange }: {
       </button>
       {!locked && hasIssues && <button type="button" className="secondary-button" onClick={() => setVerificationRevision((n) => n + 1)}>Revalidar carrito</button>}
     </>}
-    {attempt.pending !== null && !attempt.sending && <button type="button" disabled={attempt.paused} onClick={() => { void store.send(); }}>Reintentar la misma orden</button>}
+    {attempt.pending !== null && !attempt.sending && !attempt.confirmed && (
+      <div className="order-retry" role="status">
+        <p>El envío anterior quedó sin confirmar. Reintenta la misma orden; no crees una nueva.</p>
+        <button type="button" disabled={attempt.paused} onClick={() => { void store.send(); }}>Reintentar la misma orden</button>
+      </div>
+    )}
     {attempt.paused && <p role="status">Comprobando sesión antes de ordenar o reintentar…</p>}
-    {attempt.sending && <p role="status">Enviando orden…</p>}
+    {attempt.sending && (
+      <div className="order-sending" role="status">
+        <span role="status" aria-live="polite">Enviando orden…</span>
+      </div>
+    )}
     {reviewMessage && <p role="alert">{reviewMessage}</p>}
     {attempt.message && <p role="alert">{attempt.message}</p>}
-    {attempt.confirmed && <div role="status"><p>Orden {attempt.confirmed.folio} creada. Estado: pendiente de pago.</p><p>Total confirmado por el servidor: {formatMxnCents(attempt.confirmed.totalCents)}.</p><p>Crear la orden no confirma el pago.</p></div>}
+    {attempt.confirmed && (
+      <section className="order-confirmation" role="status" aria-labelledby="order-confirmation-title">
+        <h3 id="order-confirmation-title">Orden creada</h3>
+        <p><strong>Folio:</strong> {attempt.confirmed.folio}</p>
+        <p><strong>Estado:</strong> pendiente de pago</p>
+        <p><strong>Total confirmado por el servidor:</strong> {formatMxnCents(attempt.confirmed.totalCents)}.</p>
+        <p className="field-hint">
+          Crear la orden no confirma el pago.{' '}
+          {attempt.confirmed.paymentMethod === 'CASH'
+            ? 'Paga en caja para completar.'
+            : 'La orden queda pendiente de pago; no se inició ningún cobro con tarjeta.'}
+        </p>
+      </section>
+    )}
   </section>;
 }

@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom';
 import type { IdempotentOperation } from '../../../shared/api/idempotency';
 import { formatMxnCents } from '../../../shared/utils/money';
 import {
+  fetchCatalogCategories,
   fetchCatalogProducts,
   formatCatalogError,
+  type CatalogCategory,
   type CatalogProduct,
 } from '../../clientes/catalog/catalogApi';
 import {
@@ -37,8 +39,12 @@ type FoundCustomer = OrderCustomerMinimum & { identifier: string };
 /** POS draft only: the catalog and the API remain the source of truth. */
 export function PosPage() {
   const [products, setProducts] = useState<CatalogProduct[]>([]);
+  const [categories, setCategories] = useState<CatalogCategory[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [categoryError, setCategoryError] = useState<string | null>(null);
   const [catalogRevision, setCatalogRevision] = useState(0);
   const [customizing, setCustomizing] = useState<CatalogProduct | null>(null);
   const [lines, setLines] = useState<DraftLine[]>([]);
@@ -67,8 +73,12 @@ export function PosPage() {
     const controller = new AbortController();
     setCatalogLoading(true);
     setCatalogError(null);
-    fetchCatalogProducts({ isAvailable: true, signal: controller.signal })
-      .then((available) => { if (!controller.signal.aborted) setProducts(available); })
+    setCategoryError(null);
+    fetchCatalogCategories(controller.signal)
+      .then((nextCategories) => { if (!controller.signal.aborted) setCategories(nextCategories); })
+      .catch((error: unknown) => { if (!controller.signal.aborted) setCategoryError(formatCatalogError(error)); });
+    fetchCatalogProducts({ signal: controller.signal })
+      .then((nextProducts) => { if (!controller.signal.aborted) setProducts(nextProducts); })
       .catch((error: unknown) => { if (!controller.signal.aborted) setCatalogError(formatCatalogError(error)); })
       .finally(() => { if (!controller.signal.aborted) setCatalogLoading(false); });
     return () => controller.abort();
@@ -218,6 +228,10 @@ export function PosPage() {
     const value = BigInt(line.estimateCents);
     return (total + value).toString();
   }, '0');
+  const filteredProducts = products.filter((product) =>
+    (selectedCategory === '' || product.categoryId === selectedCategory)
+      && product.name.toLocaleLowerCase('es-MX').includes(searchQuery.trim().toLocaleLowerCase('es-MX')),
+  );
 
   return (
     <section className="terminal-pos" aria-labelledby="pos-title">
@@ -233,21 +247,57 @@ export function PosPage() {
       {catalogLoading && <p role="status">Cargando productos disponibles…</p>}
 
       <div className="pos-layout">
-        <section className="auth-card" aria-labelledby="pos-catalog-title">
+        <section className="auth-card pos-catalog-panel" aria-labelledby="pos-catalog-title">
           <h2 id="pos-catalog-title">Productos disponibles</h2>
+          <div className="pos-catalog-search">
+            <input
+              type="search"
+              aria-label="Buscar productos"
+              placeholder="Buscar producto por nombre..."
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+            />
+            <span className="pos-catalog-count">{filteredProducts.length} productos</span>
+          </div>
+          {categoryError !== null && (
+            <p role="status">No se pudieron cargar las categorías. Puedes buscar productos por nombre. <button type="button" className="secondary-button" onClick={() => setCatalogRevision((value) => value + 1)}>Reintentar categorías</button></p>
+          )}
+          {categories.length > 0 && (
+            <nav className="pos-categories-bar" aria-label="Categorías de menú">
+              {[{ id: '', name: 'Todas' }, ...categories].map((category) => (
+                <button
+                  key={category.id}
+                  type="button"
+                  className={`pos-category-tab${selectedCategory === category.id ? ' active' : ''}`}
+                  aria-pressed={selectedCategory === category.id}
+                  onClick={() => setSelectedCategory(category.id)}
+                >
+                  {category.name}
+                </button>
+              ))}
+            </nav>
+          )}
           {!catalogLoading && catalogError === null && products.length === 0 && <p>No hay productos disponibles en este momento.</p>}
-          <div className="pos-product-grid">
-            {products.map((product) => (
+          {!catalogLoading && catalogError === null && products.length > 0 && filteredProducts.length === 0 && <p>No se encontraron productos</p>}
+          <div className="pos-product-grid pos-products-grid">
+            {filteredProducts.map((product) => (
               <button
                 key={product.id}
                 type="button"
-                className="pos-product-button"
-                aria-label={`Personalizar ${product.name}, ${formatMxnCents(product.basePriceCents)}`}
+                className="pos-product-button pos-product-card"
                 disabled={!product.isAvailable || blocked || order !== null}
                 onClick={() => { setCustomizing(product); }}
               >
-                <strong>{product.name}</strong>
-                <span>{formatMxnCents(product.basePriceCents)}</span>
+                <span className="pos-visually-hidden">Personalizar </span>
+                <span className="pos-product-copy">
+                  {product.imageUrl === null && <span className="pos-product-placeholder">Sin imagen</span>}
+                  <strong className="product-title">{product.name}</strong>
+                  {product.description && <span className="product-desc">{product.description}</span>}
+                </span>
+                <span className="product-price-row">
+                  <span className="product-price-val">{formatMxnCents(product.basePriceCents)}</span>
+                  <span className="product-add-badge" aria-hidden={product.isAvailable ? true : undefined}>{product.isAvailable ? '+' : 'Agotado'}</span>
+                </span>
               </button>
             ))}
           </div>
@@ -397,6 +447,7 @@ export function PosPage() {
         <ProductCustomizationDialog
           productId={customizing.id}
           fallbackProduct={customizing}
+          presentation="pos"
           onClose={() => { setCustomizing(null); }}
           onConfirm={handleCustomizationConfirm}
         />

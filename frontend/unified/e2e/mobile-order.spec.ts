@@ -33,9 +33,9 @@ test('restores draft, revalidates catalog and creates a CASH order without check
   await expect(cart.getByText('Subtotal estimado: $130.00.', { exact: false })).toBeVisible();
   await cart.getByRole('button', { name: 'Crear orden pendiente' }).focus();
   await page.keyboard.press('Enter');
-  await expect(cart.getByText(/Orden A000001 creada/)).toBeVisible();
-  await expect(cart.getByText(/Total confirmado por el servidor: \$130\.00/)).toBeVisible();
-  await expect(cart.getByText('Crear la orden no confirma el pago.')).toBeVisible();
+  await expect(cart.getByText('Orden creada')).toBeVisible();
+  await expect(cart.locator('p').filter({ hasText: /Total confirmado por el servidor/ })).toContainText('$130.00');
+  await expect(cart.getByText(/Crear la orden no confirma el pago/)).toBeVisible();
   expect(requests).toEqual([{ paymentMethod: 'CASH', items: [{ productId: '10', quantity: 2, optionValueIds: [] }] }]);
   await page.setViewportSize({ width: 320, height: 700 });
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
@@ -86,8 +86,8 @@ test('503 never claims payment and SPA navigation retains explicit retry with th
   await page.getByRole('link', { name: 'Menú' }).click();
   await expect(cart.getByRole('button', { name: 'Crear orden pendiente' })).toBeDisabled();
   await cart.getByRole('button', { name: 'Reintentar la misma orden' }).click();
-  await expect(cart.getByText(/Orden A000002 creada/)).toBeVisible();
-  await expect(cart.getByText('Crear la orden no confirma el pago.')).toBeVisible();
+  await expect(cart.getByText('Orden creada')).toBeVisible();
+  await expect(cart.getByText(/Crear la orden no confirma el pago/)).toBeVisible();
   expect(requests).toHaveLength(2);
   expect(requests[0]).toEqual(requests[1]);
 });

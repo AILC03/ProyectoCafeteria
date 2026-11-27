@@ -1,0 +1,153 @@
+/* HYB-06: approved Nordic chassis, scoped to staff login only. */
+.terminal-layout > main > .terminal-staff-login {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  padding: 1.5rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: var(--term-bg-secondary);
+}
+
+.terminal-layout .terminal-staff-login-content {
+  width: min(100%, 440px);
+  margin: auto;
+}
+
+.terminal-layout .terminal-staff-login-back {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-bottom: 1rem;
+  padding: .6rem 1.1rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 9999px;
+  background: #fff;
+  color: #334155;
+  font-size: .88rem;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: var(--term-shadow-sm);
+}
+
+.terminal-layout .terminal-staff-login .kiosk-chassis {
+  width: 100%;
+  max-width: 440px;
+  margin: auto;
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1.25rem;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 32px;
+  box-shadow: 0 20px 45px -10px rgb(0 0 0 / 6%), 0 0 1px 1px rgb(0 0 0 / 3%);
+}
+
+.terminal-layout .terminal-staff-login-heading { text-align: center; }
+
+.terminal-layout .terminal-staff-login h1 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.4rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.terminal-layout .terminal-staff-login-heading h1 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.terminal-layout .terminal-staff-login h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.4rem;
+  font-weight: 800;
+}
+
+.terminal-layout .terminal-staff-login-heading p {
+  margin: .35rem 0 0;
+  color: var(--term-text-muted);
+  font-size: .86rem;
+  line-height: 1.5;
+}
+
+.terminal-layout .terminal-staff-login .auth-form { width: 100%; gap: 1.25rem; }
+.terminal-layout .terminal-staff-login .form-field { gap: .5rem; }
+.terminal-layout .terminal-staff-login .form-field label {
+  color: #475569;
+  font-size: .82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+.terminal-layout .terminal-staff-login .form-field input {
+  width: 100%;
+  min-height: 48px;
+  padding: .65rem .95rem;
+  border: 2px solid #cbd5e1;
+  border-radius: 16px;
+  background: #f8fafc;
+  color: #0f172a;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.terminal-layout .terminal-staff-login .form-field input:focus-visible {
+  border-color: #0f172a;
+  background: #fff;
+}
+
+.terminal-layout .terminal-staff-login button[type='submit'],
+.terminal-layout .terminal-staff-login .auth-actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: .95rem 1.25rem;
+  border: 1px solid #0f172a;
+  border-radius: 16px;
+  background: #0f172a;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+  box-shadow: 0 10px 25px -5px rgb(15 23 42 / 25%);
+}
+
+.terminal-layout .terminal-staff-login button[type='submit'] { width: 100%; }
+.terminal-layout .terminal-staff-login .auth-actions { justify-content: center; }
+.terminal-layout .terminal-staff-login .auth-actions button,
+.terminal-layout .terminal-staff-login-recovery button {
+  min-height: 44px;
+  border-radius: 16px;
+}
+
+.terminal-layout .terminal-staff-login .form-alert,
+.terminal-layout .terminal-staff-login-recovery {
+  padding: .75rem 1rem;
+  border: 1px solid #fecaca;
+  border-radius: 14px;
+  background: #fef2f2;
+  color: #991b1b;
+  font-size: .83rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.terminal-layout .terminal-staff-login-recovery p { margin: 0 0 .75rem; }
+
+@media (max-width: 480px) {
+  .terminal-layout > main > .terminal-staff-login { padding: 1rem; }
+  .terminal-layout .terminal-staff-login .kiosk-chassis { padding: 1.5rem 1.25rem; }
+}
