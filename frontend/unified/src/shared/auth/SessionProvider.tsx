@@ -22,6 +22,7 @@ export function SessionProvider({ children, profile = runtimeProfile(), manager:
   const session = useSyncExternalStore(manager.subscribe, manager.getSnapshot, manager.getSnapshot);
   const [destination, setDestination] = useState<ActorDestination | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     // StrictMode runs an effect cleanup/setup pair without destroying refs. A
@@ -64,7 +65,10 @@ export function SessionProvider({ children, profile = runtimeProfile(), manager:
   }, [destination]);
 
   const requestActorChange = (nextDestination: ActorDestination) => {
-    if (session.status === 'authenticated') setDestination(nextDestination);
+    if (session.status === 'authenticated') {
+      returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      setDestination(nextDestination);
+    }
   };
 
   return <SessionContext.Provider value={manager}><ActorChangeContext.Provider value={requestActorChange}>
@@ -72,6 +76,7 @@ export function SessionProvider({ children, profile = runtimeProfile(), manager:
     {destination !== null && session.status === 'authenticated' && <ActorChangeDialog
       actor={session.actor}
       destination={destination}
+      returnFocus={returnFocusRef.current}
       onCancel={() => setDestination(null)}
       onConfirm={async () => {
         const replaced = await manager.replaceActor(destination);

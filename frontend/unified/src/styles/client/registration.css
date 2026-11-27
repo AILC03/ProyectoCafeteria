@@ -1,0 +1,14 @@
+/* HYB-23: client registration by ticket presentation. No auth logic changes. */
+.registration-page { width: 100%; max-width: 28rem; margin: 0 auto; display: flex; flex-direction: column; gap: 1rem; }
+.registration-page h1 { font-size: clamp(1.5rem, 3vw, 1.75rem); margin: 0; color: var(--client-ink); }
+.registration-page > p { margin: 0; color: #5e493e; font-size: .9rem; line-height: 1.5; }
+.registration-page form { display: flex; flex-direction: column; gap: 1rem; background: #fff; border: 1px solid #e8dcd2; border-radius: 1rem; padding: 1.5rem; box-shadow: 0 4px 18px rgb(45 26 18 / 10%); }
+.registration-page form label { font-weight: 800; color: #713419; font-size: .95rem; }
+.registration-page form input { min-height: 44px; border: 1px solid #c8aa96; border-radius: .75rem; padding: .6rem .75rem; font: inherit; background: #fff; }
+.registration-page form input:focus-visible { outline: 2px solid #713419; outline-offset: 2px; }
+.registration-page form input[disabled] { opacity: .55; cursor: not-allowed; }
+.registration-page form button { min-height: 44px; border-radius: .75rem; font-weight: 800; padding: 0 1.25rem; background: #713419; border-color: #713419; color: #fff; }
+.registration-page form button:disabled { opacity: .6; cursor: not-allowed; }
+.registration-page [role='alert'] { color: #8b2a17; background: #fce8e4; border: 1px solid #d7a598; border-radius: .5rem; padding: .65rem .75rem; font-size: .9rem; }
+.registration-page [role='status'] { color: #5e493e; font-size: .9rem; }
+.registration-page a { color: #713419; font-weight: 800; }

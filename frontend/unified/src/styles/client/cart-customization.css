@@ -1,0 +1,76 @@
+/* HYB-20: client customization dialog and draft cart presentation. No logic changes. */
+/* Dialog (rendered via portal to document.body; client-specific classes) */
+.auth-dialog-backdrop.client-customization-backdrop { align-items: flex-end; justify-content: center; background: rgb(0 0 0 / 45%); inset: 0; padding: 0; position: fixed; z-index: 50; display: flex; }
+.auth-dialog.catalog-dialog-client { background: #fff; border-radius: 1.5rem 1.5rem 0 0; box-shadow: 0 -10px 30px rgb(45 26 18 / 20%); border: 1px solid #e8dcd2; border-bottom: 0; display: flex; flex-direction: column; max-height: 92vh; width: 100%; max-width: 32rem; padding: 0; }
+.auth-dialog.catalog-dialog-client > :not(.catalog-dialog-header):not(.catalog-dialog-footer):not(.auth-dialog-actions):not(.client-sheet-handle) { padding-inline: 1.25rem; }
+.auth-dialog.catalog-dialog-client > :last-child:not(.catalog-dialog-footer):not(.auth-dialog-actions) { padding-bottom: 1rem; }
+.client-sheet-handle { width: 3rem; height: .375rem; margin: .75rem auto .25rem; border-radius: 999px; background: #e5e2df; flex: 0 0 auto; }
+@media (min-width: 640px) {
+  .auth-dialog-backdrop.client-customization-backdrop { align-items: center; padding: 1rem; }
+  .auth-dialog.catalog-dialog-client { border-radius: 1.5rem; border-bottom: 1px solid #e8dcd2; box-shadow: 0 10px 30px rgb(45 26 18 / 20%); }
+  .client-sheet-handle { display: none; }
+}
+.auth-dialog.catalog-dialog-client .catalog-dialog-header { position: sticky; top: 0; z-index: 1; display: flex; justify-content: space-between; align-items: start; gap: 1rem; padding: 1rem 1.25rem; background: #4b2418; color: #fff; }
+.auth-dialog.catalog-dialog-client .catalog-dialog-header h2 { margin: 0; font-size: 1.25rem; line-height: 1.3; }
+.auth-dialog.catalog-dialog-client .catalog-dialog-header p { margin: 0; color: #ffe5cd; font-size: .9rem; line-height: 1.4; }
+.auth-dialog.catalog-dialog-client .catalog-dialog-header button { min-height: 40px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.5); background: rgba(255,255,255,0.15); color: #fff; font-weight: 700; padding: 0 1rem; }
+.auth-dialog.catalog-dialog-client .catalog-dialog-header button:hover { background: rgba(255,255,255,0.25); }
+.auth-dialog.catalog-dialog-client > section { padding: 1.25rem; overflow-y: auto; }
+.auth-dialog.catalog-dialog-client .field-hint { color: #5e493e; font-size: .85rem; }
+.auth-dialog.catalog-dialog-client .product-price { margin: .5rem 0 0; font-weight: 800; color: #713419; }
+.auth-dialog.catalog-dialog-client .catalog-options-list { display: grid; gap: 1rem; }
+.auth-dialog.catalog-dialog-client .option-group { border: 1px solid #d7c3b4; border-radius: .75rem; padding: 1rem; background: #faf7f3; }
+.auth-dialog.catalog-dialog-client .option-group legend { font-weight: 800; color: #713419; font-size: .95rem; padding: 0 .5rem; }
+.auth-dialog.catalog-dialog-client .option-grid { display: grid; gap: .6rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); }
+.auth-dialog.catalog-dialog-client .option-button { border: 1px solid #c8aa96; border-radius: .75rem; background: #fff; color: #3e312a; font-weight: 700; padding: .75rem 1rem; text-align: left; display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+.auth-dialog.catalog-dialog-client .option-button[aria-pressed='true'] { background: #713419; color: #fff; border-color: #713419; }
+.auth-dialog.catalog-dialog-client .option-button:disabled { opacity: .55; cursor: not-allowed; background: #f1eae3; border-color: #d7c3b4; color: #8a7364; }
+.auth-dialog.catalog-dialog-client .option-button-selected .field-hint { color: #ffe5cd; }
+.auth-dialog.catalog-dialog-client .catalog-dialog-footer { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 1rem 1.25rem; border-top: 1px solid #e8dcd2; background: #faf7f3; }
+.auth-dialog.catalog-dialog-client .quantity-control { display: flex; align-items: center; gap: .5rem; border: 1px solid #c8aa96; border-radius: .75rem; background: #fff; padding: .4rem .7rem; }
+.auth-dialog.catalog-dialog-client .quantity-control button { min-height: 40px; border-radius: .5rem; border: 1px solid #c8aa96; background: #fff; color: #713419; font-weight: 800; padding: 0 .7rem; }
+.auth-dialog.catalog-dialog-client .quantity-control button[aria-disabled='true'] { opacity: .5; cursor: not-allowed; }
+.auth-dialog.catalog-dialog-client .quantity-control span { font-weight: 800; color: #0f0301; min-width: 1.5rem; text-align: center; }
+.auth-dialog.catalog-dialog-client .catalog-estimate { display: flex; flex-direction: column; gap: .25rem; }
+.auth-dialog.catalog-dialog-client .catalog-estimate p { margin: 0; color: #5e493e; }
+.auth-dialog.catalog-dialog-client .catalog-estimate strong { color: #713419; font-size: 1.1rem; }
+.auth-dialog.catalog-dialog-client .auth-dialog-actions { position: sticky; bottom: 0; z-index: 1; display: flex; justify-content: flex-end; gap: .75rem; padding: 1rem 1.25rem; border-top: 1px solid #e8dcd2; background: #faf7f3; }
+.auth-dialog.catalog-dialog-client .auth-dialog-actions button { min-height: 44px; border-radius: .75rem; font-weight: 800; padding: 0 1.25rem; }
+.auth-dialog.catalog-dialog-client .auth-dialog-actions button.secondary-button { color: #713419; border-color: #713419; background: #fff; }
+.auth-dialog.catalog-dialog-client .auth-dialog-actions button:not(.secondary-button) { background: #713419; border-color: #713419; color: #fff; }
+.auth-dialog.catalog-dialog-client .auth-dialog-actions button:disabled { opacity: .6; cursor: not-allowed; }
+
+/* Draft cart (renders inside .client-layout) */
+.client-layout .client-cart { background: #fff; border: 1px solid #e8dcd2; border-radius: 1rem; box-shadow: 0 4px 18px rgb(45 26 18 / 7%); }
+.client-layout .client-cart h2 { margin: 0 0 .75rem; font-size: 1.25rem; color: #0f0301; }
+.client-layout .client-cart ul { display: grid; gap: .75rem; list-style: none; padding: 0; margin: 0; }
+.client-layout .client-cart li { border: 1px solid #e8dcd2; border-radius: .75rem; padding: .85rem 1rem; display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; background: #fff; }
+.client-layout .client-cart li > span:first-child { font-weight: 700; color: #0f0301; min-width: 0; }
+.client-layout .client-cart li span:not(:first-child) { color: #5e493e; font-size: .9rem; }
+.client-layout .client-cart button.secondary-button { min-height: 40px; border-radius: .5rem; border: 1px solid #c8aa96; background: #fff; color: #713419; font-weight: 700; padding: .4rem .9rem; }
+.client-layout .client-cart fieldset { border: 1px solid #d7c3b4; border-radius: .75rem; padding: .75rem 1rem; background: #faf7f3; margin: .75rem 0 0; }
+.client-layout .client-cart fieldset legend { font-weight: 800; color: #713419; font-size: .9rem; padding: 0 .5rem; }
+.client-layout .client-cart fieldset label { display: flex; align-items: center; gap: .5rem; color: #3e312a; font-weight: 600; cursor: pointer; }
+.client-layout .client-cart fieldset input[type='radio'] { accent-color: #713419; }
+.client-layout .client-cart p { margin: .5rem 0 0; color: #5e493e; font-size: .9rem; }
+.client-layout .client-cart [role='alert'] { color: #8b2a17; background: #fce8e4; border: 1px solid #d7a598; border-radius: .5rem; padding: .65rem .75rem; margin: .5rem 0 0; font-size: .9rem; }
+.client-layout .client-cart [role='status'] { color: #5e493e; font-size: .9rem; margin: .5rem 0 0; }
+.client-layout .client-cart button:not(.secondary-button) { min-height: 44px; border-radius: .75rem; background: #713419; border-color: #713419; color: #fff; font-weight: 800; padding: 0 1.25rem; }
+.client-layout .client-cart button:disabled { opacity: .6; cursor: not-allowed; }
+.client-layout .client-cart button:not(.secondary-button):disabled {
+  background: #d9cfc7;
+  border-color: #c9b9ac;
+  color: #6d5b50;
+  opacity: 1;
+}
+
+/* Order send and confirmation states (HYB-21) */
+.client-layout .order-retry { border: 1px solid #d7c3b4; border-radius: .75rem; background: #faf7f3; padding: 1rem; margin: .75rem 0 0; display: flex; flex-direction: column; gap: .75rem; }
+.client-layout .order-retry p { margin: 0; color: #5e493e; font-size: .9rem; }
+.client-layout .order-retry button { min-height: 44px; border-radius: .75rem; background: #713419; border-color: #713419; color: #fff; font-weight: 800; padding: 0 1.25rem; }
+.client-layout .order-sending { display: flex; align-items: center; gap: .6rem; padding: 1rem; margin: .75rem 0 0; border: 1px dashed #c8aa96; border-radius: .75rem; background: #faf7f3; color: #713419; font-weight: 700; font-size: .9rem; }
+.client-layout .order-confirmation { border: 1px solid #86b99a; border-radius: 1rem; background: #e4f3e7; padding: 1.25rem; margin: .75rem 0 0; display: flex; flex-direction: column; gap: .5rem; color: #14532d; }
+.client-layout .order-confirmation h3 { margin: 0; font-size: 1.15rem; }
+.client-layout .order-confirmation p { margin: 0; font-size: .95rem; line-height: 1.5; }
+.client-layout .order-confirmation strong { color: #0f5132; }
+.client-layout .order-confirmation .field-hint { color: #5e493e; font-size: .85rem; }

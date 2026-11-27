@@ -60,6 +60,11 @@ export function ClientCatalogPage() {
   }, [orderAttempt, orderStore]);
 
   useEffect(() => {
+    // A confirmed order invalidates the "added to draft" notice from the cart action.
+    if (orderAttempt.confirmed !== null) setCartNotice(null);
+  }, [orderAttempt.confirmed]);
+
+  useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
     setError(null);
@@ -223,6 +228,7 @@ export function ClientCatalogPage() {
                       loading="lazy"
                     />
                   )}
+                  {!isSafeImageUrl(product.imageUrl) && <div className="client-product-placeholder">Sin imagen</div>}
                   <div className="product-card-header">
                     <h2>{product.name}</h2>
                     <span className={product.isAvailable ? 'availability-badge' : 'availability-badge availability-badge-soldout'}>

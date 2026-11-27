@@ -60,18 +60,31 @@ describe('Terminal staff authentication (TASK-13)', () => {
     const username = await screen.findByLabelText('Usuario');
     fireEvent.change(username, { target: { value: '   ' } });
     fireEvent.click(screen.getByRole('button', { name: 'Iniciar sesión como personal' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('usuario válido');
+    expect(await screen.findByText('Introduce un usuario válido de hasta 24 caracteres.')).toHaveAttribute('role', 'alert');
 
     fireEvent.change(username, { target: { value: ' cajero1 ' } });
     fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'short' } });
     fireEvent.click(screen.getByRole('button', { name: 'Iniciar sesión como personal' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('entre 8 y 24 caracteres');
+    expect(await screen.findByText('La contraseña debe tener entre 8 y 24 caracteres.')).toHaveAttribute('role', 'alert');
 
     fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'password123' } });
     fireEvent.click(screen.getByRole('button', { name: 'Iniciar sesión como personal' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Usuario o contraseña incorrectos.');
+    expect(await screen.findByText('Usuario o contraseña incorrectos.')).toHaveAttribute('role', 'alert');
     expect(localStorage.length).toBe(0);
     expect(localStorage.getItem('cafeteria:staff:password')).toBeNull();
+  });
+
+  test('keeps the recovery warning accessible without hiding the staff form or stealing focus', async () => {
+    server.use(
+      http.get('/api/v1/auth/me', () => HttpResponse.json({ code: 'TEMPORARY' }, { status: 503 })),
+      http.post('/api/v1/auth/refresh', () => HttpResponse.json({ code: 'TEMPORARY' }, { status: 503 })),
+    );
+    renderAt('/terminal/acceso');
+    const username = await screen.findByLabelText('Usuario');
+    username.focus();
+    expect(await screen.findByRole('alert')).toHaveTextContent('No fue posible comprobar tu sesión anterior.');
+    expect(username).toHaveFocus();
+    expect(screen.getByLabelText('Contraseña')).toHaveAttribute('type', 'password');
   });
 
   test('routes CAJERO to POS and exposes logout with failure handling', async () => {
@@ -141,7 +154,7 @@ describe('Terminal staff authentication (TASK-13)', () => {
     fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'password123' } });
     fireEvent.click(screen.getByRole('button', { name: 'Iniciar sesión como personal' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Esta cuenta no tiene acceso permitido en la terminal.');
+    expect(await screen.findByText('Esta cuenta no tiene acceso permitido en la terminal.')).toHaveAttribute('role', 'alert');
     expect(screen.queryByText('Sesión: Gerente Legacy')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Usuario')).toBeInTheDocument();
   });

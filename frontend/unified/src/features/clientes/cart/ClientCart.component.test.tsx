@@ -178,7 +178,7 @@ describe('Mobile cart and order (TASK-11)', () => {
     expect(mobileOrderStoreFor(manager).getSnapshot().pending).toBe(pending);
     expect(screen.getByRole('button', { name: 'Reintentar la misma orden' })).toBeEnabled();
     fireEvent.click(screen.getByRole('button', { name: 'Reintentar la misma orden' }));
-    expect(await screen.findByText(/Orden A000091 creada/)).toBeInTheDocument();
+    expect(await screen.findByText('Orden creada')).toBeInTheDocument();
     expect(requests).toHaveLength(2);
     expect(requests[0]).toEqual(requests[1]);
     manager.dispose();
@@ -394,7 +394,7 @@ describe('Mobile cart and order (TASK-11)', () => {
     release();
     await waitFor(() => expect(idempotencyOperations.activeCount).toBe(0));
     expect(localStorage.getItem(CART_DRAFT_KEY)).toBeNull();
-    expect(screen.queryByText(/Orden A000082 creada/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Orden creada')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Reintentar la misma orden' })).not.toBeInTheDocument();
     manager.dispose();
   });
@@ -417,9 +417,9 @@ describe('Mobile cart and order (TASK-11)', () => {
     await addLatte();
     expect(JSON.parse(localStorage.getItem(CART_DRAFT_KEY) ?? '')).toEqual({ version: 1, items: [{ productId: '10', quantity: 1, optionValueIds: ['large'] }] });
     fireEvent.click(screen.getByRole('button', { name: 'Crear orden pendiente' }));
-    expect(await screen.findByText(/Orden A000001 creada/)).toBeInTheDocument();
-    expect(screen.getByText(/Total confirmado por el servidor: \$81\.00/)).toBeInTheDocument();
-    expect(screen.getByText('Crear la orden no confirma el pago.')).toBeInTheDocument();
+    expect(await screen.findByText('Orden creada')).toBeInTheDocument();
+    expect(screen.getByText(/Total confirmado por el servidor:/)).toBeInTheDocument();
+    expect(screen.getByText(/Crear la orden no confirma el pago/)).toBeInTheDocument();
     expect(body).toEqual({ paymentMethod: 'CASH', items: [{ productId: '10', quantity: 1, optionValueIds: ['large'] }] });
     expect(idempotencyKey).toMatch(/^[0-9a-f-]{36}$/i);
     expect(JSON.parse(localStorage.getItem(CART_DRAFT_KEY) ?? '')).toEqual({ version: 1, items: [] });
@@ -438,10 +438,14 @@ describe('Mobile cart and order (TASK-11)', () => {
     fireEvent.click(screen.getByRole('radio', { name: /STRIPE/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Crear orden pendiente' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('No sabemos si se creó');
-    expect(screen.queryByText(/Orden A000002 creada/)).not.toBeInTheDocument();
+    expect(screen.getByText(/El envío anterior quedó sin confirmar/)).toBeInTheDocument();
+    expect(screen.queryByText(/no se envió completamente/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Orden creada')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Crear orden pendiente' })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Reintentar la misma orden' }));
-    expect(await screen.findByText(/Orden A000002 creada/)).toBeInTheDocument();
+    expect(await screen.findByText('Orden creada')).toBeInTheDocument();
+    expect(screen.getByText(/no se inició ningún cobro con tarjeta/)).toBeInTheDocument();
+    expect(screen.queryByText(/Paga en caja para completar/)).not.toBeInTheDocument();
     expect(requests).toHaveLength(2);
     expect(requests[0]).toEqual(requests[1]);
     expect(requests[0].body).toEqual({ paymentMethod: 'STRIPE', items: [{ productId: '10', quantity: 1, optionValueIds: ['large'] }] });
@@ -477,7 +481,8 @@ describe('Mobile cart and order (TASK-11)', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('entraron en conflicto');
     expect(screen.queryByRole('button', { name: 'Reintentar la misma orden' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Crear orden pendiente' }));
-    expect(await screen.findByText(/Orden A000003 creada/)).toBeInTheDocument();
+    expect(await screen.findByText('Orden creada')).toBeInTheDocument();
+    expect(screen.getByText(/Paga en caja para completar/)).toBeInTheDocument();
     expect(keys).toHaveLength(2);
     expect(keys[0]).not.toBe(keys[1]);
   });
@@ -497,7 +502,7 @@ describe('Mobile cart and order (TASK-11)', () => {
     expect(requests).toHaveLength(1);
     expect(screen.getByRole('button', { name: 'Crear orden pendiente' })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Reintentar la misma orden' }));
-    expect(await screen.findByText(/Orden A000004 creada/)).toBeInTheDocument();
+    expect(await screen.findByText('Orden creada')).toBeInTheDocument();
     expect(requests).toHaveLength(2);
     expect(requests[0]).toEqual(requests[1]);
   });
@@ -526,7 +531,7 @@ describe('Mobile cart and order (TASK-11)', () => {
     expect(screen.getByRole('button', { name: 'Añadir al carrito' })).toBeDisabled();
     expect(localStorage.getItem(CART_DRAFT_KEY)).not.toContain('Idempotency');
     fireEvent.click(screen.getByRole('button', { name: 'Reintentar la misma orden' }));
-    expect(await screen.findByText(/Orden A000005 creada/)).toBeInTheDocument();
+    expect(await screen.findByText('Orden creada')).toBeInTheDocument();
     expect(requests).toHaveLength(2);
     expect(requests[0]).toEqual(requests[1]);
   });
@@ -553,7 +558,7 @@ describe('Mobile cart and order (TASK-11)', () => {
     expect(posted).toBe(0);
     expect(screen.getByText(/Subtotal estimado: \$85\.00/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar cambios y crear orden pendiente' }));
-    expect(await screen.findByText(/Orden A000006 creada/)).toBeInTheDocument();
+    expect(await screen.findByText('Orden creada')).toBeInTheDocument();
     expect(posted).toBe(1);
   });
 
@@ -592,7 +597,7 @@ describe('Mobile cart and order (TASK-11)', () => {
     expect(await manager.logout()).toBe(true);
     release();
     await waitFor(() => expect(idempotencyOperations.activeCount).toBe(0));
-    expect(screen.queryByText(/Orden A000007 creada/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Orden creada')).not.toBeInTheDocument();
     expect(localStorage.getItem(CART_DRAFT_KEY)).toBeNull();
     manager.dispose();
   });
@@ -609,7 +614,7 @@ describe('Mobile cart and order (TASK-11)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Crear orden pendiente' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('confirma con la cafetería');
     expect(screen.getByRole('alert')).toHaveTextContent('No hay pago confirmado');
-    expect(screen.queryByText(/Orden A000008 creada/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Orden creada')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Crear orden pendiente' })).toBeDisabled();
     expect(screen.queryByRole('button', { name: 'Reintentar la misma orden' })).not.toBeInTheDocument();
     expect(idempotencyOperations.activeCount).toBe(0);
@@ -646,7 +651,7 @@ describe('Mobile cart and order (TASK-11)', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('confirma con la cafetería');
     expect(screen.getByRole('button', { name: 'Crear orden pendiente' })).toBeDisabled();
     expect(screen.queryByRole('button', { name: 'Reintentar la misma orden' })).not.toBeInTheDocument();
-    expect(screen.queryByText(/Orden A000008 creada/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Orden creada')).not.toBeInTheDocument();
     expect(posted).toBe(1);
     expect(idempotencyOperations.activeCount).toBe(0);
   });
@@ -731,7 +736,7 @@ describe('Mobile cart and order (TASK-11)', () => {
     fireEvent.click(screen.getByRole('link', { name: 'Menú' }));
     await screen.findByRole('heading', { name: 'Carrito borrador' });
     await waitFor(() => expect(idempotencyOperations.activeCount).toBe(0));
-    expect(screen.queryByText(/Orden A000009 creada/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Orden creada')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Reintentar la misma orden' })).not.toBeInTheDocument();
     expect(localStorage.getItem(CART_DRAFT_KEY)).toBeNull();
   });
@@ -775,11 +780,11 @@ describe('Mobile cart and order (TASK-11)', () => {
     menu();
     await addLatte();
     fireEvent.click(screen.getByRole('button', { name: 'Crear orden pendiente' }));
-    expect(await screen.findByText(/Orden A000010 creada/)).toBeInTheDocument();
+    expect(await screen.findByText('Orden creada')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Salir de invitado' }));
     fireEvent.click(screen.getByRole('link', { name: 'Menú' }));
     await screen.findByRole('heading', { name: 'Carrito borrador' });
-    expect(screen.queryByText(/Orden A000010 creada/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Orden creada')).not.toBeInTheDocument();
     expect(localStorage.getItem(CART_DRAFT_KEY)).toBeNull();
   });
 
@@ -801,18 +806,18 @@ describe('Mobile cart and order (TASK-11)', () => {
     menu();
     await addLatte();
     fireEvent.click(screen.getByRole('button', { name: 'Crear orden pendiente' }));
-    expect(await screen.findByText(/Orden A000011 creada/)).toBeInTheDocument();
+    expect(await screen.findByText('Orden creada')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Personalizar Croissant' }));
     const dialog = await screen.findByRole('dialog', { name: 'Croissant' });
     await within(dialog).findByText('Este producto no tiene opciones adicionales de personalización.');
     fireEvent.click(within(dialog).getByRole('button', { name: 'Confirmar personalización' }));
     fireEvent.click(screen.getByRole('button', { name: 'Añadir al carrito' }));
     await screen.findByText(/Subtotal estimado: \$45\.00/);
-    expect(screen.queryByText(/Orden A000011 creada/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Orden creada')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Quitar Croissant' })).toBeEnabled();
     expect(JSON.parse(localStorage.getItem(CART_DRAFT_KEY) ?? '')).toEqual({ version: 1, items: [{ productId: '11', quantity: 1, optionValueIds: [] }] });
     fireEvent.click(screen.getByRole('button', { name: 'Crear orden pendiente' }));
-    expect(await screen.findByText(/Orden A000012 creada/)).toBeInTheDocument();
+    expect(await screen.findByText('Orden creada')).toBeInTheDocument();
     expect(requests).toHaveLength(2);
     expect(requests[0].key).not.toBe(requests[1].key);
     expect(requests[0].body).toEqual({ paymentMethod: 'CASH', items: [{ productId: '10', quantity: 1, optionValueIds: ['large'] }] });

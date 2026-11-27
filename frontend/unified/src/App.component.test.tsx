@@ -39,7 +39,7 @@ describe('application routes', () => {
     ['/terminal/pos', 'Punto de venta'],
     ['/terminal/cocina', 'Cola de cocina'],
     ['/terminal/disponibilidad', 'Disponibilidad de productos'],
-    ['/terminal/caja', 'Caja'],
+    ['/terminal/caja', 'Corte y Sesión de Caja'],
     ['/terminal/historial', 'Historial y ventas'],
     ['/terminal/administracion/catalogo', 'Administración'],
     ['/terminal/administracion/configuracion', 'Administración'],
@@ -168,6 +168,7 @@ describe('application routes', () => {
   ])('keeps %s public while session bootstrap is anonymous', async (path, heading) => {
     server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ code: 'UNAUTHENTICATED' }, { status: 401 })));
     render(<SessionProvider><RouterProvider router={createTestRouter([path])} /></SessionProvider>);
+    if (path === '/terminal/acceso') await screen.findByLabelText('Usuario');
     expect(await screen.findByRole('heading', { name: heading })).toBeInTheDocument();
   });
 });

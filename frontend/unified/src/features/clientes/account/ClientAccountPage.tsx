@@ -190,7 +190,7 @@ export function ClientAccountPage() {
     catch { setPreviewError('Esta selección no se puede confirmar. Actualiza la vista previa.'); }
   }
 
-  return <section aria-labelledby="account-title">
+  return <section aria-labelledby="account-title" className="client-account">
     <h1 id="account-title">Cuenta</h1>
     <section aria-labelledby="profile-title"><h2 id="profile-title">Perfil propio</h2>
       {profileLoading && <p role="status">Cargando perfil…</p>}

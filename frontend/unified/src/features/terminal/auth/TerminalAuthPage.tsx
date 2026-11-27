@@ -23,9 +23,11 @@ export function TerminalAuthPage() {
 
   if (session.status === 'loading') {
     return (
-      <section className="terminal-auth" aria-labelledby="page-title" aria-live="polite">
-        <h1 id="page-title">Acceso a terminal</h1>
-        <p>Comprobando sesión…</p>
+      <section className="terminal-auth terminal-staff-login" aria-labelledby="page-title" aria-live="polite">
+        <div className="kiosk-chassis">
+          <h1 id="page-title">Acceso a terminal</h1>
+          <p>Comprobando sesión…</p>
+        </div>
       </section>
     );
   }
@@ -44,9 +46,9 @@ export function TerminalAuthPage() {
 
   if (session.status === 'authenticated') {
     return (
-      <section className="terminal-auth" aria-labelledby="page-title">
-        <h1 id="page-title">Acceso a terminal</h1>
-        <div className="auth-card">
+      <section className="terminal-auth terminal-staff-login" aria-labelledby="page-title">
+        <div className="kiosk-chassis auth-card">
+          <h1 id="page-title">Acceso a terminal</h1>
           <h2>Sesión de personal activa</h2>
           <p>
             Has iniciado sesión como <strong>{session.actor.name}</strong> ({session.actor.role}).
@@ -92,66 +94,67 @@ export function TerminalAuthPage() {
   }
 
   return (
-    <section className="terminal-auth" aria-labelledby="page-title">
-      <h1 id="page-title">Acceso a terminal</h1>
-
-      {session.status === 'recoverable-error' && (
-        <div className="auth-card" role="status">
-          <p>No fue posible comprobar tu sesión anterior.</p>
-          <button type="button" className="secondary-button" onClick={() => { void manager.bootstrap(); }}>
-            Reintentar verificación
-          </button>
-        </div>
-      )}
-
-      <div className="auth-card">
-        <h2>Acceso con cuenta de personal</h2>
-        <p>Ingresa con tu usuario y contraseña asignados por la cafetería.</p>
-
-        <form onSubmit={(event) => { void handleLoginSubmit(event); }} noValidate className="auth-form">
-          <div className="form-field">
-            <label htmlFor="staff-username">Usuario</label>
-            <input
-              id="staff-username"
-              name="username"
-              type="text"
-              autoComplete="username"
-              maxLength={24}
-              required
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-              disabled={submitting}
-            />
+    <section className="terminal-auth terminal-staff-login" aria-labelledby="page-title">
+      <div className="terminal-staff-login-content">
+        <Link className="terminal-staff-login-back" to="/terminal">← Volver al inicio de terminal</Link>
+        <div className="kiosk-chassis auth-card">
+          <div className="terminal-staff-login-heading">
+            <h1 id="page-title">Acceso a terminal</h1>
+            <h2>Acceso con cuenta de personal</h2>
+            <p>Ingresa con tu usuario y contraseña asignados por la cafetería.</p>
           </div>
 
-          <div className="form-field">
-            <label htmlFor="staff-password">Contraseña</label>
-            <input
-              id="staff-password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              maxLength={24}
-              required
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              disabled={submitting}
-            />
-          </div>
-
-          {formError !== null && (
-            <p role="alert" className="form-alert">
-              {formError}
-            </p>
+          {session.status === 'recoverable-error' && (
+            <div className="terminal-staff-login-recovery" role="alert">
+              <p>No fue posible comprobar tu sesión anterior.</p>
+              <button type="button" className="secondary-button" onClick={() => { void manager.bootstrap(); }}>
+                Reintentar verificación
+              </button>
+            </div>
           )}
 
-          <button type="submit" disabled={submitting}>
-            {submitting ? 'Ingresando…' : 'Iniciar sesión como personal'}
-          </button>
-        </form>
+          <form onSubmit={(event) => { void handleLoginSubmit(event); }} noValidate className="auth-form">
+            <div className="form-field">
+              <label htmlFor="staff-username">Usuario</label>
+              <input
+                id="staff-username"
+                name="username"
+                type="text"
+                autoComplete="username"
+                maxLength={24}
+                required
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                disabled={submitting}
+              />
+            </div>
 
-        <div className="auth-actions">
-          <Link to="/terminal">Volver al inicio de terminal</Link>
+            <div className="form-field">
+              <label htmlFor="staff-password">Contraseña</label>
+              <input
+                id="staff-password"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                maxLength={24}
+                required
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                disabled={submitting}
+              />
+            </div>
+
+            {formError !== null && (
+              <p role="alert" className="form-alert">
+                {formError}
+              </p>
+            )}
+
+            <button type="submit" disabled={submitting}>
+              {submitting ? 'Ingresando…' : 'Iniciar sesión como personal'}
+            </button>
+          </form>
+
         </div>
       </div>
     </section>

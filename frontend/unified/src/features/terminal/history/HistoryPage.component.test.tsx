@@ -54,7 +54,7 @@ describe('Terminal operational history (TASK-17)', () => {
     expect(screen.getByRole('link', { name: 'Historial' })).toHaveAttribute('href', '/terminal/historial');
     expect(screen.queryByRole('link', { name: /historial personal/i })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Reimprimir ticket V000009' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ver ticket V000009' }));
     expect(await screen.findByRole('heading', { name: 'Ticket reimpreso' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Ticket V000009' })).toBeInTheDocument();
     expect(screen.queryByText(token, { exact: false })).not.toBeInTheDocument();
@@ -93,7 +93,7 @@ describe('Terminal operational history (TASK-17)', () => {
       http.post('*', () => { posts += 1; return HttpResponse.json({}); }),
     );
     renderHistory();
-    fireEvent.click(await screen.findByRole('button', { name: 'Reimprimir ticket V000009' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Ver ticket V000009' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(/la venta no existe/);
     expect(screen.queryByRole('heading', { name: 'Ticket reimpreso' })).not.toBeInTheDocument();
     expect(posts).toBe(0);
@@ -134,7 +134,7 @@ describe('Terminal operational history (TASK-17)', () => {
       http.post('*', () => { posts += 1; return HttpResponse.json({}); }),
     );
     renderHistory();
-    fireEvent.click(await screen.findByRole('button', { name: 'Reimprimir ticket V000010' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Ver ticket V000010' }));
     expect(await screen.findByRole('heading', { name: 'Ticket reimpreso' })).toBeInTheDocument();
     expect(screen.getByText(/Total:/)).toHaveTextContent('$35.00');
     expect(screen.queryByText(/Recibido:/)).not.toBeInTheDocument();
@@ -172,7 +172,7 @@ describe('Terminal operational history (TASK-17)', () => {
       http.get('/api/v1/sales/9/ticket', () => HttpResponse.json({ data: ticket })),
     );
     renderHistory();
-    const reprint = await screen.findByRole('button', { name: 'Reimprimir ticket V000009' });
+    const reprint = await screen.findByRole('button', { name: 'Ver ticket V000009' });
     fireEvent.click(reprint);
     expect(await screen.findByRole('heading', { name: 'Ticket reimpreso' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Cerrar ticket' }));

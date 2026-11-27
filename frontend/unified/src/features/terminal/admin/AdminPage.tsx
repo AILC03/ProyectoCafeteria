@@ -86,7 +86,7 @@ function ConfigurationEditor({ product }: { product: AdminProduct }) {
     } finally { setBusy(false); }
   }
 
-  return <section className="admin-panel" aria-labelledby="configuration-title">
+  return <section className="admin-panel admin-config-editor" aria-labelledby="configuration-title">
     <h3 id="configuration-title">Opciones de {product.name}</h3>
     <p>Configuración completa por grupos y valores. Usa IDs existentes; guardar reemplaza la configuración completa del producto.</p>
     {loading && <p role="status">Cargando configuración…</p>}
@@ -214,7 +214,7 @@ function Collection({ kind }: { kind: AdminKind }) {
     finally { setBusy(false); action.current = false; }
   }
 
-  return <section aria-labelledby="admin-collection-title" className="admin-panel">
+  return <section aria-labelledby="admin-collection-title" className={`admin-panel admin-collection admin-collection-${kind}`}>
     <h2 id="admin-collection-title">{LABELS[kind]}</h2>
     <p>Los cambios se confirman únicamente con la respuesta de la API. No se habilitan servicios externos ni restablecimiento de NIP.</p>
     {kind !== 'employees' && <label className="admin-inline"><input type="checkbox" checked={includeDeleted}
@@ -227,8 +227,10 @@ function Collection({ kind }: { kind: AdminKind }) {
     <ul className="admin-list">
       {items.map((item) => <li key={item.id}>
         <strong>{entityLabel(kind, item)}</strong> <span>ID {item.id}</span>
+        {kind === 'products' && 'imageUrl' in item && item.imageUrl === null && <span className="admin-no-image">Sin imagen</span>}
         {'basePriceCents' in item && <span>{formatMxnCents(item.basePriceCents)}</span>}
-        {'role' in item && <span>{item.role}{item.isActive ? '' : ' · Inactivo'}</span>}
+        {kind === 'products' && 'isAvailable' in item && <span className={`admin-product-state${item.isAvailable ? '' : ' admin-product-state-soldout'}`}>{item.isAvailable ? 'Disponible' : 'Agotado'}</span>}
+        {'role' in item && <><span className="admin-employee-role">{item.role}</span><span className={`admin-employee-state${item.isActive ? '' : ' admin-employee-state-inactive'}`}>{item.isActive ? 'Activo' : 'Inactivo'}</span></>}
         {'deletedAt' in item && item.deletedAt !== null && <span> · Baja registrada</span>}
         <button type="button" disabled={busy || uncertain || 'deletedAt' in item && item.deletedAt !== null}
           onClick={() => edit(item)}>Editar</button>

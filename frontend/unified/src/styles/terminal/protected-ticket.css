@@ -1,0 +1,44 @@
+/* HYB-11: thermal receipt presentation for verified API tickets, shared by payment and history. */
+.terminal-layout .protected-ticket {
+  width: min(100%, 27rem);
+  max-width: 100%;
+  margin: 0;
+  padding: 1.35rem;
+  border: 1px dashed #94a3b8;
+  border-radius: 8px;
+  background: #fff;
+  color: #1e293b;
+  font: .85rem/1.5 ui-monospace, 'Courier New', monospace;
+  overflow-wrap: anywhere;
+  box-shadow: var(--term-shadow-sm);
+}
+.terminal-layout .ticket-heading { text-align: center; }
+.terminal-layout .ticket-heading h2 { margin: 0; color: #0f172a; font: 800 1.25rem/1.35 var(--term-font-family); }
+.terminal-layout .ticket-heading p { margin: .25rem 0 .75rem; color: #475569; font-size: .8rem; }
+.terminal-layout .ticket-meta { padding: .55rem 0; border-top: 1px dashed #94a3b8; border-bottom: 1px dashed #94a3b8; }
+.terminal-layout .ticket-meta p,
+.terminal-layout .ticket-totals p { margin: .2rem 0; }
+.terminal-layout .protected-ticket table { width: 100%; margin: .75rem 0; table-layout: fixed; border-collapse: collapse; }
+.terminal-layout .protected-ticket caption { text-align: left; font-weight: 700; padding-bottom: .3rem; }
+.terminal-layout .protected-ticket th,
+.terminal-layout .protected-ticket td { padding: .45rem .2rem; border-bottom: 1px dashed #cbd5e1; overflow-wrap: anywhere; }
+.terminal-layout .protected-ticket th:nth-child(1) { width: 51%; }
+.terminal-layout .protected-ticket th:nth-child(2) { width: 14%; }
+.terminal-layout .protected-ticket th:last-child,
+.terminal-layout .protected-ticket td:last-child { text-align: right; }
+.terminal-layout .ticket-totals { border-top: 1px dashed #94a3b8; padding-top: .55rem; }
+.terminal-layout .ticket-grand-total { display: flex; justify-content: space-between; gap: .5rem; font-size: 1.05rem; font-weight: 800; }
+.terminal-layout .ticket-registration { border-top: 1px dashed #94a3b8; margin-top: .9rem; padding-top: .9rem; text-align: center; }
+.terminal-layout .ticket-registration h3 { margin: 0; font-size: 1rem; }
+.terminal-layout .ticket-registration p { margin: .5rem 0; }
+.terminal-layout .ticket-registration svg { display: block; max-width: 100%; height: auto; margin: .75rem auto; }
+.terminal-layout .protected-ticket > button { display: block; width: 100%; min-height: 44px; margin-top: 1rem; border-radius: 10px; background: #0f172a; border-color: #0f172a; }
+@media print {
+  @page { margin: 4mm; }
+  .terminal-layout header.pos-top-nav { display: none; }
+  .terminal-layout .skip-link { display: none; }
+  .terminal-layout > main { padding: 0; }
+  .terminal-layout .protected-ticket { width: 72mm; max-width: 100%; padding: 2mm; border: 0; border-radius: 0; box-shadow: none; color: #000; break-inside: avoid; print-color-adjust: exact; }
+  .terminal-layout .protected-ticket > button { display: none; }
+  .terminal-layout .ticket-registration svg { max-width: 44mm; }
+}

@@ -53,8 +53,8 @@ describe('Client authentication and entry (TASK-09)', () => {
     server.use(http.get('/api/v1/auth/me', () => HttpResponse.json({ code: 'UNAUTHENTICATED' }, { status: 401 })));
     renderAt('/cliente/iniciar-sesion');
 
-    expect(await screen.findByRole('heading', { name: 'Iniciar sesión' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Teléfono o número de cliente')).toBeInTheDocument();
+    expect(await screen.findByLabelText('Teléfono o número de cliente')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Iniciar sesión' })).toBeInTheDocument();
     expect(screen.queryByLabelText(/Código de Registro del Ticket/i)).not.toBeInTheDocument();
 
     const digit1 = screen.getByLabelText('Dígito 1 del NIP');

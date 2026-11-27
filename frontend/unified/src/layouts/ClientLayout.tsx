@@ -3,6 +3,11 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { ActorAreaLink } from '../shared/auth/ActorAreaLink';
 import { useSession, useSessionManager } from '../shared/auth/SessionProvider';
 import { exitGuestMode, useGuestSession } from '../features/clientes/auth/guestSession';
+import '../styles/client/shell-auth.css';
+import '../styles/client/catalog.css';
+import '../styles/client/cart-customization.css';
+import '../styles/client/account.css';
+import '../styles/client/registration.css';
 
 export function ClientLayout() {
   const session = useSession();
@@ -36,8 +41,8 @@ export function ClientLayout() {
   return (
     <div className="client-layout">
       <a className="skip-link" href="#main-content">Saltar al contenido principal</a>
-      <header>
-        <p>Cliente</p>
+      <header className="client-site-header">
+        <NavLink to="/cliente/menu" className="client-brand" aria-label="Marca Coffee's POS"><img src="/client/logo.png" alt="" width="144" height="44" /></NavLink>
         <nav aria-label="Navegación de cliente">
           <NavLink to="/cliente/menu">Menú</NavLink>
           <ActorAreaLink destination="client" to="/cliente/iniciar-sesion">Iniciar sesión</ActorAreaLink>
